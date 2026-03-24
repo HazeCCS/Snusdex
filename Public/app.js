@@ -1,8 +1,4 @@
-// Nutze den "Project URL" und den "Anon / Public" Key
-const SUPABASE_URL = 'https://aqyjrvukfuyuhlidpoxr.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_4gIcuQhw528DH6GrmhF16g_V8im-UMU';
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 1. Begrüßung nach Tageszeit
 function updateGreeting() {
