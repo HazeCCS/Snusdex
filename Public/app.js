@@ -1,40 +1,31 @@
+// 1. SUPABASE & GITHUB SETUP
+const SUPABASE_URL = 'https://aqyjrvukfuyuhlidpoxr.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_4gIcuQhw528DH6GrmhF16g_V8im-UMU';
+const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/main/'; 
 
+// DER FIX: Wir nennen die Variable "supabaseClient", damit es keinen Namenskonflikt gibt!
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 1. Begrüßung nach Tageszeit
+// 2. BEGRÜßUNG
 function updateGreeting() {
     const greetingElement = document.getElementById('greeting');
     if (!greetingElement) return;
     const hour = new Date().getHours();
-    let message;
-
-    if (hour >= 5 && hour < 12) message = "Guten Morgen";
-    else if (hour >= 12 && hour < 18) message = "Guten Tag";
-    else if (hour >= 18 && hour < 22) message = "Guten Abend";
-    else message = "Gute Nacht";
-
-    const username = "HazeCC"; 
-    greetingElement.innerText = `${message}, ${username}`;
+    let message = (hour < 12) ? "Guten Morgen" : (hour < 18) ? "Guten Tag" : "Guten Abend";
+    greetingElement.innerText = `${message}, HazeCC`;
 }
 
-// 2. Score Anzeige
+// 3. SCORE ANZEIGE
 function updateScore() {
     const scoreElement = document.getElementById('score');
-    if (!scoreElement) return;
-    const score = 3612; // Später aus Firebase
-    scoreElement.innerText = score;
+    if (scoreElement) scoreElement.innerText = 3612; 
 }
 
-// 3. Carousel Focus Logic
+// 4. CAROUSEL LOGIK
 function initCarouselObserver() {
     const carousel = document.getElementById('stats-carousel');
     const cards = document.querySelectorAll('.stats-card');
-
     if (!carousel || cards.length === 0) return;
-
-    const observerOptions = {
-        root: carousel,
-        threshold: 0.6
-    };
 
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -45,37 +36,39 @@ function initCarouselObserver() {
                 entry.target.classList.remove('active');
             }
         });
-    }, observerOptions);
+    }, { root: carousel, threshold: 0.6 });
 
     cards.forEach(card => observer.observe(card));
 }
 
-// Alles starten, wenn das DOM bereit ist
-window.addEventListener('DOMContentLoaded', () => {
-    updateGreeting();
-    updateScore();
-    initCarouselObserver();
-});
-
+// 5. SUPABASE DEX LADEN
 async function loadDex() {
     const grid = document.getElementById('dex-grid');
+    if (!grid) return;
     
     try {
-        const response = await fetch('snus_db.json');
-        const data = await response.json();
-        
-        grid.innerHTML = ''; // Clear loading state
+        // HIER AUCH DER FIX: Wir nutzen jetzt supabaseClient
+        const { data: snusItems, error } = await supabaseClient
+            .from('snus_items')
+            .select('*')
+            .order('id', { ascending: true });
 
-        data.forEach(snus => {
-            const statusClass = snus.unlocked ? 'unlocked' : 'locked';
+        if (error) throw error;
+        
+        grid.innerHTML = ''; // Ladezustand leeren
+
+        snusItems.forEach(snus => {
+            const isUnlocked = true; 
+            const statusClass = isUnlocked ? 'unlocked' : 'locked';
             
+            const rarityClass = snus.rarity ? snus.rarity.toLowerCase() : 'common'; 
+
             const card = `
-                <div class="dex-card ${statusClass} rarity-${snus.rarity} relative flex flex-col items-center p-4 bg-zinc-900 border rounded-2xl transition-all active:scale-95">
-                    
+                <div class="dex-card ${statusClass} rarity-${rarityClass} relative flex flex-col items-center p-4 bg-zinc-900 border rounded-2xl transition-all active:scale-95">
                     <span class="absolute top-2 left-2 text-[0.75rem] font-mono opacity-50">#${String(snus.id).padStart(3, '0')}</span>
                     
                     <div class="w-full aspect-square flex items-center justify-center mb-3">
-                        <img src="${snus.image}" alt="${snus.name}" class="w-full h-full object-contain rounded-lg">
+                        <img src="${GITHUB_BASE}${snus.image}" alt="${snus.name}" class="w-full h-full object-contain rounded-lg">
                     </div>
 
                     <h5 class="text-[0.9rem] font-bold uppercase tracking-tight text-center truncate w-full">${snus.name}</h5>
@@ -85,48 +78,41 @@ async function loadDex() {
             grid.innerHTML += card;
         });
     } catch (error) {
-        console.error("Datenbank-Fehler:", error);
-        grid.innerHTML = '<p class="text-red-900 text-[10px]">Database Offline</p>';
+        console.error("Supabase-Fehler:", error);
+        grid.innerHTML = `<p class="text-red-500 text-[10px] col-span-3 text-center">Database Offline: ${error.message}</p>`;
     }
 }
 
-// In deine DOMContentLoaded Logik einfügen
-window.addEventListener('DOMContentLoaded', () => {
-    updateGreeting();
-    initCarouselObserver();
-    loadDex(); // <--- Neu!
-});
-
+// 6. TAB-NAVIGATION
 function switchTab(tab) {
     const homeView = document.getElementById('view-home');
     const dexView = document.getElementById('view-dex');
-    const navHome = document.getElementById('nav-home');
-    const navDex = document.getElementById('nav-dex');
+    const btnHome = document.getElementById('btn-home');
+    const btnDex = document.getElementById('btn-dex');
 
-    // Haptik-Feedback (für iPhone/Android)
     if (navigator.vibrate) navigator.vibrate(10);
 
     if (tab === 'dex') {
-        // Dex anzeigen
         homeView.classList.add('hidden');
         dexView.classList.remove('hidden');
         
-        // Buttons stylen
-        navDex.classList.replace('text-zinc-600', 'text-white');
-        navHome.classList.replace('text-white', 'text-zinc-600');
+        btnDex.classList.replace('text-zinc-600', 'text-white');
+        btnHome.classList.replace('text-white', 'text-zinc-600');
         
-        // Datenbank laden (Funktion von vorhin)
         loadDex(); 
-        
-        // Seite nach oben scrollen
         window.scrollTo(0, 0);
     } else {
-        // Home anzeigen
         dexView.classList.add('hidden');
         homeView.classList.remove('hidden');
         
-        // Buttons stylen
-        navHome.classList.replace('text-zinc-600', 'text-white');
-        navDex.classList.replace('text-white', 'text-zinc-600');
+        btnHome.classList.replace('text-zinc-600', 'text-white');
+        btnDex.classList.replace('text-white', 'text-zinc-600');
     }
 }
+
+// 7. INITIALISIERUNG
+document.addEventListener('DOMContentLoaded', () => {
+    updateGreeting();
+    updateScore();
+    initCarouselObserver();
+});
