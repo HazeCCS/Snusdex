@@ -2,54 +2,153 @@
 <html lang="de" class="bg-black text-white antialiased selection:bg-zinc-800">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>SNUSDEX</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Verhindert das "Gummiband"-Ziehen auf iOS */
-        body { overscroll-behavior: none; }
-        /* Cleaner Font-Look */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        
+        :root {
+            --common: #3f3f46;
+            --uncommon: #22c55e;
+            --rare: #3b82f6;
+            --epic: #a855f7;
+            --legendary: #f59e0b;
+            --exotic: #ec4899;
+            --mythic: #00ffea;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            overscroll-behavior: none; 
+            background-color: black;
+        }
+
+        /* View Management */
+        .hidden { display: none !important; }
+        .view-section { transition: opacity 0.3s ease-in-out; }
+
+        /* Scrollbar Hide */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Stats Cards */
+        .stats-card {
+            opacity: 0.6;
+            transform: scale(0.9);
+            transition: all 0.5s ease;
+        }
+        .stats-card.active {
+            background: linear-gradient(to bottom right, #fef9c3, #f3e8ff, #e9d5ff) !important;
+            color: black !important;
+            border-color: transparent !important;
+            box-shadow: 0 25px 60px -15px rgba(168, 85, 247, 0.4);
+            opacity: 1 !important;
+            transform: scale(1) !important;
+        }
+
+        /* Dex Cards */
+        .dex-card {
+            @apply relative flex flex-col items-center p-3 rounded-[1.8rem] bg-zinc-900/50 border border-zinc-800 transition-all duration-300;
+        }
+        .dex-card.locked {
+            @apply opacity-30 border-dashed;
+            filter: grayscale(1) brightness(0.5);
+        }
+        .dex-card.unlocked.rarity-common { border-color: var(--common); box-shadow: 0 10px 30px -10px rgba(63, 63, 70, 0.3); }
+        .dex-card.unlocked.rarity-uncommon { border-color: var(--uncommon); box-shadow: 0 10px 30px -10px rgba(21, 211, 100, 0.4); }
+        .dex-card.unlocked.rarity-rare { border-color: var(--rare); box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.4); }
+        .dex-card.unlocked.rarity-epic { border-color: var(--epic); box-shadow: 0 10px 30px -10px rgba(168, 85, 247, 0.4); }
+        .dex-card.unlocked.rarity-exotic { border-color: var(--exotic); box-shadow: 0 10px 30px -10px rgba(236, 72, 153, 0.4); }
+        .dex-card.unlocked.rarity-legendary { border-color: var(--legendary); box-shadow: 0 10px 30px -10px rgba(245, 158, 11, 0.4); }
+        .dex-card.unlocked.rarity-mythic { border-color: var(--mythic); box-shadow: 0 10px 30px -10px rgba(0, 255, 234, 0.4); }
     </style>
 </head>
-<header class="flex justify-between items-center mb-12">
-    <h1 class="text-[10px] font-bold text-zinc-100 px-4 py-4">SNUSDEX</h1>
-    <span class="text-[10px] text-zinc-500 px-4 py-4">v 1.0.4</span>
-</header>
-<body>
-    //Begrüßungtext
-    <div class="p-4 mx-4 mb-12">
-        <h2 id="welcome" class="text-2xl font-bold mb-2 font-Inter">Willkommen, DW</h2>
-        <p class="text-[10px] text-zinc-400">Hier findest du alle Informationen zu Snus, Marken, Sorten und mehr. Nutze die Navigation unten, um durch die verschiedenen Bereiche zu stöbern.</p>
-    </div>
+<body class="pb-32">
 
+    <header class="flex justify-between items-center sticky top-0 bg-black/80 backdrop-blur-md z-[100] px-6 py-4">
+        <h1 class="text-[1rem] font-bold text-zinc-100 tracking-tighter">SNUSDEX®</h1>
+        <span class="text-[0.8rem] text-zinc-500 font-mono">v1.0.5 PreAlpha</span>
+    </header>
+
+    <main id="view-home" class="view-section">
+        <div class="p-6">
+            <h2 id="greeting" class="text-zinc-500 text-2xl font-bold mb-2 uppercase tracking-tight">Lade...</h2>
+            <p id="score" class="text-[5rem] font-thin leading-none tracking-tighter">0</p>
+            <p class="text-[10px] text-zinc-600 uppercase tracking-widest mt-2">Current Reputation Score</p>
+        </div>
+
+        <section class="mt-8">
+            <h3 class="px-6 mb-4 text-[0.75rem] text-zinc-500 uppercase tracking-[0.3em]">Live Performance</h3>
+            <div id="stats-carousel" class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-6 space-x-5 pb-10">
+                <div class="stats-card flex-shrink-0 w-[82vw] snap-center p-8 rounded-[2.5rem] bg-zinc-900 border border-zinc-800">
+                    <div class="text-4xl mb-6">⚡️</div>
+                    <h4 class="text-2xl font-bold">Current Flow</h4>
+                    <p class="text-[11px] opacity-50 tracking-widest mt-2 uppercase">142 MG ACTIVE • PEAKING</p>
+                </div>
+                <div class="stats-card flex-shrink-0 w-[82vw] snap-center p-8 rounded-[2.5rem] bg-zinc-900 border border-zinc-800">
+                    <div class="text-4xl mb-6">📊</div>
+                    <h4 class="text-2xl font-bold">Daily Count</h4>
+                    <p class="text-[11px] opacity-50 tracking-widest mt-2 uppercase">12 POUCHES • 3 NEW</p>
+                </div>
+                <div class="stats-card flex-shrink-0 w-[82vw] snap-center p-8 rounded-[2.5rem] bg-zinc-900 border border-zinc-800">
+                    <div class="text-4xl mb-6">🔥</div>
+                    <h4 class="text-2xl font-bold">7 Day Streak</h4>
+                    <p class="text-[11px] opacity-50 tracking-widest mt-2 uppercase">TOP 3% IN GERMANY</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="px-6 mt-12 pb-20">
+            <div class="flex justify-between items-end mb-6">
+                <h3 class="text-[0.75rem] text-zinc-500 uppercase tracking-[0.2em]">Collector Showcase</h3>
+                <span class="text-[0.75rem] text-zinc-700 border border-zinc-800 px-2 py-1 rounded">LVL 14</span>
+            </div>
+            <div class="grid grid-cols-3 gap-3 bg-zinc-900/30 border border-zinc-900 p-4 rounded-3xl">
+                <div class="aspect-square bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-center relative group active:scale-95 transition-transform">
+                    <span class="text-2xl">🧊</span>
+                </div>
+                <div class="aspect-square bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-center relative group active:scale-95 transition-transform">
+                    <span class="text-2xl">🍬</span>
+                </div>
+                <div class="aspect-square bg-zinc-900/50 border border-dashed border-zinc-800 rounded-2xl flex items-center justify-center text-zinc-800 text-xl font-light">
+                    +
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <main id="view-dex" class="view-section hidden">
+        <div class="px-6 py-8">
+            <h2 class="text-3xl font-bold mb-1">Master Dex</h2>
+            <p class="text-zinc-500 text-[10px] uppercase tracking-[0.2em] mb-8">Discover & Collect</p>
+            <div id="dex-grid" class="grid grid-cols-3 gap-3 pb-40">
+                </div>
+        </div>
+    </main>
 
     <footer>
-    <nav class="fixed bottom-0 left-0 right-0 bg-black border-t border-zinc-900 px-6 pb-8 pt-4">
-    <div class="flex justify-between items-center max-w-md mx-auto">
-        
-        <button class="flex flex-col items-center text-white space-y-1">
-            <div class="w-5 h-5 border-2 border-white rounded-sm"></div> <span class="text-[9px] font-bold">DEX</span>
-        </button>
-
-        <button class="flex flex-col items-center text-zinc-600 space-y-1 hover:text-white transition-colors">
-            <div class="w-5 h-5 border-2 border-current rounded-sm"></div>
-            <span class="text-[9px] font-bold">SOCIAL</span>
-        </button>
-
-        <button class="flex flex-col items-center text-zinc-600 space-y-1 hover:text-white transition-colors">
-            <div class="w-5 h-5 border-2 border-current rounded-sm"></div>
-            <span class="text-[9px] font-bold">STATS</span>
-        </button>
-
-        <button class="flex flex-col items-center text-zinc-600 space-y-1 hover:text-white transition-colors">
-            <div class="w-5 h-5 border-2 border-current rounded-sm"></div>
-            <span class="text-[9px] font-bold">USER</span>
-        </button>
-
-    </div>
-    </nav>
+        <nav class="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-lg border-t border-zinc-900 px-6 pb-10 pt-4 z-[100]">
+            <div class="flex justify-between items-center max-w-md mx-auto">
+                <button id="btn-home" onclick="switchTab('home')" class="flex flex-col items-center text-white space-y-1">
+                    <div class="w-5 h-5 rounded-sm bg-current"></div>
+                    <span class="text-[0.6rem] font-bold">HOME</span>
+                </button>
+                <button id="btn-dex" onclick="switchTab('dex')" class="flex flex-col items-center text-zinc-600 space-y-1">
+                    <div class="w-5 h-5 rounded-sm bg-current"></div>
+                    <span class="text-[0.6rem] font-bold">DEX</span>
+                </button>
+                <button class="flex flex-col items-center text-zinc-600 space-y-1 opacity-40">
+                    <div class="w-5 h-5 rounded-sm bg-current"></div>
+                    <span class="text-[0.6rem] font-bold">SOCIAL</span>
+                </button>
+                <button class="flex flex-col items-center text-zinc-600 space-y-1 opacity-40">
+                    <div class="w-5 h-5 rounded-sm bg-current"></div>
+                    <span class="text-[0.6rem] font-bold">STATS</span>
+                </button>
+            </div>
+        </nav>
     </footer>
 
     <script src="app.js"></script>

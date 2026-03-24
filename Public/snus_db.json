@@ -1,0 +1,58 @@
+[
+  {
+    "id": 1,
+    "name": "Velo Freeze",
+    "nicotine": 16,
+    "rarity": "common",
+    "image": "https://placehold.co/200x200/18181b/ffffff?text=Velo",
+    "unlocked": true
+  },
+  {
+    "id": 2,
+    "name": "Siberia Red",
+    "nicotine": 43,
+    "rarity": "legendary",
+    "image": "https://placehold.co/200x200/18181b/ffffff?text=Siberia",
+    "unlocked": true
+  },
+  {
+    "id": 3,  
+    "name": "Pablo Gold<br>Dark Cherry",
+    "nicotine": 30,
+    "rarity": "uncommon",
+    "image": "https://placehold.co/200x200/18181b/ffffff?text=Pablo",
+    "unlocked": true
+  },
+  {
+    "id": 4,
+    "name": "Pablo Gold<br>Passion Fruit",
+    "nicotine": 30,
+    "rarity": "rare",
+    "image": "https://placehold.co/200x200/18181b/ffffff?text=Pablo",
+    "unlocked": true
+  },
+  {
+    "id": 5,
+    "name": "Cuba White<br>Black Currant",
+    "nicotine": 20,
+    "rarity": "epic",
+    "image": "https://placehold.co/200x200/18181b/ffffff?text=Cuba",
+    "unlocked": true
+  },
+  {
+    "id": 6,
+    "name": "Cuba White<br>Blueberry",
+    "nicotine": 30,
+    "rarity": "exotic",
+    "image": "https://placehold.co/200x200/18181b/ffffff?text=Cuba",
+    "unlocked": true
+  },
+  {
+    "id": 7,
+    "name": "Cuba Black<br>Cherry",
+    "nicotine": 43,
+    "rarity": "mythic",
+    "image": "https://placehold.co/200x200/18181b/ffffff?text=Cuba",
+    "unlocked": true
+  }
+]
