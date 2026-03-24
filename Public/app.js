@@ -2,7 +2,7 @@
 const SUPABASE_URL = 'https://aqyjrvukfuyuhlidpoxr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_4gIcuQhw528DH6GrmhF16g_V8im-UMU';
 const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/main/assets/'; 
-
+ 
 // DER FIX: Wir nennen die Variable "supabaseClient", damit es keinen Namenskonflikt gibt!
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
