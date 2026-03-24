@@ -3,6 +3,53 @@ const SUPABASE_URL = 'https://aqyjrvukfuyuhlidpoxr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_4gIcuQhw528DH6GrmhF16g_V8im-UMU';
 const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/main/assets/'; 
  
+//SUPABASE LOGIN
+
+// 1. Check beim Start
+async function checkUser() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const overlay = document.getElementById('auth-overlay');
+
+    if (session) {
+        // User ist eingeloggt -> Schild weg
+        overlay.classList.add('opacity-0');
+        setTimeout(() => overlay.classList.add('hidden'), 500);
+        console.log("Access Granted: ", session.user.email);
+    } else {
+        // Kein User -> Schild bleibt da
+        overlay.classList.remove('hidden');
+    }
+}
+
+// 2. Login Funktion
+async function handleLogin() {
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
+    const errorEl = document.getElementById('auth-error');
+
+    const { error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password,
+    });
+
+    if (error) {
+        errorEl.innerText = "Zugriff verweigert";
+        errorEl.classList.remove('hidden');
+        if (navigator.vibrate) navigator.vibrate(50);
+    } else {
+        errorEl.classList.add('hidden');
+        checkUser(); // Erneut prüfen -> Schild geht weg
+    }
+}
+
+// 3. In deinen DOMContentLoaded Block einfügen:
+document.addEventListener('DOMContentLoaded', () => {
+    checkUser(); // <--- Zuerst prüfen!
+    updateGreeting();
+    updateScore();
+    initCarouselObserver();
+});
+
 // DER FIX: Wir nennen die Variable "supabaseClient", damit es keinen Namenskonflikt gibt!
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
