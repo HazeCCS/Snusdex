@@ -1,27 +1,42 @@
-// 1. SUPABASE & GITHUB SETUP
+// ==========================================
+// 1. SETUP & KONFIGURATION
+// ==========================================
 const SUPABASE_URL = 'https://aqyjrvukfuyuhlidpoxr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_4gIcuQhw528DH6GrmhF16g_V8im-UMU';
 const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/main/assets/'; 
- 
-//SUPABASE LOGIN
 
-// 1. Check beim Start
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ==========================================
+// 2. AUTHENTIFIZIERUNG (LOGIN/LOGOUT)
+// ==========================================
+
 async function checkUser() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     const overlay = document.getElementById('auth-overlay');
+    const mainContent = document.querySelectorAll('main, nav');
 
     if (session) {
-        // User ist eingeloggt -> Schild weg
+        // Login erfolgreich
         overlay.classList.add('opacity-0');
         setTimeout(() => overlay.classList.add('hidden'), 500);
+        
+        // UI vorbereiten
+        setupProfile(session.user);
+        loadDex(); 
+        
+        // --- HIER DIE NEUEN AUFRUFE REINPACKEN ---
+        updateGreeting();
+        updateScore();
+        setTimeout(() => initCarouselObserver(), 100); // Kurz warten, bis CSS geladen ist
+        // ----------------------------------------
+        
         console.log("Access Granted: ", session.user.email);
     } else {
-        // Kein User -> Schild bleibt da
+        // Nicht eingeloggt
         overlay.classList.remove('hidden');
     }
 }
-
-// 2. Login Funktion
 async function handleLogin() {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
@@ -38,22 +53,112 @@ async function handleLogin() {
         if (navigator.vibrate) navigator.vibrate(50);
     } else {
         errorEl.classList.add('hidden');
-        checkUser(); // Erneut prüfen -> Schild geht weg
+        checkUser(); 
     }
 }
 
-// 3. In deinen DOMContentLoaded Block einfügen:
+async function handleLogout() {
+    const { error } = await supabaseClient.auth.signOut();
+    if (!error) window.location.reload();
+}
+
+// ==========================================
+// 3. NAVIGATION (TAB SYSTEM)
+// ==========================================
+
+function switchTab(tabId) {
+    // 1. Alle Tabs verstecken
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+    
+    // 2. Gewählten Tab zeigen
+    const activeTab = document.getElementById(`tab-${tabId}`);
+    if (activeTab) activeTab.classList.remove('hidden');
+
+    // 3. Navbar-Icons stylen (Lila Akzent für Aktiven Tab)
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.id === `btn-${tabId}`) {
+            btn.classList.add('text-purple-500');
+            btn.classList.remove('text-zinc-500');
+        } else {
+            btn.classList.add('text-zinc-500');
+            btn.classList.remove('text-purple-500');
+        }
+    });
+
+    // 4. Feedback & Scroll
+    if (navigator.vibrate) navigator.vibrate(5);
+    window.scrollTo(0, 0);
+}
+
+// ==========================================
+// 4. DATEN LADEN (DEX)
+// ==========================================
+
+async function loadDex() {
+    const grid = document.getElementById('dex-grid');
+    if (!grid) return;
+    
+    try {
+        const { data: snusItems, error } = await supabaseClient
+            .from('snus_items')
+            .select('*')
+            .order('id', { ascending: true });
+
+        if (error) throw error;
+        
+        grid.innerHTML = ''; 
+
+        snusItems.forEach(snus => {
+            const isUnlocked = true; // Später Logik für User-Inventory
+            const rarityClass = snus.rarity ? snus.rarity.toLowerCase() : 'common'; 
+
+            const card = `
+                <div class="dex-card ${isUnlocked ? 'unlocked' : 'locked'} rarity-${rarityClass} relative flex flex-col items-center p-4 bg-zinc-900 border border-zinc-800 rounded-[2rem] transition-all active:scale-95">
+                    <span class="absolute top-3 left-3 text-[10px] font-mono opacity-30">#${String(snus.id).padStart(3, '0')}</span>
+                    
+                    <div class="w-full aspect-square flex items-center justify-center p-2 mb-2">
+                        <img src="${GITHUB_BASE}${snus.image}" alt="${snus.name}" class="w-full h-full object-contain ${!isUnlocked ? 'brightness-0 opacity-40' : ''}">
+                    </div>
+
+                    <h5 class="text-[0.75rem] font-bold uppercase tracking-tight text-center truncate w-full">${snus.name}</h5>
+                    <p class="text-[9px] text-zinc-500 mt-0.5 uppercase tracking-widest">${snus.nicotine} MG/G</p>
+                </div>
+            `;
+            grid.innerHTML += card;
+        });
+    } catch (error) {
+        console.error("Supabase-Fehler:", error);
+        grid.innerHTML = `<p class="text-red-500 text-[10px] col-span-3 text-center">Fehler beim Laden der Datenbank.</p>`;
+    }
+}
+
+// ==========================================
+// 5. HELPER & UI FUNCTIONS
+// ==========================================
+
+function setupProfile(user) {
+    const emailField = document.getElementById('profile-email');
+    const initialsField = document.getElementById('user-initials');
+    if (emailField) emailField.innerText = user.email.split('@')[0];
+    if (initialsField) initialsField.innerText = user.email.substring(0,1).toUpperCase();
+}
+
+function startScanner() {
+    alert("Kamera wird gestartet... (Feature folgt)");
+}
+
+// ==========================================
+// 6. INITIALISIERUNG
+// ==========================================
+
 document.addEventListener('DOMContentLoaded', () => {
-    checkUser(); // <--- Zuerst prüfen!
-    updateGreeting();
-    updateScore();
-    initCarouselObserver();
+    checkUser(); // Wichtig: Prüft Login & schaltet Content frei
 });
 
-// DER FIX: Wir nennen die Variable "supabaseClient", damit es keinen Namenskonflikt gibt!
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ==========================================
+// 7. ANIMATION & INTERAKTIONEN
+// ==========================================
 
-// 2. BEGRÜßUNG
 function updateGreeting() {
     const greetingElement = document.getElementById('greeting');
     if (!greetingElement) return;
@@ -62,13 +167,11 @@ function updateGreeting() {
     greetingElement.innerText = `${message}, HazeCC`;
 }
 
-// 3. SCORE ANZEIGE
 function updateScore() {
     const scoreElement = document.getElementById('score');
-    if (scoreElement) scoreElement.innerText = 3612; 
+    if (scoreElement) scoreElement.innerText = "3.612"; 
 }
 
-// 4. CAROUSEL LOGIK
 function initCarouselObserver() {
     const carousel = document.getElementById('stats-carousel');
     const cards = document.querySelectorAll('.stats-card');
@@ -87,79 +190,3 @@ function initCarouselObserver() {
 
     cards.forEach(card => observer.observe(card));
 }
-
-// 5. SUPABASE DEX LADEN
-async function loadDex() {
-    const grid = document.getElementById('dex-grid');
-    if (!grid) return;
-    
-    try {
-        // HIER AUCH DER FIX: Wir nutzen jetzt supabaseClient
-        const { data: snusItems, error } = await supabaseClient
-            .from('snus_items')
-            .select('*')
-            .order('id', { ascending: true });
-
-        if (error) throw error;
-        
-        grid.innerHTML = ''; // Ladezustand leeren
-
-        snusItems.forEach(snus => {
-            const isUnlocked = true; 
-            const statusClass = isUnlocked ? 'unlocked' : 'locked';
-            
-            const rarityClass = snus.rarity ? snus.rarity.toLowerCase() : 'common'; 
-
-            const card = `
-                <div class="dex-card ${statusClass} rarity-${rarityClass} relative flex flex-col items-center p-4 bg-zinc-900 border rounded-2xl transition-all active:scale-95">
-                    <span class="absolute top-2 left-2 text-[0.75rem] font-mono opacity-50">#${String(snus.id).padStart(3, '0')}</span>
-                    
-                    <div class="w-full aspect-square flex items-center justify-center mb-3">
-                        <img src="${GITHUB_BASE}${snus.image}" alt="${snus.name}" class="w-full h-full object-contain rounded-lg">
-                    </div>
-
-                    <h5 class="text-[0.9rem] font-bold uppercase tracking-tight text-center truncate w-full">${snus.name}</h5>
-                    <p class="text-[0.75rem] text-zinc-500 mt-0.5 uppercase">${snus.nicotine} MG/G</p>
-                </div>
-            `;
-            grid.innerHTML += card;
-        });
-    } catch (error) {
-        console.error("Supabase-Fehler:", error);
-        grid.innerHTML = `<p class="text-red-500 text-[10px] col-span-3 text-center">Database Offline: ${error.message}</p>`;
-    }
-}
-
-// 6. TAB-NAVIGATION
-function switchTab(tab) {
-    const homeView = document.getElementById('view-home');
-    const dexView = document.getElementById('view-dex');
-    const btnHome = document.getElementById('btn-home');
-    const btnDex = document.getElementById('btn-dex');
-
-    if (navigator.vibrate) navigator.vibrate(10);
-
-    if (tab === 'dex') {
-        homeView.classList.add('hidden');
-        dexView.classList.remove('hidden');
-        
-        btnDex.classList.replace('text-zinc-600', 'text-white');
-        btnHome.classList.replace('text-white', 'text-zinc-600');
-        
-        loadDex(); 
-        window.scrollTo(0, 0);
-    } else {
-        dexView.classList.add('hidden');
-        homeView.classList.remove('hidden');
-        
-        btnHome.classList.replace('text-zinc-600', 'text-white');
-        btnDex.classList.replace('text-white', 'text-zinc-600');
-    }
-}
-
-// 7. INITIALISIERUNG
-document.addEventListener('DOMContentLoaded', () => {
-    updateGreeting();
-    updateScore();
-    initCarouselObserver();
-});
