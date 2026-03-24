@@ -67,13 +67,27 @@ async function handleLogout() {
 // ==========================================
 
 function switchTab(tabId) {
-    // 1. Alle Tabs verstecken
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+    // 1. Alle Tabs finden
+    const allTabs = document.querySelectorAll('.tab-content');
     
-    // 2. Gewählten Tab zeigen
-    const activeTab = document.getElementById(`tab-${tabId}`);
-    if (activeTab) activeTab.classList.remove('hidden');
+    allTabs.forEach(tab => {
+        tab.classList.add('hidden');
+        tab.classList.remove('animate-tab'); // Animation zurücksetzen
+    });
 
+    // 2. Den neuen Tab auswählen
+    const activeTab = document.getElementById(`tab-${tabId}`);
+    
+    if (activeTab) {
+        activeTab.classList.remove('hidden');
+        
+        // Kleiner Trick: Ein "Reflow" erzwingen, damit der Browser 
+        // merkt, dass die Animation neu starten soll
+        void activeTab.offsetWidth; 
+        
+        activeTab.classList.add('animate-tab');
+    }
+    
     // 3. Navbar-Icons stylen (Lila Akzent für Aktiven Tab)
     document.querySelectorAll('.nav-btn').forEach(btn => {
         if (btn.id === `btn-${tabId}`) {
@@ -84,10 +98,6 @@ function switchTab(tabId) {
             btn.classList.remove('text-purple-500');
         }
     });
-
-    // 4. Feedback & Scroll
-    if (navigator.vibrate) navigator.vibrate(5);
-    window.scrollTo(0, 0);
 }
 
 // ==========================================
