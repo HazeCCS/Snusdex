@@ -8,6 +8,10 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
         
+        html, body {
+            overscroll-behavior: none;
+        }
+
         :root {
             --common: #3f3f46;
             --uncommon: #22c55e;
@@ -74,7 +78,7 @@
         <div class="p-6">
             <h2 id="greeting" class="text-zinc-500 text-2xl font-bold mb-2 uppercase tracking-tight">Lade...</h2>
             <p id="score" class="text-[5rem] font-thin leading-none tracking-tighter">0</p>
-            <p class="text-[10px] text-zinc-600 uppercase tracking-widest mt-2">Current Reputation Score</p>
+            <p class="text-[10px] text-zinc-600 uppercase tracking-widest mt-2">XP</p>
         </div>
 
         <section class="mt-8">

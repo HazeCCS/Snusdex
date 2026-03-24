@@ -20,7 +20,7 @@ function updateGreeting() {
 function updateScore() {
     const scoreElement = document.getElementById('score');
     if (!scoreElement) return;
-    const score = 100; // Später aus Firebase
+    const score = 3612; // Später aus Firebase
     scoreElement.innerText = score;
 }
 
