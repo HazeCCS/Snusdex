@@ -215,31 +215,54 @@ function updatePill(category, value) {
 
 // Die Airbag-Versionen der View-Umschalter
 function showInfoView() {
-    const container = document.getElementById('modal-view-container');
-    if (container) container.style.transform = 'translateX(0%)'; // Pane 1
+    hideAllViews();
+    document.getElementById('modal-view-info').classList.remove('hidden');
 }
 
 function showRatingView() {
-    const container = document.getElementById('modal-view-container');
-    if (container) container.style.transform = 'translateX(-33.333%)'; // Pane 2
+    hideAllViews();
+    document.getElementById('modal-view-rating').classList.remove('hidden');
     if (navigator.vibrate) navigator.vibrate(8);
 }
 
 function showSavedRating() {
-    const container = document.getElementById('modal-view-container');
-    if (container) container.style.transform = 'translateX(-66.666%)'; // Pane 3
+    hideAllViews();
+    document.getElementById('modal-view-saved-rating').classList.remove('hidden');
 
-    // Balken für das gespeicherte Rating bauen
-    const ratings = globalUserCollection[currentSelectedSnusId].ratings || { taste:5, smell:5, bite:5, drip:5, visuals:5 };
-    const rContainer = document.getElementById('saved-rating-bars');
+    // DATEN AIRBAG: Holt das gespeicherte Objekt
+    let userData = globalUserCollection[currentSelectedSnusId];
     
+    // Standard-Werte (Falls alter Snus ohne Rating gespeichert wurde)
+    let ratings = { taste: 5, smell: 5, bite: 5, drip: 5, visuals: 5 };
+    
+    // Wenn es ein echtes Objekt ist und Ratings hat, nehmen wir die echten Daten
+    if (userData && typeof userData === 'object' && userData.ratings) {
+        ratings = userData.ratings;
+    }
+
+    const rContainer = document.getElementById('saved-rating-bars');
+    if (!rContainer) return;
+    
+    // HTML für die Balken generieren
     const createBar = (label, val) => `
         <div class="mb-3">
-            <div class="flex justify-between text-[10px] uppercase tracking-widest mb-1"><span class="text-zinc-400">${label}</span><span class="text-purple-400 font-bold">${val}/10</span></div>
-            <div class="w-full bg-zinc-800 rounded-full h-1.5"><div class="bg-purple-500 h-1.5 rounded-full" style="width: ${val * 10}%"></div></div>
+            <div class="flex justify-between text-[10px] uppercase tracking-widest mb-1">
+                <span class="text-zinc-400">${label}</span>
+                <span class="text-purple-400 font-bold">${val}/10</span>
+            </div>
+            <div class="w-full bg-zinc-800 rounded-full h-1.5">
+                <div class="bg-purple-500 h-1.5 rounded-full" style="width: ${val * 10}%"></div>
+            </div>
         </div>
     `;
-    rContainer.innerHTML = createBar("Geschmack", ratings.taste) + createBar("Geruch", ratings.smell) + createBar("Bite", ratings.bite) + createBar("Drip", ratings.drip) + createBar("Visuals", ratings.visuals);
+
+    // HTML in die leere Box schießen
+    rContainer.innerHTML = 
+        createBar("Geschmack", ratings.taste) +
+        createBar("Geruch", ratings.smell) +
+        createBar("Bite", ratings.bite) +
+        createBar("Drip", ratings.drip) +
+        createBar("Visuals", ratings.visuals);
 }
 
 // ... Admin und Profil Code bleibt unangetastet ...
@@ -329,6 +352,12 @@ function closeSnusDetail() {
         document.getElementById('modal-view-saved-rating')?.classList.add('hidden');
         document.getElementById('modal-view-info')?.classList.remove('hidden');
     }, 400);
+}
+
+function hideAllViews() {
+    document.getElementById('modal-view-info').classList.add('hidden');
+    document.getElementById('modal-view-rating').classList.add('hidden');
+    document.getElementById('modal-view-saved-rating').classList.add('hidden');
 }
 
 async function collectCurrentSnus() {
