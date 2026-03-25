@@ -13,38 +13,136 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
         
-        /* Die Animation definieren */
-        @keyframes tabFadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(8px) scale(0.98);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
+        /* ==========================================
+           GLOBAL & DEFAULTS
+           ========================================== */
+        :root {
+            --common: #3f3f46;
+            --uncommon: #22c55e;
+            --rare: #3b82f6;
+            --epic: #a855f7;
+            --legendary: #f59e0b;
+            --exotic: #ec4899;
+            --mythic: #00ffea;
         }
 
-        /* Das Grund-Overlay ist immer da, aber unsichtbar und ohne Pointer-Events */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: black;
+            color: white;
+            overscroll-behavior: none;
+        }
+
+        .hidden { display: none !important; }
+
+        /* FIX 4: Scrollbars global hiden (Webkit & Firefox) */
+        * {
+            -ms-overflow-style: none;  /* Internet Explorer 10+ */
+            scrollbar-width: none;  /* Firefox */
+        }
+        *::-webkit-scrollbar { 
+            display: none;  /* Safari and Chrome */
+        }
+
+        /* TAB FADE-IN ANIMATION */
+        @keyframes tabFadeIn {
+            from { opacity: 0; transform: translateY(8px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .tab-content { animation: tabFadeIn 0.25s ease-out forwards; }
+
+        /* ==========================================
+           MODAL CORE STYLES
+           ========================================== */
+        
+        /* Das Grund-Overlay ist immer da, aber unsichtbar */
         #modal-backdrop {
             transition: opacity 0.4s ease-out, backdrop-filter 0.4s ease-out;
             opacity: 0;
             backdrop-filter: blur(0px);
             pointer-events: none;
+            position: fixed; inset: 0; z-index: 998; background: rgba(0,0,0,0.6);
         }
+        #modal-backdrop.active { opacity: 1; backdrop-filter: blur(12px); pointer-events: auto; }
 
-        /* Wenn das Modal aktiv ist, faden wir den Blur rein */
-        #modal-backdrop.active {
-            opacity: 1;
-            backdrop-filter: blur(12px);
-            pointer-events: auto;
-        }
-
-        /* Die Card Transition */
+        /* FIX 2 & 3: Zähmt das Modal-Sheet */
         #snus-modal-card {
             transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+            /* Der weiche Glow ohne harte Kante */
+            box-shadow: 0 -20px 60px -10px rgba(0, 0, 0, 0.8);
+            /* Zwingt das Sheet unter die Decke */
+            max-height: 85vh; 
+            /* Sperrt das Scrollen für das Haupt-Sheet (Info-Tab scrollt intern) */
+            overflow: hidden; 
+            z-index: 999;
         }
 
+        /* FIX 3: Das Sliding-System (3 Ansichten) */
+        .view-container {
+            display: flex;
+            width: 300%; /* 3 Ansichten nebeneinander */
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        
+        /* FIX 3: Zwingt jede View auf Modal-Höhe */
+        .view-pane {
+            width: 33.3333%; /* Ein Drittel für jede Ansicht */
+            flex-shrink: 0;
+            display: flex; flex-direction: column; /* Erlaubt vertikales Layout */
+            height: 100%; /* WICHTIG */
+        }
+
+        /* FIX 3: Spezifisch für den Info-Tab */
+        #modal-view-info {
+            /* Falls das Bild/Flavors zu hoch werden, darf NUR hier gescrollt werden, weich! */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Butterweiches Scrollen auf iOS */
+        }
+        
+        /* Flavors & Bild im Info-Tab */
+        #modal-view-info .relative { flex-shrink: 0; } /* Bild schrumpft nicht */
+        #modal-flavors { flex-shrink: 1; overflow-y: auto; padding-bottom: 1rem; } /* Flavors scrollen intern */
+
+        /* ==========================================
+           RATING SYSTEM STYLES
+           ========================================== */
+        
+        /* Container für die Zahlenreihe [1...10] */
+        .rating-row {
+            display: flex; justify-content: space-between;
+            background: rgba(39, 39, 42, 0.5); /* zinc-800/50 */
+            border-radius: 9999px; padding: 4px; position: relative; user-select: none;
+        }
+
+        /* FIX 1: Die gleitende Pille - Jetzt mit EaseInOut-Gleiten! */
+        .rating-pill {
+            position: absolute; top: 4px; bottom: 4px; left: 4px;
+            width: calc((100% - 8px) / 10);
+            background: #a855f7; /* purple-500 */
+            border-radius: 9999px;
+            /* FIX 1: Die neue, seidenweiche Kurve ohne Bounce */
+            transition: transform 0.35s cubic-bezier(0.65, 0, 0.35, 1); 
+            z-index: 0;
+            box-shadow: 0 0 15px 1px rgba(168, 85, 247, 0.6); /* Weicher, taktiler Glow */
+        }
+
+        /* Die einzelnen Zahlen-Buttons */
+        .rating-btn {
+            width: 10%; aspect-ratio: 1/1;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 800;
+            z-index: 10; cursor: pointer; transition: color 0.2s;
+        }
+        .rating-btn.active { color: white; }
+        .rating-btn.inactive { color: #52525b; } /* zinc-600 */
+
+        /* MY SAVED RATING VIEW (Bars) */
+        #saved-rating-bars { overflow-y: auto; max-height: 40vh; }
+
+        /* ==========================================
+           RARITY STYLES (Cards & Texts)
+           ========================================== */
+        
         /* Text-Farben für die Seltenheit (Namen) */
         .text-common { color: var(--common); }
         .text-uncommon { color: var(--uncommon); }
@@ -63,53 +161,23 @@
         .bg-exotic { background-color: var(--exotic); color: var(--exotic); }
         .bg-mythic { background-color: var(--mythic); color: var(--mythic); }
 
-        /* Wird automatisch abgespielt, sobald das 'hidden' entfernt wird! */
-        .tab-content {
-            animation: tabFadeIn 0.25s ease-out forwards;
-        }
-        
-        html, body { overscroll-behavior: none; }
-
-        :root {
-            --common: #3f3f46;
-            --uncommon: #22c55e;
-            --rare: #3b82f6;
-            --epic: #a855f7;
-            --legendary: #f59e0b;
-            --exotic: #ec4899;
-            --mythic: #00ffea;
-        }
-
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: black;
-        }
-
-        .hidden { display: none !important; }
-
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-
+        /* stats-card live performance */
         .stats-card {
-            opacity: 0.6;
-            transform: scale(0.9);
-            transition: all 0.5s ease;
+            opacity: 0.6; transform: scale(0.9); transition: all 0.5s ease;
         }
         .stats-card.active {
             background: linear-gradient(to bottom right, #fef9c3, #f3e8ff, #e9d5ff) !important;
-            color: black !important;
-            border-color: transparent !important;
+            color: black !important; border-color: transparent !important;
             box-shadow: 0 25px 60px -15px rgba(168, 85, 247, 0.4);
-            opacity: 1 !important;
-            transform: scale(1) !important;
+            opacity: 1 !important; transform: scale(1) !important;
         }
 
+        /* dex-card grid */
         .dex-card {
             @apply relative flex flex-col items-center p-3 rounded-[1.8rem] bg-zinc-900/50 border border-zinc-800 transition-all duration-300;
         }
         .dex-card.locked {
-            @apply opacity-30 border-dashed;
-            filter: grayscale(1) brightness(0.5);
+            @apply opacity-30 border-dashed; filter: grayscale(1) brightness(0.5);
         }
         .dex-card.unlocked.rarity-common { border-color: var(--common); box-shadow: 0 10px 30px -10px rgba(63, 63, 70, 0.3); }
         .dex-card.unlocked.rarity-uncommon { border-color: var(--uncommon); box-shadow: 0 10px 30px -10px rgba(21, 211, 100, 0.4); }
@@ -289,44 +357,74 @@
         </div>
     </main>
 
-    <div id="snus-modal" class="fixed inset-0 z-[999] hidden">
-        <div id="modal-backdrop" class="absolute inset-0 bg-black/60" onclick="closeSnusDetail()"></div>
-        
-        <div id="snus-modal-card" class="absolute bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 rounded-t-[2.5rem] p-8 pb-32 max-w-md mx-auto translate-y-full transition-transform duration-400 ease-out">
+        <div id="snus-modal" class="fixed inset-0 z-[999] hidden">
+            <div id="modal-backdrop" class="absolute inset-0 bg-black/60" onclick="closeSnusDetail()"></div>
             
-            <div class="flex justify-between items-center mb-6">
-                <span id="modal-id" class="text-zinc-500 font-mono text-sm tracking-widest">#000</span>
+            <div id="snus-modal-card" class="absolute bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 rounded-t-[2.5rem] p-8 pb-10 max-w-md mx-auto translate-y-full transition-transform duration-400 ease-out">
                 
-                <div class="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 px-3 py-1.5 rounded-full">
-                    <div id="modal-rarity-dot" class="w-2 h-2 rounded-full bg-zinc-500 shadow-[0_0_10px_currentColor]"></div>
-                    <span id="modal-rarity-text" class="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">Common</span>
+                <div class="flex justify-between items-start mb-6">
+                    <span id="modal-id" class="text-zinc-500 font-mono text-sm tracking-widest mt-1">#000</span>
+                    <div class="flex flex-col items-end">
+                        <div class="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 px-3 py-1.5 rounded-full">
+                            <div id="modal-rarity-dot" class="w-2 h-2 rounded-full bg-zinc-500 shadow-[0_0_10px_currentColor]"></div>
+                            <span id="modal-rarity-text" class="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">Common</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="w-full flex justify-center mb-8 relative">
-                <div class="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent z-10"></div>
-                <img id="modal-image" src="" alt="Snus" class="w-48 h-48 object-contain drop-shadow-2xl z-20">
-            </div>
+                <h2 id="modal-name" class="text-3xl font-black uppercase tracking-tighter mb-1 text-center">Name</h2>
+                <p id="modal-nicotine" class="text-zinc-500 text-xs uppercase tracking-[0.2em] text-center mb-6">0 MG/G</p>
 
-            <div class="text-center mb-8">
-                <h2 id="modal-name" class="text-3xl font-black uppercase tracking-tighter mb-1">Name</h2>
-                <p id="modal-nicotine" class="text-zinc-500 text-xs uppercase tracking-[0.2em]">0 MG/G</p>
-                
-                <div id="modal-flavors" class="flex flex-wrap justify-center gap-2 mt-4"></div>
-            </div>
+                <div class="overflow-hidden w-full"> 
+                    <div id="modal-view-container" class="view-container">
+                        
+                        <div id="modal-view-info" class="view-pane px-1">
+                            <div class="w-full flex justify-center mb-6 relative">
+                                <div class="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent z-10"></div>
+                                <img id="modal-image" src="" alt="Snus" class="w-40 h-40 object-contain drop-shadow-2xl z-20">
+                            </div>
+                            <div id="modal-flavors" class="flex flex-wrap justify-center gap-2 mb-8"></div>
+                            
+                            <button id="start-collect-btn" onclick="showRatingView()" class="w-full bg-white text-black font-black py-5 rounded-[2rem] active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                                ZUR SAMMLUNG HINZUFÜGEN
+                            </button>
 
-            <button id="collect-btn" onclick="collectCurrentSnus()" class="w-full bg-white text-black font-black py-5 rounded-[2rem] active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-                ZUR SAMMLUNG HINZUFÜGEN
-            </button>
-            
-            <div class="mt-6 text-center">
-                <p id="collected-text" class="hidden text-purple-500 font-bold uppercase tracking-widest text-xs">
-                    Bereits in deiner Sammlung ✨
-                </p>
-                <span id="modal-unlocked-date" class="text-[9px] text-zinc-600 uppercase tracking-[0.3em] mt-2 block hidden"></span>
+                            <div id="modal-collected-status" class="hidden mt-6 text-center">
+                                <p class="text-purple-500 font-bold uppercase tracking-widest text-xs mb-1">Bereits in deiner Sammlung ✨</p>
+                                <span id="modal-unlocked-date" class="text-[9px] text-zinc-600 uppercase tracking-[0.3em] block mb-4"></span>
+                                <button onclick="showSavedRating()" class="px-6 py-2.5 bg-zinc-800 border border-zinc-700 rounded-full text-[10px] font-bold uppercase tracking-widest text-white active:scale-95 transition-all shadow-lg">
+                                    MY RATING ANSEHEN
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="modal-view-rating" class="view-pane px-1">
+                            <p class="text-center text-purple-500 text-[10px] uppercase tracking-[0.3em] font-bold mb-6">Rate to collect</p>
+                            <div class="space-y-6 mb-8 px-2">
+                                <div class="rating-group" data-category="taste"><div class="flex justify-between text-[10px] uppercase tracking-widest mb-2 px-2"><span class="text-zinc-400">Geschmack</span><span class="text-purple-400 font-bold rating-val">5/10</span></div><div class="rating-row" id="row-taste"></div></div>
+                                <div class="rating-group" data-category="smell"><div class="flex justify-between text-[10px] uppercase tracking-widest mb-2 px-2"><span class="text-zinc-400">Geruch</span><span class="text-purple-400 font-bold rating-val">5/10</span></div><div class="rating-row" id="row-smell"></div></div>
+                                <div class="rating-group" data-category="bite"><div class="flex justify-between text-[10px] uppercase tracking-widest mb-2 px-2"><span class="text-zinc-400">Bite</span><span class="text-purple-400 font-bold rating-val">5/10</span></div><div class="rating-row" id="row-bite"></div></div>
+                                <div class="rating-group" data-category="drip"><div class="flex justify-between text-[10px] uppercase tracking-widest mb-2 px-2"><span class="text-zinc-400">Drip</span><span class="text-purple-400 font-bold rating-val">5/10</span></div><div class="rating-row" id="row-drip"></div></div>
+                                <div class="rating-group" data-category="visuals"><div class="flex justify-between text-[10px] uppercase tracking-widest mb-2 px-2"><span class="text-zinc-400">Visuals</span><span class="text-purple-400 font-bold rating-val">5/10</span></div><div class="rating-row" id="row-visuals"></div></div>
+                            </div>
+                            <button id="final-collect-btn" onclick="collectCurrentSnus()" class="w-full bg-purple-600 text-white font-black py-5 rounded-[2rem] active:scale-95 transition-all shadow-[0_0_30px_rgba(147,51,234,0.4)]">
+                                COLLECT & SAVE
+                            </button>
+                        </div>
+
+                        <div id="modal-view-saved-rating" class="view-pane px-1">
+                            <p class="text-center text-purple-500 text-[10px] uppercase tracking-[0.3em] font-bold mb-6">My Rating</p>
+                            <div id="saved-rating-bars" class="space-y-4 mb-8 px-2"></div>
+                            <button onclick="showInfoView()" class="w-full bg-zinc-800 text-white font-black py-4 rounded-[2rem] active:scale-95 transition-all">
+                                ZURÜCK ZUR INFO
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
         </div>
-    </div>
     <footer>
         <nav class="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-zinc-900 pb-10 pt-4 px-6 z-[50]">
             <div class="max-w-md mx-auto flex justify-between items-center">
