@@ -11,6 +11,41 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // 2. AUTHENTIFIZIERUNG
 // ==========================================
 
+// ==========================================
+// GREETING LOGIK (Zeit & Name)
+// ==========================================
+
+async function updateGreeting() {
+    const greetingElement = document.getElementById('greeting');
+    if (!greetingElement) return;
+
+    // 1. User aus der aktuellen Session holen
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    let displayIdent = "Snuser";
+    
+    if (session && session.user && session.user.email) {
+        // Gleiche Logik wie in setupProfile: Alles vor dem @
+        displayIdent = session.user.email.split('@')[0];
+    }
+
+    // 2. Zeitbasierte Nachricht ermitteln
+    const hour = new Date().getHours();
+    let message = "";
+
+    if (hour >= 5 && hour < 12) {
+        message = "Guten Morgen";
+    } else if (hour >= 12 && hour < 18) {
+        message = "Guten Tag";
+    } else if (hour >= 18 && hour < 22) {
+        message = "Guten Abend";
+    } else {
+        message = "Gute Nacht"; // 22:00 bis 04:59
+    }
+
+    // 3. Im HTML ausgeben (mit fettem Namen für den Look)
+    greetingElement.innerHTML = `${message}, <span class="text-white font-bold">${displayIdent}</span>`;
+}
+
 async function checkUser() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     const overlay = document.getElementById('auth-overlay');
