@@ -46,6 +46,31 @@ async function updateGreeting() {
     greetingElement.innerHTML = `${message}, <span class="text-white font-bold">${displayIdent}</span>`;
 }
 
+function initCarouselObserver() {
+    const carousel = document.getElementById('stats-carousel');
+    const cards = document.querySelectorAll('.stats-card');
+    
+    if (!carousel || cards.length === 0) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                // Karte ist im Fokus -> Klasse hinzufügen
+                entry.target.classList.add('active');
+            } else {
+                // Karte verlässt den Fokus -> Klasse entfernen
+                entry.target.classList.remove('active');
+            }
+        });
+    }, { 
+        root: carousel, 
+        threshold: 0.6, // Karte muss zu 60% sichtbar sein
+        rootMargin: "0px" 
+    });
+
+    cards.forEach(card => observer.observe(card));
+}
+
 async function checkUser() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     const overlay = document.getElementById('auth-overlay');

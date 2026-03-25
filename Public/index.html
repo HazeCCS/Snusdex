@@ -110,6 +110,54 @@
         .dex-card.unlocked.rarity-exotic { border-color: var(--exotic); box-shadow: 0 10px 30px -10px rgba(236, 72, 153, 0.4); }
         .dex-card.unlocked.rarity-legendary { border-color: var(--legendary); box-shadow: 0 10px 30px -10px rgba(245, 158, 11, 0.4); }
         .dex-card.unlocked.rarity-mythic { border-color: var(--mythic); box-shadow: 0 10px 30px -10px rgba(0, 255, 234, 0.4); }
+    
+        /* 1. CAROUSEL CONTAINER (Links bündig & Clean) */
+        #stats-carousel {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            
+            /* Padding links passend zu deinem restlichen Content (meist 24px bis 32px) */
+            padding: 30px 24px; 
+            
+            /* Verhindert das Abschneiden des Glows nach oben/unten */
+            -webkit-overflow-scrolling: touch;
+            align-items: center;
+            gap: 12px; /* Fester Abstand zwischen den Karten */
+        }
+
+        /* 2. STATS CARD BASE (Start-Position) */
+        .stats-card {
+            opacity: 0.4; 
+            transform: scale(0.95); /* Nur minimal kleiner im Hintergrund */
+            filter: blur(1px);
+            transition: all 0.4s ease-out;
+            background: #18181b !important;
+            border: 1px solid #27272a !important;
+            color: #52525b !important;
+            flex-shrink: 0;
+            
+            /* WICHTIG: Karte rastet jetzt links am Rand ein! */
+            scroll-snap-align: start; 
+            
+            /* Breite der Karten festlegen, damit sie nicht springen */
+            width: 280px; 
+        }
+
+        /* 3. STATS CARD ACTIVE (Dezent & Edel) */
+        .stats-card.active {
+            opacity: 1 !important; 
+            transform: scale(1) !important;
+            filter: blur(0px) !important;
+            
+            /* Dein Gradient & Glow */
+            background: linear-gradient(135deg, #ffffff 0%, #f3e8ff 100%) !important;
+            color: #000000 !important;
+            border-color: transparent !important;
+            
+            /* Glow etwas dezenter nach links gerichtet */
+            box-shadow: 10px 10px 40px -10px rgba(168, 85, 247, 0.3) !important;
+        }
     </style>
 </head>
 <body class="pb-32">
