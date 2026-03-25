@@ -38,6 +38,26 @@
     }
 }
 
+/* Das Grund-Overlay ist immer da, aber unsichtbar und ohne Pointer-Events */
+#modal-backdrop {
+    transition: opacity 0.4s ease-out, backdrop-filter 0.4s ease-out;
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    pointer-events: none; /* Klicks gehen durch, wenn zu */
+}
+
+/* Wenn das Modal aktiv ist, faden wir den Blur rein */
+#modal-backdrop.active {
+    opacity: 1;
+    backdrop-filter: blur(12px);
+    pointer-events: auto; /* Klicks fangen, wenn offen */
+}
+
+/* Die Card Transition bleibt, aber wir machen sie passend zum Blur */
+#snus-modal-card {
+    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
 /* Text-Farben für die Seltenheit (Namen) */
 .text-common { color: var(--common); }
 .text-uncommon { color: var(--uncommon); }
@@ -137,7 +157,7 @@
 
     <header class="flex justify-between items-center sticky top-0 bg-black/80 backdrop-blur-md z-[100] px-6 py-4">
         <h1 class="text-[1rem] font-bold text-zinc-100 tracking-tighter">SNUSDEX®</h1>
-        <span class="text-[0.8rem] text-zinc-500 font-mono">v1.0.5 PreAlpha</span>
+        <span class="text-[0.8rem] text-zinc-500 font-mono">v1.0.8 PreAlpha</span>
     </header>
 
     <main id="tab-home" class="tab-content">
@@ -271,10 +291,10 @@
         </div>
     </main>
 
-    <div id="snus-modal" class="fixed inset-0 z-[999] hidden">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" onclick="closeSnusDetail()"></div>
+        <div id="snus-modal" class="fixed inset-0 z-[999] hidden">
+        <div id="modal-backdrop" class="absolute inset-0 bg-black/60" onclick="closeSnusDetail()"></div>
         
-        <div id="snus-modal-card" class="absolute bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 rounded-t-[2.5rem] p-8 pb-32 max-w-md mx-auto translate-y-full transition-transform duration-300 ease-out">
+        <div id="snus-modal-card" class="absolute bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 rounded-t-[2.5rem] p-8 pb-32 max-w-md mx-auto translate-y-full transition-transform duration-400 ease-out">
             
             <div class="flex justify-between items-center mb-6">
                 <span id="modal-id" class="text-zinc-500 font-mono text-sm tracking-widest">#000</span>

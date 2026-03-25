@@ -319,10 +319,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-// 9. POP-UP LOGIK (MODAL)
-// ==========================================
-
-// ==========================================
 // 9. POP-UP LOGIK (MODAL) & SAMMELN
 // ==========================================
 
@@ -334,90 +330,99 @@ function openSnusDetail(id) {
 
     currentSelectedSnusId = id; 
 
-    // Text & Bilder setzen
+    // 1. Daten ins HTML einfügen
     document.getElementById('modal-id').innerText = `#${String(snus.id).padStart(3, '0')}`;
     document.getElementById('modal-name').innerText = snus.name;
     document.getElementById('modal-nicotine').innerText = `${snus.nicotine} MG/G`;
     document.getElementById('modal-rarity-text').innerText = snus.rarity;
     document.getElementById('modal-image').src = `${GITHUB_BASE}${snus.image}`;
 
-    // Farben anpassen
+    // 2. Farben & Seltenheit stylen
     const rarityClass = snus.rarity ? snus.rarity.toLowerCase() : 'common';
     document.getElementById('modal-name').className = `text-3xl font-black uppercase tracking-tighter mb-1 text-${rarityClass}`; 
     document.getElementById('modal-rarity-dot').className = `w-2 h-2 rounded-full shadow-[0_0_10px_currentColor] bg-${rarityClass}`; 
 
-    // CHECK: Hast du diesen Snus schon?
+    // 3. Button-Status prüfen (Hast du ihn schon?)
     const btn = document.getElementById('collect-btn');
     const collectedText = document.getElementById('collected-text');
 
     if (globalUserCollection.includes(id)) {
-        // Schon gesammelt -> Button weg, Text hin
         btn.classList.add('hidden');
         collectedText.classList.remove('hidden');
     } else {
-        // Noch nicht gesammelt -> Button zeigen
         btn.classList.remove('hidden');
         collectedText.classList.add('hidden');
     }
 
-    // Modal anzeigen
+    // 4. ANIMATION START: Erst sichtbar machen, dann Klassen für Fade/Slide
     const modal = document.getElementById('snus-modal');
+    const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
+    
+    if (!backdrop || !card) return; // Sicherheitscheck
+
     modal.classList.remove('hidden');
-    setTimeout(() => card.classList.remove('translate-y-full'), 10);
+    
+    // Kleiner Timeout, damit der Browser die Transition erkennt
+    setTimeout(() => {
+        backdrop.classList.add('active'); // Fadet sanft ein
+        card.classList.remove('translate-y-full'); // Slidet sanft hoch
+    }, 10);
     
     if (navigator.vibrate) navigator.vibrate(10);
 }
 
 function closeSnusDetail() {
     const modal = document.getElementById('snus-modal');
+    const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
     
-    card.classList.add('translate-y-full');
-    setTimeout(() => modal.classList.add('hidden'), 300);
+    if (!backdrop || !card) return;
+
+    // 1. Animationen zurückfahren
+    backdrop.classList.remove('active'); // Blur fadet aus
+    card.classList.add('translate-y-full'); // Card slidet runter
+    
+    // 2. Erst nach Ende der CSS-Animation (400ms) komplett verstecken
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 400);
 }
 
-// DIE WICHTIGSTE FUNKTION: Das echte Sammeln!
 async function collectCurrentSnus() {
     if (!currentSelectedSnusId) return;
 
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return alert("Du musst eingeloggt sein!");
 
-    // Button deaktivieren, damit man nicht 2x klickt
     const btn = document.getElementById('collect-btn');
     btn.innerText = "WIRD GESAMMELT...";
     btn.disabled = true;
 
-    // Ab in die Datenbank damit!
+    // Ab in die Datenbank
     const { error } = await supabaseClient
         .from('user_collections')
         .insert([{ user_id: user.id, snus_id: currentSelectedSnusId }]);
 
     if (error) {
-        console.error("Fehler beim Sammeln:", error);
-        alert("Konnte nicht hinzugefügt werden. Hast du ihn vielleicht schon?");
+        console.error("Fehler:", error);
+        alert("Konnte nicht hinzugefügt werden.");
         btn.innerText = "ZUR SAMMLUNG HINZUFÜGEN";
         btn.disabled = false;
         return;
     }
 
-    // ERFOLG! 
-    if (navigator.vibrate) navigator.vibrate([50, 50, 100]); // Geile Vibration
+    // ERFOLG!
+    if (navigator.vibrate) navigator.vibrate([50, 50, 100]); 
     
-    // 1. Zur lokalen Liste hinzufügen (damit es direkt freigeschaltet ist)
+    // Lokale Updates für das UI
     globalUserCollection.push(currentSelectedSnusId);
-    
-    // 2. XP updaten auf dem Homescreen
     await loadUserStats(user.id);
-    
-    // 3. Den Dex im Hintergrund neu laden (damit die Kachel farbig wird)
-    loadDex();
+    loadDex(); // Kacheln im Hintergrund aktualisieren
 
-    // 4. Modal zumachen
+    // Modal mit neuem smoothen Effekt schließen
     closeSnusDetail();
     
-    // Button für das nächste Mal wiederherstellen
     setTimeout(() => {
         btn.innerText = "ZUR SAMMLUNG HINZUFÜGEN";
         btn.disabled = false;
