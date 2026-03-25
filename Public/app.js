@@ -97,11 +97,35 @@ function switchTab(tabId) {
 // 4. DATEN LADEN (DEX & STATS)
 // ==========================================
 
+// ==========================================
+// 4. DATEN LADEN (DEX & STATS)
+// ==========================================
+
+let globalSnusData = []; 
+let globalUserCollection = []; // NEU: Speichert die IDs, die du schon hast
+
 async function loadDex() {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
     
     try {
+        // 1. Zuerst schauen, wer eingeloggt ist
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        
+        // 2. Deine gesammelten Snus holen (Die "Freigeschalteten")
+        if (user) {
+            const { data: myCollection } = await supabaseClient
+                .from('user_collections')
+                .select('snus_id')
+                .eq('user_id', user.id);
+            
+            if (myCollection) {
+                // Macht aus [{snus_id: 1}, {snus_id: 2}] eine simple Liste: [1, 2]
+                globalUserCollection = myCollection.map(item => item.snus_id);
+            }
+        }
+
+        // 3. Alle Snus aus der Master-Datenbank holen
         const { data: snusItems, error } = await supabaseClient
             .from('snus_items')
             .select('*')
@@ -109,6 +133,7 @@ async function loadDex() {
 
         if (error) throw error;
         
+        globalSnusData = snusItems; 
         grid.innerHTML = ''; 
 
         if (snusItems.length === 0) {
@@ -116,19 +141,21 @@ async function loadDex() {
             return;
         }
 
+        // 4. Kacheln zeichnen
         snusItems.forEach(snus => {
-            const isUnlocked = true; // Später ändern wir das auf Basis von user_collections
+            // HIER IST DIE MAGIE: Ist die ID in deiner Sammlung?
+            const isUnlocked = globalUserCollection.includes(snus.id); 
             const rarityClass = snus.rarity ? snus.rarity.toLowerCase() : 'common'; 
 
             const card = `
-                <div class="dex-card ${isUnlocked ? 'unlocked' : 'locked'} rarity-${rarityClass} relative flex flex-col items-center p-4 bg-zinc-900 border border-zinc-800 rounded-[2rem] transition-all active:scale-95">
+                <div onclick="openSnusDetail(${snus.id})" class="dex-card ${isUnlocked ? 'unlocked rarity-' + rarityClass : 'locked'} relative flex flex-col items-center p-4 bg-zinc-900 border border-zinc-800 rounded-[2rem] transition-all active:scale-95 cursor-pointer">
                     <span class="absolute top-3 left-3 text-[10px] font-mono opacity-30">#${String(snus.id).padStart(3, '0')}</span>
                     
                     <div class="w-full aspect-square flex items-center justify-center p-2 mb-2">
                         <img src="${GITHUB_BASE}${snus.image}" alt="${snus.name}" class="w-full h-full object-contain ${!isUnlocked ? 'brightness-0 opacity-40' : ''}" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=NO+IMG'">
                     </div>
 
-                    <h5 class="text-[0.75rem] font-bold uppercase tracking-tight text-center truncate w-full">${snus.name}</h5>
+                    <h5 class="text-[0.75rem] font-bold uppercase tracking-tight text-center truncate w-full ${isUnlocked ? 'text-' + rarityClass : 'text-zinc-500'}">${snus.name}</h5>
                     <p class="text-[9px] text-zinc-500 mt-0.5 uppercase tracking-widest">${snus.nicotine} MG/G</p>
                 </div>
             `;
@@ -136,14 +163,15 @@ async function loadDex() {
         });
     } catch (error) {
         console.error("Supabase-Fehler:", error);
-        grid.innerHTML = `<p class="text-red-500 text-[10px] col-span-3 text-center">Fehler beim Laden der Datenbank: ${error.message}</p>`;
     }
 }
 
-// NEU: Lädt die User XP und Collection-Anzahl
+// ... Lass loadUserStats() so wie es ist ...
+
+// NEU: Diese Funktion fehlte komplett! Sie berechnet XP und füllt dein Profil.
 async function loadUserStats(userId) {
     try {
-        // 1. Zähle die gesammelten Snus in user_collections
+        // Zählt die gesammelten Snus in user_collections
         const { count, error: collectionError } = await supabaseClient
             .from('user_collections')
             .select('*', { count: 'exact', head: true })
@@ -157,7 +185,7 @@ async function loadUserStats(userId) {
             totalXp = count * 100; // 100 XP pro Pouch
         }
 
-        // 2. UI Aktualisieren (Home-Screen & Profil)
+        // UI Aktualisieren (Home-Screen & Profil)
         const scoreElement = document.getElementById('score');
         const pouchCountEl = document.getElementById('pouch-count');
 
@@ -197,7 +225,7 @@ function setupProfile(user) {
         }
     }
     
-    // Ruft die fehlende Funktion auf!
+    // Hier ist der Aufruf, der vorher gecrasht ist, weil die Funktion oben fehlte!
     loadUserStats(user.id);
 }
 
@@ -289,3 +317,109 @@ function initCarouselObserver() {
 document.addEventListener('DOMContentLoaded', () => {
     checkUser(); 
 });
+
+// ==========================================
+// 9. POP-UP LOGIK (MODAL)
+// ==========================================
+
+// ==========================================
+// 9. POP-UP LOGIK (MODAL) & SAMMELN
+// ==========================================
+
+let currentSelectedSnusId = null; 
+
+function openSnusDetail(id) {
+    const snus = globalSnusData.find(s => s.id === id);
+    if (!snus) return;
+
+    currentSelectedSnusId = id; 
+
+    // Text & Bilder setzen
+    document.getElementById('modal-id').innerText = `#${String(snus.id).padStart(3, '0')}`;
+    document.getElementById('modal-name').innerText = snus.name;
+    document.getElementById('modal-nicotine').innerText = `${snus.nicotine} MG/G`;
+    document.getElementById('modal-rarity-text').innerText = snus.rarity;
+    document.getElementById('modal-image').src = `${GITHUB_BASE}${snus.image}`;
+
+    // Farben anpassen
+    const rarityClass = snus.rarity ? snus.rarity.toLowerCase() : 'common';
+    document.getElementById('modal-name').className = `text-3xl font-black uppercase tracking-tighter mb-1 text-${rarityClass}`; 
+    document.getElementById('modal-rarity-dot').className = `w-2 h-2 rounded-full shadow-[0_0_10px_currentColor] bg-${rarityClass}`; 
+
+    // CHECK: Hast du diesen Snus schon?
+    const btn = document.getElementById('collect-btn');
+    const collectedText = document.getElementById('collected-text');
+
+    if (globalUserCollection.includes(id)) {
+        // Schon gesammelt -> Button weg, Text hin
+        btn.classList.add('hidden');
+        collectedText.classList.remove('hidden');
+    } else {
+        // Noch nicht gesammelt -> Button zeigen
+        btn.classList.remove('hidden');
+        collectedText.classList.add('hidden');
+    }
+
+    // Modal anzeigen
+    const modal = document.getElementById('snus-modal');
+    const card = document.getElementById('snus-modal-card');
+    modal.classList.remove('hidden');
+    setTimeout(() => card.classList.remove('translate-y-full'), 10);
+    
+    if (navigator.vibrate) navigator.vibrate(10);
+}
+
+function closeSnusDetail() {
+    const modal = document.getElementById('snus-modal');
+    const card = document.getElementById('snus-modal-card');
+    
+    card.classList.add('translate-y-full');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+}
+
+// DIE WICHTIGSTE FUNKTION: Das echte Sammeln!
+async function collectCurrentSnus() {
+    if (!currentSelectedSnusId) return;
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return alert("Du musst eingeloggt sein!");
+
+    // Button deaktivieren, damit man nicht 2x klickt
+    const btn = document.getElementById('collect-btn');
+    btn.innerText = "WIRD GESAMMELT...";
+    btn.disabled = true;
+
+    // Ab in die Datenbank damit!
+    const { error } = await supabaseClient
+        .from('user_collections')
+        .insert([{ user_id: user.id, snus_id: currentSelectedSnusId }]);
+
+    if (error) {
+        console.error("Fehler beim Sammeln:", error);
+        alert("Konnte nicht hinzugefügt werden. Hast du ihn vielleicht schon?");
+        btn.innerText = "ZUR SAMMLUNG HINZUFÜGEN";
+        btn.disabled = false;
+        return;
+    }
+
+    // ERFOLG! 
+    if (navigator.vibrate) navigator.vibrate([50, 50, 100]); // Geile Vibration
+    
+    // 1. Zur lokalen Liste hinzufügen (damit es direkt freigeschaltet ist)
+    globalUserCollection.push(currentSelectedSnusId);
+    
+    // 2. XP updaten auf dem Homescreen
+    await loadUserStats(user.id);
+    
+    // 3. Den Dex im Hintergrund neu laden (damit die Kachel farbig wird)
+    loadDex();
+
+    // 4. Modal zumachen
+    closeSnusDetail();
+    
+    // Button für das nächste Mal wiederherstellen
+    setTimeout(() => {
+        btn.innerText = "ZUR SAMMLUNG HINZUFÜGEN";
+        btn.disabled = false;
+    }, 500);
+}

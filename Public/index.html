@@ -38,6 +38,24 @@
     }
 }
 
+/* Text-Farben für die Seltenheit (Namen) */
+.text-common { color: var(--common); }
+.text-uncommon { color: var(--uncommon); }
+.text-rare { color: var(--rare); }
+.text-epic { color: var(--epic); }
+.text-legendary { color: var(--legendary); }
+.text-exotic { color: var(--exotic); }
+.text-mythic { color: var(--mythic); text-shadow: 0 0 15px var(--mythic); }
+
+/* Hintergrund-Farben für den kleinen Punkt */
+.bg-common { background-color: var(--common); color: var(--common); }
+.bg-uncommon { background-color: var(--uncommon); color: var(--uncommon); }
+.bg-rare { background-color: var(--rare); color: var(--rare); }
+.bg-epic { background-color: var(--epic); color: var(--epic); }
+.bg-legendary { background-color: var(--legendary); color: var(--legendary); }
+.bg-exotic { background-color: var(--exotic); color: var(--exotic); }
+.bg-mythic { background-color: var(--mythic); color: var(--mythic); }
+
 /* Wird automatisch abgespielt, sobald das 'hidden' entfernt wird! */
 .tab-content {
     animation: tabFadeIn 0.25s ease-out forwards;
@@ -252,6 +270,39 @@
 
         </div>
     </main>
+
+    <div id="snus-modal" class="fixed inset-0 z-[999] hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" onclick="closeSnusDetail()"></div>
+        
+        <div id="snus-modal-card" class="absolute bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 rounded-t-[2.5rem] p-8 pb-32 max-w-md mx-auto translate-y-full transition-transform duration-300 ease-out">
+            
+            <div class="flex justify-between items-center mb-6">
+                <span id="modal-id" class="text-zinc-500 font-mono text-sm tracking-widest">#000</span>
+                
+                <div class="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 px-3 py-1.5 rounded-full">
+                    <div id="modal-rarity-dot" class="w-2 h-2 rounded-full bg-zinc-500 shadow-[0_0_10px_currentColor]"></div>
+                    <span id="modal-rarity-text" class="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">Common</span>
+                </div>
+            </div>
+
+            <div class="w-full flex justify-center mb-8 relative">
+                <div class="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent z-10"></div>
+                <img id="modal-image" src="" alt="Snus" class="w-48 h-48 object-contain drop-shadow-2xl z-20">
+            </div>
+
+            <div class="text-center mb-8">
+                <h2 id="modal-name" class="text-3xl font-black uppercase tracking-tighter mb-1">Name</h2>
+                <p id="modal-nicotine" class="text-zinc-500 text-xs uppercase tracking-[0.2em]">0 MG/G</p>
+            </div>
+
+            <button id="collect-btn" onclick="collectCurrentSnus()" class="w-full bg-white text-black font-black py-5 rounded-[2rem] active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                ZUR SAMMLUNG HINZUFÜGEN
+            </button>
+            <p id="collected-text" class="hidden text-center text-purple-500 font-bold uppercase tracking-widest py-4">
+                Bereits in deiner Sammlung ✨
+            </p>
+        </div>
+    </div>
 
     <footer>
         <nav class="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-zinc-900 pb-10 pt-4 px-6 z-[50]">
