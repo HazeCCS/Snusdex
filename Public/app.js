@@ -66,25 +66,15 @@ async function handleLogout() {
 // ==========================================
 
 function switchTab(tabId) {
-    // 1. Alle Tabs finden
-    const allTabs = document.querySelectorAll('.tab-content');
-    
-    allTabs.forEach(tab => {
+    // 1. Alle Tabs verstecken
+    document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.add('hidden');
-        tab.classList.remove('animate-tab'); // Animation entfernen
     });
 
-    // 2. Den neuen Tab auswählen
+    // 2. Den neuen Tab sichtbar machen (Das triggert die CSS Animation automatisch!)
     const activeTab = document.getElementById(`tab-${tabId}`);
-    
     if (activeTab) {
-        // Erst sichtbar machen, DANN animieren (wichtig für CSS!)
         activeTab.classList.remove('hidden');
-        
-        // Timeout zwingt den Browser, das Element erst zu rendern, bevor er animiert
-        setTimeout(() => {
-            activeTab.classList.add('animate-tab');
-        }, 10);
     }
     
     // 3. Navbar-Icons stylen

@@ -22,9 +22,22 @@
 }
 
 /* Die Klasse, die wir per JS vergeben */
-.animate-tab {
-    animation: tabFadeIn 0.25s ease-out forwards;
+/* Die Animation definieren */
+@keyframes tabFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
+
+/* Wird automatisch abgespielt, sobald das 'hidden' entfernt wird! */
+.tab-content {
+    animation: tabFadeIn 0.25s ease-out forwards;
+}   
         
         html, body { overscroll-behavior: none; }
 
