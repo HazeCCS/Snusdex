@@ -16,70 +16,57 @@
         /* Die Animation definieren */
         @keyframes tabFadeIn {
             from {
+                opacity: 0;
+                transform: translateY(8px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Das Grund-Overlay ist immer da, aber unsichtbar und ohne Pointer-Events */
+        #modal-backdrop {
+            transition: opacity 0.4s ease-out, backdrop-filter 0.4s ease-out;
             opacity: 0;
-            transform: translateY(8px) scale(0.98); /* Startet leicht tiefer und kleiner */
+            backdrop-filter: blur(0px);
+            pointer-events: none;
         }
-        to {
+
+        /* Wenn das Modal aktiv ist, faden wir den Blur rein */
+        #modal-backdrop.active {
             opacity: 1;
-            transform: translateY(0) scale(1); /* Landet perfekt */
+            backdrop-filter: blur(12px);
+            pointer-events: auto;
         }
-}
 
-/* Die Klasse, die wir per JS vergeben */
-/* Die Animation definieren */
-@keyframes tabFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(8px) scale(0.98);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
+        /* Die Card Transition */
+        #snus-modal-card {
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+        }
 
-/* Das Grund-Overlay ist immer da, aber unsichtbar und ohne Pointer-Events */
-#modal-backdrop {
-    transition: opacity 0.4s ease-out, backdrop-filter 0.4s ease-out;
-    opacity: 0;
-    backdrop-filter: blur(0px);
-    pointer-events: none; /* Klicks gehen durch, wenn zu */
-}
+        /* Text-Farben für die Seltenheit (Namen) */
+        .text-common { color: var(--common); }
+        .text-uncommon { color: var(--uncommon); }
+        .text-rare { color: var(--rare); }
+        .text-epic { color: var(--epic); }
+        .text-legendary { color: var(--legendary); }
+        .text-exotic { color: var(--exotic); }
+        .text-mythic { color: var(--mythic); text-shadow: 0 0 15px var(--mythic); }
 
-/* Wenn das Modal aktiv ist, faden wir den Blur rein */
-#modal-backdrop.active {
-    opacity: 1;
-    backdrop-filter: blur(12px);
-    pointer-events: auto; /* Klicks fangen, wenn offen */
-}
+        /* Hintergrund-Farben für den kleinen Punkt */
+        .bg-common { background-color: var(--common); color: var(--common); }
+        .bg-uncommon { background-color: var(--uncommon); color: var(--uncommon); }
+        .bg-rare { background-color: var(--rare); color: var(--rare); }
+        .bg-epic { background-color: var(--epic); color: var(--epic); }
+        .bg-legendary { background-color: var(--legendary); color: var(--legendary); }
+        .bg-exotic { background-color: var(--exotic); color: var(--exotic); }
+        .bg-mythic { background-color: var(--mythic); color: var(--mythic); }
 
-/* Die Card Transition bleibt, aber wir machen sie passend zum Blur */
-#snus-modal-card {
-    transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-/* Text-Farben für die Seltenheit (Namen) */
-.text-common { color: var(--common); }
-.text-uncommon { color: var(--uncommon); }
-.text-rare { color: var(--rare); }
-.text-epic { color: var(--epic); }
-.text-legendary { color: var(--legendary); }
-.text-exotic { color: var(--exotic); }
-.text-mythic { color: var(--mythic); text-shadow: 0 0 15px var(--mythic); }
-
-/* Hintergrund-Farben für den kleinen Punkt */
-.bg-common { background-color: var(--common); color: var(--common); }
-.bg-uncommon { background-color: var(--uncommon); color: var(--uncommon); }
-.bg-rare { background-color: var(--rare); color: var(--rare); }
-.bg-epic { background-color: var(--epic); color: var(--epic); }
-.bg-legendary { background-color: var(--legendary); color: var(--legendary); }
-.bg-exotic { background-color: var(--exotic); color: var(--exotic); }
-.bg-mythic { background-color: var(--mythic); color: var(--mythic); }
-
-/* Wird automatisch abgespielt, sobald das 'hidden' entfernt wird! */
-.tab-content {
-    animation: tabFadeIn 0.25s ease-out forwards;
-}
+        /* Wird automatisch abgespielt, sobald das 'hidden' entfernt wird! */
+        .tab-content {
+            animation: tabFadeIn 0.25s ease-out forwards;
+        }
         
         html, body { overscroll-behavior: none; }
 
@@ -157,7 +144,7 @@
 
     <header class="flex justify-between items-center sticky top-0 bg-black/80 backdrop-blur-md z-[100] px-6 py-4">
         <h1 class="text-[1rem] font-bold text-zinc-100 tracking-tighter">SNUSDEX®</h1>
-        <span class="text-[0.8rem] text-zinc-500 font-mono">v1.0.8 PreAlpha</span>
+        <span class="text-[0.8rem] text-zinc-500 font-mono">v1.1.0 PreAlpha</span>
     </header>
 
     <main id="tab-home" class="tab-content">
@@ -172,18 +159,18 @@
             <div id="stats-carousel" class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-6 space-x-5 pb-10">
                 <div class="stats-card flex-shrink-0 w-[82vw] snap-center p-8 rounded-[2.5rem] bg-zinc-900 border border-zinc-800">
                     <div class="text-4xl mb-6">⚡️</div>
-                    <h4 class="text-2xl font-bold">Current Flow</h4>
-                    <p class="text-[11px] opacity-50 tracking-widest mt-2 uppercase">142 MG ACTIVE • PEAKING</p>
+                    <h4 id="stat-flow" class="text-2xl font-bold">0 MG</h4>
+                    <p class="text-[11px] opacity-50 tracking-widest mt-2 uppercase">TOTAL MG COLLECTED</p>
                 </div>
                 <div class="stats-card flex-shrink-0 w-[82vw] snap-center p-8 rounded-[2.5rem] bg-zinc-900 border border-zinc-800">
                     <div class="text-4xl mb-6">📊</div>
-                    <h4 class="text-2xl font-bold">Daily Count</h4>
-                    <p class="text-[11px] opacity-50 tracking-widest mt-2 uppercase">12 POUCHES • 3 NEW</p>
+                    <h4 id="stat-count" class="text-2xl font-bold">0</h4>
+                    <p class="text-[11px] opacity-50 tracking-widest mt-2 uppercase">TOTAL POUCHES</p>
                 </div>
                 <div class="stats-card flex-shrink-0 w-[82vw] snap-center p-8 rounded-[2.5rem] bg-zinc-900 border border-zinc-800">
                     <div class="text-4xl mb-6">🔥</div>
-                    <h4 class="text-2xl font-bold">7 Day Streak</h4>
-                    <p class="text-[11px] opacity-50 tracking-widest mt-2 uppercase">TOP 3% IN GERMANY</p>
+                    <h4 id="stat-streak" class="text-2xl font-bold truncate">N/A</h4>
+                    <p class="text-[11px] opacity-50 tracking-widest mt-2 uppercase">LATEST UNLOCK</p>
                 </div>
             </div>
         </section>
@@ -211,8 +198,18 @@
         <div class="px-6 py-8">
             <h2 class="text-3xl font-bold mb-1">Master Dex</h2>
             <p class="text-zinc-500 text-[10px] uppercase tracking-[0.2em] mb-8">Discover & Collect</p>
-            <div id="dex-grid" class="grid grid-cols-3 gap-3 pb-40">
+            
+            <div class="mb-8 relative group">
+                <div class="absolute inset-y-0 left-5 flex items-center pointer-events-none opacity-30 group-focus-within:opacity-100 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-purple-500">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                    </svg>
                 </div>
+                <input type="text" id="dex-search" oninput="filterDex()" placeholder="Suche nach Name oder Flavor..." 
+                    class="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl py-4 pl-12 pr-6 text-sm outline-none focus:border-purple-500 focus:bg-zinc-900 transition-all placeholder:text-zinc-600">
+            </div>
+
+            <div id="dex-grid" class="grid grid-cols-3 gap-3 pb-40"></div>
         </div>
         
         <button onclick="startScanner()" class="fixed bottom-28 right-6 bg-purple-600 text-white p-4 rounded-full shadow-[0_0_20px_rgba(147,51,234,0.6)] active:scale-90 transition-transform z-[60]">
@@ -279,6 +276,7 @@
                         </select>
                     </div>
 
+                    <input type="text" id="admin-flavor" placeholder="Flavors (z.B. Mint, Frosted)" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-sm outline-none focus:border-purple-500">
                     <input type="text" id="admin-barcode" placeholder="Barcode / EAN (Optional)" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-sm outline-none focus:border-purple-500">
                     <input type="text" id="admin-image" placeholder="Bildname (z.B. pablo-gold.png)" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-sm outline-none focus:border-purple-500">
 
@@ -291,7 +289,7 @@
         </div>
     </main>
 
-        <div id="snus-modal" class="fixed inset-0 z-[999] hidden">
+    <div id="snus-modal" class="fixed inset-0 z-[999] hidden">
         <div id="modal-backdrop" class="absolute inset-0 bg-black/60" onclick="closeSnusDetail()"></div>
         
         <div id="snus-modal-card" class="absolute bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 rounded-t-[2.5rem] p-8 pb-32 max-w-md mx-auto translate-y-full transition-transform duration-400 ease-out">
@@ -313,17 +311,22 @@
             <div class="text-center mb-8">
                 <h2 id="modal-name" class="text-3xl font-black uppercase tracking-tighter mb-1">Name</h2>
                 <p id="modal-nicotine" class="text-zinc-500 text-xs uppercase tracking-[0.2em]">0 MG/G</p>
+                
+                <div id="modal-flavors" class="flex flex-wrap justify-center gap-2 mt-4"></div>
             </div>
 
             <button id="collect-btn" onclick="collectCurrentSnus()" class="w-full bg-white text-black font-black py-5 rounded-[2rem] active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]">
                 ZUR SAMMLUNG HINZUFÜGEN
             </button>
-            <p id="collected-text" class="hidden text-center text-purple-500 font-bold uppercase tracking-widest py-4">
-                Bereits in deiner Sammlung ✨
-            </p>
+            
+            <div class="mt-6 text-center">
+                <p id="collected-text" class="hidden text-purple-500 font-bold uppercase tracking-widest text-xs">
+                    Bereits in deiner Sammlung ✨
+                </p>
+                <span id="modal-unlocked-date" class="text-[9px] text-zinc-600 uppercase tracking-[0.3em] mt-2 block hidden"></span>
+            </div>
         </div>
     </div>
-
     <footer>
         <nav class="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-zinc-900 pb-10 pt-4 px-6 z-[50]">
             <div class="max-w-md mx-auto flex justify-between items-center">
