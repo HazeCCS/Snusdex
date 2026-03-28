@@ -111,22 +111,32 @@ async function handleLogout() {
 }
 
 // ==========================================
-// 3. NAVIGATION
+// 3. NAVIGATION (NEW)
 // ==========================================
 
 function switchTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     const activeTab = document.getElementById(`tab-${tabId}`);
-    if (activeTab) activeTab.classList.remove('hidden');
+    
+    if (!activeTab || !activeTab.classList.contains('hidden')) {
+        return;
+    }
+
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+    activeTab.classList.remove('hidden');
     
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.toggle('text-purple-500', btn.id === `btn-${tabId}`);
         btn.classList.toggle('text-zinc-500', btn.id !== `btn-${tabId}`);
     });
+    
+    if (window.webkit && window.webkit.messageHandlers.hapticHandler) {
+        window.webkit.messageHandlers.hapticHandler.postMessage("vibrate");
+    }
 
     if (navigator.vibrate) navigator.vibrate(5);
     window.scrollTo(0, 0);
 }
+
 
 // ==========================================
 // 4. DATEN LADEN
