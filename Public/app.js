@@ -128,10 +128,6 @@ function switchTab(tabId) {
         btn.classList.toggle('text-purple-500', btn.id === `btn-${tabId}`);
         btn.classList.toggle('text-zinc-500', btn.id !== `btn-${tabId}`);
     });
-    
-    if (window.webkit && window.webkit.messageHandlers.hapticHandler) {
-        window.webkit.messageHandlers.hapticHandler.postMessage("vibrate");
-    }
 
     if (navigator.vibrate) navigator.vibrate(5);
     window.scrollTo(0, 0);
@@ -501,3 +497,19 @@ function filterDex() {
 }
 
 document.addEventListener('DOMContentLoaded', () => checkUser());
+
+function triggerHapticFeedback() {
+    if (window.webkit && window.webkit.messageHandlers.hapticHandler) {
+        window.webkit.messageHandlers.hapticHandler.postMessage("vibrate");
+    }
+}
+
+function handleLoginWrapper() {
+    triggerHapticFeedback();
+    handleLogin();
+}
+
+function switchTabWrapper(tabId) {
+    triggerHapticFeedback();
+    switchTab(tabId);
+}
