@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="de" class="bg-black text-white antialiased selection:bg-zinc-800">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SNUSDEX</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Apple System Font (SF Pro) erzwingen */
+        @supports (font: -apple-system-body) {
+            body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #000000;
+            color: #FFFFFF;
+            overscroll-behavior: none;
+        }
+
+        /* HIG Colors */
+        :root {
+            --ios-bg: #000000;
+            --ios-card: #1C1C1E;
+            --ios-separator: rgba(84, 84, 88, 0.65);
+            --ios-gray: #8E8E93;
+            --common: #8E8E93; --uncommon: #34C759; --rare: #0A84FF;
+            --epic: #BF5AF2; --legendary: #FF9F0A; --exotic: #FF375F; --mythic: #64D2FF;
+        }
+
+        .hidden { display: none !important; }
+        * { -ms-overflow-style: none; scrollbar-width: none; -webkit-tap-highlight-color: transparent; }
+        *::-webkit-scrollbar { display: none; }
+
+        /* Smooth View Transitions */
+        .tab-content { animation: tabFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        @keyframes tabFadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .fade-view { animation: fadeViewIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        @keyframes fadeViewIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Apple Collector Card Styling */
+        .collector-main-card {
+            background: linear-gradient(135deg, #2C2C2E 0%, #1C1C1E 100%);
+            box-shadow: 0 10px 40px -10px rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* iOS Grouped Lists */
+        .ios-list-group {
+            background-color: var(--ios-card);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        .ios-list-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px;
+            position: relative;
+        }
+        .ios-list-item:not(:last-child)::after {
+            content: ''; position: absolute; bottom: 0; left: 60px; right: 0;
+            height: 0.5px; background-color: var(--ios-separator);
+        }
+
+        /* Modal Background & Card (Apple Bottom Sheet) */
+        #modal-backdrop {
+            transition: opacity 0.4s ease, backdrop-filter 0.4s ease;
+            opacity: 0; backdrop-filter: blur(0px); pointer-events: none;
+        }
+        #modal-backdrop.active { opacity: 1; backdrop-filter: blur(10px); pointer-events: auto; }
+        
+        #snus-modal-card {
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+            background-color: var(--ios-card);
+            max-height: 90vh; overflow-y: auto; z-index: 999;
+        }
+
+        /* Rating System (Monochrome White HIG) */
+        .rating-row {
+            display: flex; justify-content: space-between;
+            background: rgba(255, 255, 255, 0.1); border-radius: 9999px;
+            padding: 4px; position: relative; user-select: none;
+        }
+        .rating-pill {
+            position: absolute; top: 4px; bottom: 4px; left: 4px;
+            width: calc((100% - 8px) / 10);
+            background: #FFFFFF; border-radius: 9999px;
+            transition: transform 0.35s cubic-bezier(0.65, 0, 0.35, 1); 
+            z-index: 0; box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        .rating-btn {
+            width: 10%; aspect-ratio: 1/1;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700; z-index: 10; cursor: pointer;
+            transition: color 0.2s;
+        }
+        .rating-btn.active { color: #000000; }
+        .rating-btn.inactive { color: var(--ios-gray); }
+    </style>
+</head>
+<body class="pb-24">
+
+    <div id="auth-overlay" class="fixed inset-0 z-[999] bg-black flex items-center justify-center p-6 transition-opacity duration-500">
+        <div class="w-full max-w-sm bg-[#1C1C1E] p-8 rounded-[32px] shadow-2xl border border-white/10">
+            <div class="mb-8 text-center">
+                <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-black" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                </div>
+                <h2 class="text-2xl font-semibold tracking-tight text-white">Snusdex Elite</h2>
+            </div>
+            <div class="space-y-4">
+                <input type="email" id="auth-email" placeholder="Email" class="w-full bg-black border border-white/10 rounded-xl px-4 py-4 text-[17px] focus:border-white outline-none transition-all">
+                <input type="password" id="auth-password" placeholder="Passwort" class="w-full bg-black border border-white/10 rounded-xl px-4 py-4 text-[17px] focus:border-white outline-none transition-all">
+                <button onclick="handleLoginWrapper()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-xl active:scale-95 transition-transform mt-4">
+                    Sign In
+                </button>
+                <p id="auth-error" class="text-[#FF3B30] text-sm text-center hidden"></p>
+            </div>
+        </div>
+    </div>
+
+    <main id="tab-home" class="tab-content pt-12 pb-10">
+        <header class="px-5 mb-4 flex justify-between items-end">
+            <h1 class="text-[34px] font-bold tracking-tight">Home</h1>
+        </header>
+
+        <div class="px-5 mb-6">
+            <div class="collector-main-card w-full rounded-[24px] p-6 flex flex-col justify-between border border-white/10 h-48">
+                <div class="flex justify-between items-start z-10">
+                    <span class="text-white/60 font-medium text-[13px] tracking-widest uppercase">Collector ID</span>
+                    <span class="text-white/40 text-sm">LVL 14</span>
+                </div>
+                <div class="z-10">
+                    <p class="text-white/80 text-[13px] mb-0.5 uppercase tracking-wide" id="greeting">Loading...</p>
+                    <p class="text-white text-[38px] font-semibold tracking-tight leading-none" id="score">0 <span class="text-[20px] text-white/50 font-medium">XP</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-5 grid grid-cols-2 gap-3 mb-8">
+            <div class="bg-[#1C1C1E] rounded-[20px] p-4">
+                <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Collection</h3>
+                <p class="text-[22px] font-semibold text-white" id="stat-count">0</p>
+                <p class="text-[12px] text-[#8E8E93] mt-1">Total Pouches</p>
+            </div>
+            <div class="bg-[#1C1C1E] rounded-[20px] p-4">
+                <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Total Limit</h3>
+                <p class="text-[22px] font-semibold text-white" id="stat-flow">0 MG</p>
+                <p class="text-[12px] text-[#8E8E93] mt-1">Nicotine Tracked</p>
+            </div>
+            <div class="bg-[#1C1C1E] rounded-[20px] p-4">
+                <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Usage</h3>
+                <p class="text-[22px] font-semibold text-white"><span id="stat-avg-pouches">0</span></p>
+                <p class="text-[12px] text-[#8E8E93] mt-1">Avg Pouches / Day</p>
+            </div>
+            <div class="bg-[#1C1C1E] rounded-[20px] p-4">
+                <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Intake</h3>
+                <p class="text-[22px] font-semibold text-white" id="stat-avg-mg">0 MG</p>
+                <p class="text-[12px] text-[#8E8E93] mt-1">Avg Daily MG</p>
+            </div>
+        </div>
+
+        <div id="can-empty-container" class="px-5 mb-8 hidden transition-all duration-300">
+            <h2 class="text-[20px] font-semibold text-white mb-3">Active Can</h2>
+            <div class="bg-[#1C1C1E] rounded-[24px] p-5 flex flex-col items-center justify-center border border-white/10 relative overflow-hidden">
+                <p class="text-[13px] text-[#8E8E93] font-medium mb-1 uppercase tracking-wide">Currently Using</p>
+                <h3 id="active-can-name" class="text-[22px] font-bold text-white mb-5 tracking-tight">Loading...</h3>
+                <button onclick="finishCurrentCan(true)" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[16px] shadow-[0_8px_16px_rgba(255,255,255,0.15)] active:scale-95 transition-transform flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    Can Empty
+                </button>
+            </div>
+        </div>
+
+        <div class="px-5">
+            <h2 class="text-[20px] font-semibold text-white mb-3">Recent Scans</h2>
+            <div class="ios-list-group" id="latest-unlocks-list">
+                <div class="p-6 text-center text-[#8E8E93] text-sm">Noch keine Scans vorhanden.</div>
+            </div>
+        </div>
+    </main>
+
+    <main id="tab-dex" class="tab-content hidden pt-12">
+        <div class="px-5 py-4">
+            <h1 class="text-[34px] font-bold tracking-tight mb-4">Dex</h1>
+            
+            <div class="relative mb-6">
+                <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <svg class="w-5 h-5 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                </div>
+                <input type="text" id="dex-search" oninput="filterDex()" placeholder="Search Snus..." 
+                    class="w-full bg-[#1C1C1E] rounded-[10px] py-2.5 pl-10 pr-4 text-[17px] text-white outline-none placeholder:text-[#8E8E93]">
+            </div>
+
+            <div id="dex-grid" class="grid grid-cols-3 gap-3 pb-32"></div>
+        </div>
+        
+        <button onclick="startScanner()" class="fixed bottom-24 right-5 w-14 h-14 bg-white text-black rounded-full shadow-[0_4px_14px_rgba(255,255,255,0.4)] flex items-center justify-center active:scale-90 transition-transform z-[60]">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        </button>
+    </main>
+
+    <main id="tab-social" class="tab-content hidden pt-12">
+        <div class="px-5 py-4">
+            <div id="top-snus-container"></div>
+        </div>
+    </main>
+
+    <main id="tab-profile" class="tab-content hidden pt-12">
+        <div class="px-5 py-4">
+            <h1 class="text-[34px] font-bold tracking-tight mb-6">Profile</h1>
+            
+            <div class="ios-list-group mb-8">
+                <div class="p-4 flex items-center gap-4">
+                    <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center">
+                        <span id="user-initials" class="text-2xl font-semibold text-black">H</span>
+                    </div>
+                    <div>
+                        <h3 id="profile-email" class="text-[20px] font-semibold text-white">...</h3>
+                        <p class="text-[13px] text-[#8E8E93]">Snusdex ID</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ios-list-group mb-8">
+                <button onclick="handleLogout()" class="w-full text-left p-4 text-[#FF3B30] text-[17px] font-medium active:bg-white/5 transition-colors">
+                    Sign Out
+                </button>
+            </div>
+
+            <div id="admin-panel" class="hidden w-full mt-8">
+                <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider pl-4 mb-2">Admin Panel</h2>
+                <div class="ios-list-group p-4 space-y-4">
+                    <input type="text" id="admin-name" placeholder="Name (z.B. Pablo Gold)" class="w-full bg-black rounded-lg px-4 py-3 text-[17px] outline-none border border-white/10">
+                    <div class="flex gap-4">
+                        <input type="number" id="admin-nicotine" placeholder="mg/g" class="w-1/2 bg-black rounded-lg px-4 py-3 text-[17px] outline-none border border-white/10">
+                        <select id="admin-rarity" class="w-1/2 bg-black rounded-lg px-4 py-3 text-[17px] outline-none text-[#8E8E93] border border-white/10">
+                            <option value="Common">Common</option>
+                            <option value="Uncommon">Uncommon</option>
+                            <option value="Rare">Rare</option>
+                            <option value="Epic">Epic</option>
+                            <option value="Legendary">Legendary</option>
+                            <option value="Exotic">Exotic</option>
+                            <option value="Mythic">Mythic</option>
+                        </select>
+                    </div>
+                    <input type="text" id="admin-flavor" placeholder="Flavors (z.B. Mint, Frost)" class="w-full bg-black rounded-lg px-4 py-3 text-[17px] outline-none border border-white/10">
+                    <input type="text" id="admin-barcode" placeholder="Barcode (Optional)" class="w-full bg-black rounded-lg px-4 py-3 text-[17px] outline-none border border-white/10">
+                    <input type="text" id="admin-image" placeholder="Image Name (pablo-gold.png)" class="w-full bg-black rounded-lg px-4 py-3 text-[17px] outline-none border border-white/10">
+                    
+                    <button onclick="adminAddSnus()" class="w-full bg-white text-black font-semibold py-3 rounded-lg active:scale-95 transition-transform mt-2">
+                        Add to Database
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="snus-modal" class="fixed inset-0 z-[999] hidden">
+        <div id="modal-backdrop" class="absolute inset-0 bg-black/40" onclick="closeSnusDetail()"></div>
+        
+        <div id="snus-modal-card" class="absolute bottom-0 left-0 right-0 rounded-t-[32px] p-6 pb-12 max-w-md mx-auto translate-y-full">
+            <div class="w-10 h-1.5 bg-[#3A3A3C] rounded-full mx-auto mb-6"></div>
+
+            <div id="modal-views-wrapper" class="w-full">
+                <div id="modal-view-info" class="fade-view">
+                    <div class="w-full flex justify-center mb-6 h-48 relative">
+                        <img id="modal-image" src="" alt="Snus" class="h-full object-contain drop-shadow-2xl z-20">
+                    </div>
+
+                    <div class="text-center mb-8">
+                        <h2 id="modal-name" class="text-[28px] font-bold tracking-tight text-white mb-1">Name</h2>
+                        <p id="modal-nicotine" class="text-[15px] text-[#8E8E93]">0 MG/G • <span id="modal-rarity-text">Common</span></p>
+                    </div>
+                    
+                    <button id="start-collect-btn" onclick="showRatingView()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform">
+                        Add to Collection
+                    </button>
+
+                    <div id="modal-collected-status" class="hidden mt-4 text-center">
+                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#34C759]/20 mb-3">
+                            <svg class="w-6 h-6 text-[#34C759]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        </div>
+                        <p class="text-white font-semibold text-[17px]">Saved in Dex</p>
+                        <span id="modal-unlocked-date" class="text-[13px] text-[#8E8E93] block mb-4"></span>
+                        <button onclick="startNewCanFromModal()" class="w-full bg-white text-black font-semibold text-[17px] py-3.5 rounded-[14px] active:scale-95 transition-transform mb-3">
+                            Start New Can
+                        </button>
+                        <button onclick="showSavedRating()" class="w-full bg-[#2C2C2E] text-white font-medium text-[17px] py-3.5 rounded-[14px] active:scale-95 transition-transform">
+                            View Rating
+                        </button>
+                    </div>
+                </div>
+
+                <div id="modal-view-rating" class="hidden fade-view">
+                    <h2 class="text-center text-[20px] font-semibold text-white mb-6">Rate Product</h2>
+                    <div class="space-y-4 mb-8">
+                        <div class="rating-group" data-category="taste"><div class="flex justify-between text-[13px] text-[#8E8E93] mb-2 px-1"><span>Taste</span><span class="text-white font-semibold rating-val">5/10</span></div><div class="rating-row" id="row-taste"></div></div>
+                        <div class="rating-group" data-category="smell"><div class="flex justify-between text-[13px] text-[#8E8E93] mb-2 px-1"><span>Smell</span><span class="text-white font-semibold rating-val">5/10</span></div><div class="rating-row" id="row-smell"></div></div>
+                        <div class="rating-group" data-category="bite"><div class="flex justify-between text-[13px] text-[#8E8E93] mb-2 px-1"><span>Bite</span><span class="text-white font-semibold rating-val">5/10</span></div><div class="rating-row" id="row-bite"></div></div>
+                        <div class="rating-group" data-category="drip"><div class="flex justify-between text-[13px] text-[#8E8E93] mb-2 px-1"><span>Drip</span><span class="text-white font-semibold rating-val">5/10</span></div><div class="rating-row" id="row-drip"></div></div>
+                        <div class="rating-group" data-category="visuals"><div class="flex justify-between text-[13px] text-[#8E8E93] mb-2 px-1"><span>Visuals</span><span class="text-white font-semibold rating-val">5/10</span></div><div class="rating-row" id="row-visuals"></div></div>
+                    </div>
+                    <button id="final-collect-btn" onclick="collectCurrentSnus()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform">
+                        Confirm
+                    </button>
+                </div>
+
+                <div id="modal-view-saved-rating" class="hidden fade-view">
+                    <h2 class="text-center text-[20px] font-semibold text-white mb-6">Your Rating</h2>
+                    <div id="saved-rating-bars" class="space-y-4 mb-8"></div>
+                    <button onclick="showInfoView()" class="w-full bg-[#2C2C2E] text-white font-medium text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform">
+                        Back to Info
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="fixed bottom-0 left-0 right-0 bg-[#1C1C1E]/90 backdrop-blur-xl border-t border-white/10 pb-8 pt-3 px-6 z-[50]">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <button onclick="switchTabWrapper('home')" class="nav-btn flex flex-col items-center gap-1 text-white transition-colors active:scale-95" id="btn-home">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                <span class="text-[10px] font-medium">Home</span>
+            </button>
+            <button onclick="switchTabWrapper('dex')" class="nav-btn flex flex-col items-center gap-1 text-[#8E8E93] transition-colors active:scale-95" id="btn-dex">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+                <span class="text-[10px] font-medium">Dex</span>
+            </button>
+            <button onclick="switchTabWrapper('social')" class="nav-btn flex flex-col items-center gap-1 text-[#8E8E93] transition-colors active:scale-95" id="btn-social">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                <span class="text-[10px] font-medium">Social</span>
+            </button>
+            <button onclick="switchTabWrapper('profile')" class="nav-btn flex flex-col items-center gap-1 text-[#8E8E93] transition-colors active:scale-95" id="btn-profile">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                <span class="text-[10px] font-medium">Profile</span>
+            </button>
+        </div>
+    </nav>
+    <script src="app.js"></script>
+</body>
+</html>
