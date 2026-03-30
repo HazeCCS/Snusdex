@@ -517,7 +517,7 @@ function renderTopSnus(snus, ratings, count, overall) {
                 <span class="text-[12px] font-semibold text-white tracking-wide">🏆 TOP OF THE WEEK</span>
             </div>
             <div class="absolute top-4 right-4">
-                 <span class="text-[12px] font-medium text-[#8E8E93] bg-black/30 px-2 py-1 rounded-lg">${count} Scans</span>
+                <span class="text-[12px] font-medium text-[#8E8E93] bg-black/30 px-2 py-1 rounded-lg">${count} Scans</span>
             </div>
             
             <div class="w-32 h-32 mt-12 mb-4 rounded-full overflow-hidden bg-[#2C2C2E] border-4 border-white/5 shadow-2xl flex-shrink-0">
@@ -633,7 +633,7 @@ async function finishSpecificCan(logId) {
         .eq('id', logId);
 
     if (!error) {
-        await loadUsageData(); // Alles neu laden & berechnen
+        await loadUsageData();
     }
 }
 
@@ -722,6 +722,7 @@ const scanModalCard = document.getElementById('scan-modal-card');
 const scanModalBackdrop = document.getElementById('scan-modal-backdrop');
 
 function openScanModal() {
+    triggerHapticFeedback();
     scanModal.classList.remove('hidden');
     
     document.body.classList.add('overflow-hidden');
@@ -779,6 +780,7 @@ if (scanModalCard) {
 
         if (deltaY > 100) {
             closeScanModal();
+            triggerHapticFeedback();
         } else {
             scanModalCard.style.transform = '';
         }
