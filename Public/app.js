@@ -31,12 +31,13 @@ async function checkUser() {
         setTimeout(() => overlay.classList.add('hidden'), 500);
         
         setupProfile(session.user);
-        loadDex(); 
-        updateGreeting();
-
-        // DAS HIER FEHLTE: Beim Start direkt die aktiven Dosen laden!
-        loadUsageData(); 
         
+        // WICHTIG: await verhindert das Aufhängen! 
+        // Erst Dex laden, DANN Usage laden.
+        await loadDex(); 
+        await loadUsageData(); 
+        
+        updateGreeting();
     } else {
         overlay.classList.remove('hidden', 'opacity-0');
     }
@@ -140,15 +141,13 @@ function renderDexGrid(items) {
 }
 
 function updateLivePerformance() {
-    let totalMg = 0;
     const collectedItems = globalSnusData.filter(snus => !!globalUserCollection[snus.id]);
     
     collectedItems.sort((a, b) => new Date(globalUserCollection[b.id].date) - new Date(globalUserCollection[a.id].date));
-    collectedItems.forEach(snus => totalMg += (snus.nicotine || 0));
 
-    const flowEl = document.getElementById('stat-flow');
+    // UPDATE: Nur noch die 'Collection' (Total Pouches) updaten!
+    // stat-flow (Nikotin) lassen wir in Ruhe, das macht die andere Funktion.
     const countEl = document.getElementById('stat-count');
-    if(flowEl) flowEl.innerText = `${totalMg.toLocaleString()} MG`;
     if(countEl) countEl.innerText = collectedItems.length;
 
     const listEl = document.getElementById('latest-unlocks-list');
@@ -166,20 +165,15 @@ function updateLivePerformance() {
         
         listEl.innerHTML += `
             <div class="ios-list-item flex items-center justify-between py-3 px-4 border-b border-white/5 last:border-0 cursor-pointer active:bg-white/5 transition-colors" onclick="openSnusDetail(${snus.id})">
-                
                 <div class="flex items-center gap-3 min-w-0 flex-1">
                     <div class="w-11 h-11 rounded-full overflow-hidden bg-[#2C2C2E] flex-shrink-0 border border-white/10 p-1">
                         <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain" onerror="this.style.display='none'">
                     </div>
-                    
                     <div class="min-w-0 flex-1">
-                        <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">
-                            ${snus.name}
-                        </h4>
+                        <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">${snus.name}</h4>
                         <p class="text-[13px] text-[#8E8E93] font-medium mt-0.5">${dateStr}</p>
                     </div>
                 </div>
-
                 <div class="flex items-center gap-2 pl-4 flex-shrink-0 text-right">
                     <span class="text-[17px] font-semibold text-white tracking-tight">${snus.nicotine}mg</span>
                     <svg class="w-4 h-4 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -651,63 +645,34 @@ function renderActiveCansUI() {
 }
 
 function calculateUsageStats(allLogs) {
-    // Nur abgeschlossene Dosen nehmen
     const finishedCans = allLogs.filter(log => !log.is_active && log.finished_at);
+    const statFlow = document.getElementById('stat-flow');
     
-    // Fallback, wenn noch keine Dose leer ist
     if (finishedCans.length === 0) {
-        const statFlow = document.getElementById('stat-flow');
         if(statFlow) statFlow.innerText = `0 MG / DAY`;
-        
-        const avgPouchesEl = document.getElementById('stat-avg-pouches');
-        if(avgPouchesEl) avgPouchesEl.innerText = '0';
-        
-        const avgMgEl = document.getElementById('stat-avg-mg');
-        if(avgMgEl) avgMgEl.innerText = '0 MG';
         return;
     }
 
     let totalMgHistory = 0;
-    let totalPouchesHistory = 0;
 
-    // 1. Alles summieren, was jemals konsumiert wurde
     finishedCans.forEach(can => {
-        // 0,5g Logik (mg_per_gram / 2)
+        // mg/g durch 2 (ein Pouch wiegt 0.5g) mal 20 Pouches
         const mgPerPouch = (can.mg_per_gram || 0) / 2;
         const mgPerCan = mgPerPouch * (can.pouches_per_can || 20);
-        
         totalMgHistory += mgPerCan;
-        totalPouchesHistory += (can.pouches_per_can || 20);
     });
 
-    // 2. Den ECHTEN Zeitraum berechnen
-    // allLogs ist nach 'opened_at' absteigend sortiert (neueste zuerst).
-    // Also ist das allerletzte Element im Array die allererste Dose, die du je geöffnet hast.
+    // Zeitraum berechnen (Von der allerersten geöffneten Dose bis heute)
+    // Da wir absteigend sortieren, ist das letzte Element im Array das älteste
     const firstEverLog = finishedCans[finishedCans.length - 1]; 
     const startDate = new Date(firstEverLog.opened_at);
-    const today = new Date(); // Zeitraum bis JETZT
+    const today = new Date();
     
-    // Differenz in Tagen berechnen
     let totalDaysSpan = (today - startDate) / (1000 * 60 * 60 * 24);
-    
-    // Schutzmechanismus: Wenn du die App erst heute installiert hast,
-    // rechnen wir mit 1 Tag, damit wir nicht durch 0 teilen (was Fehler auslöst).
-    if (totalDaysSpan < 1) {
-        totalDaysSpan = 1;
-    }
+    if (totalDaysSpan < 1) totalDaysSpan = 1; // Schutz vor Division durch 0
 
-    // 3. Echten Tagesdurchschnitt berechnen (Gesamte Menge / Gesamte Tage)
     const avgMgPerDay = (totalMgHistory / totalDaysSpan).toFixed(0);
-    const avgPouchesPerDay = (totalPouchesHistory / totalDaysSpan).toFixed(1);
 
-    // 4. UI mit den CEO-Werten befüllen
-    const statFlow = document.getElementById('stat-flow');
+    // UPDATE: Dieses Feld gehört jetzt NUR NOCH dieser Funktion!
     if(statFlow) statFlow.innerText = `${avgMgPerDay} MG / DAY`;
-
-    // Falls du diese spezifischen Elemente im HTML hast (für mehr Details)
-    const avgPouchesEl = document.getElementById('stat-avg-pouches');
-    if(avgPouchesEl) avgPouchesEl.innerText = avgPouchesPerDay;
-    
-    const avgMgEl = document.getElementById('stat-avg-mg');
-    if(avgMgEl) avgMgEl.innerText = avgMgPerDay + ' MG';
 }
