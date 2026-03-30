@@ -8,67 +8,18 @@ const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/ma
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==========================================
-// 2. AUTHENTIFIZIERUNG
-// ==========================================
-
-// ==========================================
-// GREETING LOGIK (Zeit & Name)
+// 2. AUTHENTIFIZIERUNG & GREETING
 // ==========================================
 
 async function updateGreeting() {
     const greetingElement = document.getElementById('greeting');
     if (!greetingElement) return;
 
-    // 1. User aus der aktuellen Session holen
     const { data: { session } } = await supabaseClient.auth.getSession();
     let displayIdent = "Snuser";
+    if (session?.user?.email) displayIdent = session.user.email.split('@')[0];
     
-    if (session && session.user && session.user.email) {
-        // Gleiche Logik wie in setupProfile: Alles vor dem @
-        displayIdent = session.user.email.split('@')[0];
-    }
-
-    // 2. Zeitbasierte Nachricht ermitteln
-    const hour = new Date().getHours();
-    let message = "";
-
-    if (hour >= 5 && hour < 12) {
-        message = "Guten Morgen";
-    } else if (hour >= 12 && hour < 18) {
-        message = "Guten Tag";
-    } else if (hour >= 18 && hour < 22) {
-        message = "Guten Abend";
-    } else {
-        message = "Gute Nacht"; // 22:00 bis 04:59
-    }
-
-    // 3. Im HTML ausgeben (mit fettem Namen für den Look)
-    greetingElement.innerHTML = `${message}, <span class="text-white font-bold">${displayIdent}</span>`;
-}
-
-function initCarouselObserver() {
-    const carousel = document.getElementById('stats-carousel');
-    const cards = document.querySelectorAll('.stats-card');
-    
-    if (!carousel || cards.length === 0) return;
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                // Karte ist im Fokus -> Klasse hinzufügen
-                entry.target.classList.add('active');
-            } else {
-                // Karte verlässt den Fokus -> Klasse entfernen
-                entry.target.classList.remove('active');
-            }
-        });
-    }, { 
-        root: carousel, 
-        threshold: 0.6, // Karte muss zu 60% sichtbar sein
-        rootMargin: "0px" 
-    });
-
-    cards.forEach(card => observer.observe(card));
+    greetingElement.innerText = displayIdent;
 }
 
 async function checkUser() {
@@ -81,10 +32,8 @@ async function checkUser() {
         setupProfile(session.user);
         loadDex(); 
         updateGreeting();
-        setTimeout(() => initCarouselObserver(), 100); 
     } else {
-        overlay.classList.remove('hidden');
-        overlay.classList.remove('opacity-0');
+        overlay.classList.remove('hidden', 'opacity-0');
     }
 }
 
@@ -94,11 +43,10 @@ async function handleLogin() {
     const errorEl = document.getElementById('auth-error');
     
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
     if (error) {
-        errorEl.innerText = "Zugriff verweigert";
+        errorEl.innerText = "Access Denied";
         errorEl.classList.remove('hidden');
-        if (navigator.vibrate) navigator.vibrate(50);
+        triggerHapticFeedback();
     } else {
         errorEl.classList.add('hidden');
         checkUser(); 
@@ -111,142 +59,138 @@ async function handleLogout() {
 }
 
 // ==========================================
-// 3. NAVIGATION (NEW)
+// 3. NAVIGATION (TABS)
 // ==========================================
 
 function switchTab(tabId) {
     const activeTab = document.getElementById(`tab-${tabId}`);
-    
-    if (!activeTab || !activeTab.classList.contains('hidden')) {
-        return;
-    }
+    if (!activeTab || !activeTab.classList.contains('hidden')) return;
 
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     activeTab.classList.remove('hidden');
     
     document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.toggle('text-purple-500', btn.id === `btn-${tabId}`);
-        btn.classList.toggle('text-zinc-500', btn.id !== `btn-${tabId}`);
+        const isActive = btn.id === `btn-${tabId}`;
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('text-[#8E8E93]', !isActive);
     });
-
-    if (navigator.vibrate) navigator.vibrate(5);
     window.scrollTo(0, 0);
 }
 
-
 // ==========================================
-// 4. DATEN LADEN
+// 4. DATEN LADEN & RENDERN
 // ==========================================
 
 let globalSnusData = []; 
 let globalUserCollection = {}; 
 
 async function loadDex() {
-    const grid = document.getElementById('dex-grid');
-    if (!grid) return;
-    
-    try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        
-        if (user) {
-            const { data: myCollection } = await supabaseClient
-                .from('user_collections')
-                .select('snus_id, collected_at, rating_taste, rating_smell, rating_bite, rating_drip, rating_visuals')
-                .eq('user_id', user.id);
-            
-            globalUserCollection = {};
-            if (myCollection) {
-                myCollection.forEach(item => {
-                    globalUserCollection[item.snus_id] = {
-                        date: item.collected_at,
-                        ratings: {
-                            taste: item.rating_taste || 5,
-                            smell: item.rating_smell || 5,
-                            bite: item.rating_bite || 5,
-                            drip: item.rating_drip || 5,
-                            visuals: item.rating_visuals || 5
-                        }
-                    };
-                });
-            }
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (user) {
+        const { data: myCol } = await supabaseClient.from('user_collections').select('*').eq('user_id', user.id);
+        globalUserCollection = {};
+        if (myCol) {
+            myCol.forEach(item => {
+                globalUserCollection[item.snus_id] = {
+                    date: item.collected_at,
+                    ratings: { 
+                        taste: item.rating_taste || 5, 
+                        smell: item.rating_smell || 5, 
+                        bite: item.rating_bite || 5, 
+                        drip: item.rating_drip || 5, 
+                        visuals: item.rating_visuals || 5 
+                    }
+                };
+            });
         }
+    }
 
-        const { data: snusItems, error } = await supabaseClient.from('snus_items').select('*').order('id', { ascending: true });
-        if (error) throw error;
-        
-        globalSnusData = snusItems; 
-        updateLivePerformance();
-        renderDexGrid(globalSnusData);
-    } catch (error) { console.error("Supabase-Fehler:", error); }
+    const { data: snusItems } = await supabaseClient.from('snus_items').select('*').order('id', { ascending: true });
+    globalSnusData = snusItems || []; 
+    updateLivePerformance();
+    renderDexGrid(globalSnusData);
+    loadTopSnusOfWeek();
+    
+    if (user) {
+        await loadUsageLogs(user.id);
+    }
 }
 
 function renderDexGrid(items) {
     const grid = document.getElementById('dex-grid');
-    if(!grid) return;
+    if (!grid) return;
     grid.innerHTML = ''; 
-
-    if (items.length === 0) {
-        grid.innerHTML = `<div class="col-span-3 text-center py-20 opacity-30 text-[10px] uppercase tracking-[0.2em]">Nichts gefunden 🧊</div>`;
-        return;
-    }
-
+    
     items.forEach(snus => {
         const isUnlocked = !!globalUserCollection[snus.id]; 
-        const rarityClass = (snus.rarity || 'common').toLowerCase(); 
-
-        const card = `
-            <div onclick="openSnusDetail(${snus.id})" class="dex-card ${isUnlocked ? 'unlocked rarity-' + rarityClass : 'locked'} relative flex flex-col items-center p-4 bg-zinc-900 border border-zinc-800 rounded-[2rem] transition-all active:scale-95 cursor-pointer">
-                <span class="absolute top-3 left-3 text-[10px] font-mono opacity-30">#${String(snus.id).padStart(3, '0')}</span>
+        grid.innerHTML += `
+            <div onclick="openSnusDetail(${snus.id})" class="relative flex flex-col items-center p-3 bg-[#1C1C1E] rounded-3xl transition-all active:scale-95 cursor-pointer shadow-sm border border-white/5 ${!isUnlocked ? 'opacity-40 grayscale' : ''}">
                 <div class="w-full aspect-square flex items-center justify-center p-2 mb-2">
-                    <img src="${GITHUB_BASE}${snus.image}" alt="${snus.name}" class="w-full h-full object-contain ${!isUnlocked ? 'brightness-0 opacity-40' : ''}" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=NO+IMG'">
+                    <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain drop-shadow-md" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
                 </div>
-                <h5 class="text-[0.75rem] font-bold uppercase tracking-tight text-center truncate w-full ${isUnlocked ? 'text-' + rarityClass : 'text-zinc-500'}">${snus.name}</h5>
-                <p class="text-[9px] text-zinc-500 mt-0.5 uppercase tracking-widest">${snus.nicotine} MG/G</p>
+                <h5 class="text-[12px] font-semibold text-center truncate w-full tracking-tight ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
             </div>
         `;
-        grid.innerHTML += card;
     });
 }
 
 function updateLivePerformance() {
-    let totalMg = 0, pouchCount = 0, latestSnusName = "Keine";
-
+    let totalMg = 0;
     const collectedItems = globalSnusData.filter(snus => !!globalUserCollection[snus.id]);
-    pouchCount = collectedItems.length;
-
-    if (pouchCount > 0) {
-        collectedItems.sort((a, b) => {
-            const dateA = globalUserCollection[a.id].date ? new Date(globalUserCollection[a.id].date) : new Date(0);
-            const dateB = globalUserCollection[b.id].date ? new Date(globalUserCollection[b.id].date) : new Date(0);
-            return dateB - dateA;
-        });
-        latestSnusName = collectedItems[0].name;
-    }
-
+    
+    collectedItems.sort((a, b) => new Date(globalUserCollection[b.id].date) - new Date(globalUserCollection[a.id].date));
     collectedItems.forEach(snus => totalMg += (snus.nicotine || 0));
 
     const flowEl = document.getElementById('stat-flow');
     const countEl = document.getElementById('stat-count');
-    const streakEl = document.getElementById('stat-streak');
-
     if(flowEl) flowEl.innerText = `${totalMg.toLocaleString()} MG`;
-    if(countEl) countEl.innerText = pouchCount;
-    if(streakEl) streakEl.innerText = latestSnusName;
+    if(countEl) countEl.innerText = collectedItems.length;
+
+    // Recent Scans List (Apple Grouped List Style)
+    const listEl = document.getElementById('latest-unlocks-list');
+    if(!listEl) return;
+    
+    listEl.innerHTML = '';
+    if(collectedItems.length === 0) {
+        listEl.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">No transactions yet.</div>';
+        return;
+    }
+
+    collectedItems.slice(0, 5).forEach(snus => {
+        const dateObj = new Date(globalUserCollection[snus.id].date);
+        const dateStr = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        
+        listEl.innerHTML += `
+            <div class="ios-list-item flex justify-between items-center py-3 border-b border-white/10 last:border-0 cursor-pointer active:bg-white/5 transition-colors" onclick="openSnusDetail(${snus.id})">
+                <div class="flex items-center gap-3 w-full">
+                    <div class="w-12 h-12 rounded-full overflow-hidden bg-[#2C2C2E] flex-shrink-0 border border-white/10">
+                        <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">${snus.name}</h4>
+                        <p class="text-[13px] text-[#8E8E93] font-medium mt-0.5">${dateStr}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 pl-3 flex-shrink-0">
+                    <span class="text-[17px] font-semibold text-white tracking-tight">${snus.nicotine}mg</span>
+                    <svg class="w-5 h-5 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                </div>
+            </div>
+        `;
+    });
 }
 
 // ==========================================
-// 5. HELPER, UI & RATING ENGINE
+// 5. RATING ENGINE & MODAL LOGIK
 // ==========================================
 
-// Globale Variable für temporäre Ratings
 let tempRatings = { taste: 5, smell: 5, bite: 5, drip: 5, visuals: 5 };
+let currentSelectedSnusId = null; 
 
 function initRatingRows() {
-    const categories = ['taste', 'smell', 'bite', 'drip', 'visuals'];
-    categories.forEach(cat => {
+    ['taste', 'smell', 'bite', 'drip', 'visuals'].forEach(cat => {
         const row = document.getElementById(`row-${cat}`);
-        if(!row) return; // Airbag: Falls das HTML fehlt, crasht es hier nicht!
-        
+        if(!row) return;
         row.innerHTML = `<div class="rating-pill" id="pill-${cat}"></div>`;
         for(let i = 1; i <= 10; i++) {
             const btn = document.createElement('div');
@@ -255,169 +199,45 @@ function initRatingRows() {
             btn.onclick = () => setRating(cat, i);
             row.appendChild(btn);
         }
-        updatePill(cat, 5);
-        tempRatings[cat] = 5; 
+        updatePill(cat, 5); tempRatings[cat] = 5; 
     });
 }
 
 function setRating(category, value) {
     tempRatings[category] = value;
     updatePill(category, value);
-    
     const row = document.getElementById(`row-${category}`);
-    if(row) {
-        row.querySelectorAll('.rating-btn').forEach((btn, idx) => {
-            btn.className = `rating-btn ${idx + 1 === value ? 'active' : 'inactive'}`;
-        });
-        row.parentElement.querySelector('.rating-val').innerText = `${value}/10`;
-    }
-    if (navigator.vibrate) navigator.vibrate(5);
+    row.querySelectorAll('.rating-btn').forEach((btn, idx) => {
+        btn.className = `rating-btn ${idx + 1 === value ? 'active' : 'inactive'}`;
+    });
+    row.parentElement.querySelector('.rating-val').innerText = `${value}/10`;
+    triggerHapticFeedback();
 }
 
-function updatePill(category, value) {
-    const pill = document.getElementById(`pill-${category}`);
-    if(pill) pill.style.transform = `translateX(${(value - 1) * 100}%)`;
+function updatePill(cat, val) { 
+    document.getElementById(`pill-${cat}`).style.transform = `translateX(${(val - 1) * 100}%)`; 
 }
 
-// Die Airbag-Versionen der View-Umschalter
-function showInfoView() {
-    hideAllViews();
-    document.getElementById('modal-view-info').classList.remove('hidden');
-}
-
-function showRatingView() {
-    hideAllViews();
-    document.getElementById('modal-view-rating').classList.remove('hidden');
-    if (navigator.vibrate) navigator.vibrate(8);
-}
+function showInfoView() { hideAllViews(); document.getElementById('modal-view-info').classList.remove('hidden'); }
+function showRatingView() { hideAllViews(); document.getElementById('modal-view-rating').classList.remove('hidden'); }
 
 function showSavedRating() {
     hideAllViews();
     document.getElementById('modal-view-saved-rating').classList.remove('hidden');
-
-    // DATEN AIRBAG: Holt das gespeicherte Objekt
-    let userData = globalUserCollection[currentSelectedSnusId];
+    let ratings = globalUserCollection[currentSelectedSnusId]?.ratings || { taste: 5, smell: 5, bite: 5, drip: 5, visuals: 5 };
     
-    // Standard-Werte (Falls alter Snus ohne Rating gespeichert wurde)
-    let ratings = { taste: 5, smell: 5, bite: 5, drip: 5, visuals: 5 };
-    
-    // Wenn es ein echtes Objekt ist und Ratings hat, nehmen wir die echten Daten
-    if (userData && typeof userData === 'object' && userData.ratings) {
-        ratings = userData.ratings;
-    }
-
-    const rContainer = document.getElementById('saved-rating-bars');
-    if (!rContainer) return;
-    
-    // HTML für die Balken generieren
     const createBar = (label, val) => `
-        <div class="mb-3">
-            <div class="flex justify-between text-[10px] uppercase tracking-widest mb-1">
-                <span class="text-zinc-400">${label}</span>
-                <span class="text-purple-400 font-bold">${val}/10</span>
-            </div>
-            <div class="w-full bg-zinc-800 rounded-full h-1.5">
-                <div class="bg-purple-500 h-1.5 rounded-full" style="width: ${val * 10}%"></div>
-            </div>
-        </div>
-    `;
-
-    // HTML in die leere Box schießen
-    rContainer.innerHTML = 
-        createBar("Geschmack", ratings.taste) +
-        createBar("Geruch", ratings.smell) +
-        createBar("Bite", ratings.bite) +
-        createBar("Drip", ratings.drip) +
+        <div>
+            <div class="flex justify-between text-[13px] text-[#8E8E93] mb-1"><span>${label}</span><span class="text-white">${val}/10</span></div>
+            <div class="w-full bg-black rounded-full h-1.5"><div class="bg-white h-1.5 rounded-full" style="width: ${val * 10}%"></div></div>
+        </div>`;
+    
+    document.getElementById('saved-rating-bars').innerHTML = 
+        createBar("Taste", ratings.taste) + 
+        createBar("Smell", ratings.smell) + 
+        createBar("Bite", ratings.bite) + 
+        createBar("Drip", ratings.drip) + 
         createBar("Visuals", ratings.visuals);
-}
-
-// ... Admin und Profil Code bleibt unangetastet ...
-function setupProfile(user) {
-    document.getElementById('profile-email').innerText = user.email.split('@')[0]; 
-    document.getElementById('user-initials').innerText = user.email.substring(0, 1).toUpperCase();
-    if (user.email === 'tarayannorman@gmail.com') document.getElementById('admin-panel')?.classList.remove('hidden');
-    loadUserStats(user.id);
-}
-
-async function loadUserStats(userId) {
-    const { count } = await supabaseClient.from('user_collections').select('*', { count: 'exact', head: true }).eq('user_id', userId);
-    document.getElementById('score').innerText = (count ? count * 100 : 0).toLocaleString();
-    document.getElementById('pouch-count').innerText = count || 0;
-}
-
-// ==========================================
-// 9. POP-UP LOGIK (MODAL) & SAMMELN
-// ==========================================
-
-let currentSelectedSnusId = null; 
-
-function openSnusDetail(id) {
-    const snus = globalSnusData.find(s => s.id === id);
-    if (!snus) return;
-
-    currentSelectedSnusId = id; 
-
-    document.getElementById('modal-id').innerText = `#${String(snus.id).padStart(3, '0')}`;
-    document.getElementById('modal-name').innerText = snus.name;
-    document.getElementById('modal-nicotine').innerText = `${snus.nicotine} MG/G`;
-    document.getElementById('modal-image').src = `${GITHUB_BASE}${snus.image}`;
-    document.getElementById('modal-rarity-text').innerText = snus.rarity || 'Common';
-
-    const flavorContainer = document.getElementById('modal-flavors');
-    if(flavorContainer) {
-        flavorContainer.innerHTML = ''; 
-        if (snus.flavor && Array.isArray(snus.flavor)) {
-            snus.flavor.forEach(f => {
-                flavorContainer.innerHTML += `<span class="px-3 py-1 bg-zinc-800 border border-zinc-700 rounded-full text-[9px] uppercase tracking-widest text-zinc-400">${f}</span>`;
-            });
-        }
-    }
-
-    const rarityClass = snus.rarity ? snus.rarity.toLowerCase() : 'common';
-    document.getElementById('modal-name').className = `text-3xl font-black uppercase tracking-tighter mb-1 text-center text-${rarityClass}`; 
-    document.getElementById('modal-rarity-dot').className = `w-2 h-2 rounded-full shadow-[0_0_10px_currentColor] bg-${rarityClass}`; 
-
-    // UI Reset und Slider aufbauen
-    showInfoView();
-    initRatingRows();
-
-    const btn = document.getElementById('start-collect-btn');
-    const collectedStatus = document.getElementById('modal-collected-status');
-    const dateText = document.getElementById('modal-unlocked-date');
-
-    if (globalUserCollection[id]) {
-        if(btn) btn.classList.add('hidden');
-        if(collectedStatus) collectedStatus.classList.remove('hidden');
-        
-        const dateObj = new Date(globalUserCollection[id].date || new Date());
-        if(dateText) dateText.innerText = `UNLOCKED ON ${dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
-    } else {
-        if(btn) btn.classList.remove('hidden');
-        if(collectedStatus) collectedStatus.classList.add('hidden');
-    }
-
-    const modal = document.getElementById('snus-modal');
-    if (!modal) return; 
-
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        document.getElementById('modal-backdrop')?.classList.add('active'); 
-        document.getElementById('snus-modal-card')?.classList.remove('translate-y-full'); 
-    }, 10);
-    
-    if (navigator.vibrate) navigator.vibrate(10);
-}
-
-function closeSnusDetail() {
-    document.getElementById('modal-backdrop')?.classList.remove('active'); 
-    document.getElementById('snus-modal-card')?.classList.add('translate-y-full'); 
-    
-    // Status und Rating View für nächstes Mal zurücksetzen
-    setTimeout(() => {
-        document.getElementById('snus-modal')?.classList.add('hidden');
-        document.getElementById('modal-view-saved-rating')?.classList.add('hidden');
-        document.getElementById('modal-view-info')?.classList.remove('hidden');
-    }, 400);
 }
 
 function hideAllViews() {
@@ -426,90 +246,387 @@ function hideAllViews() {
     document.getElementById('modal-view-saved-rating').classList.add('hidden');
 }
 
-async function collectCurrentSnus() {
-    if (!currentSelectedSnusId) return;
+function openSnusDetail(id) {
+    const snus = globalSnusData.find(s => s.id === id);
+    if (!snus) return;
+    currentSelectedSnusId = id; 
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return alert("Du musst eingeloggt sein!");
+    document.getElementById('modal-name').innerText = snus.name;
+    document.getElementById('modal-nicotine').innerText = `${snus.nicotine} MG/G • ${snus.rarity || 'Common'}`;
+    document.getElementById('modal-image').src = `${GITHUB_BASE}${snus.image}`;
 
-    const btn = document.getElementById('final-collect-btn');
-    if(btn) { btn.innerText = "SAVING..."; btn.disabled = true; }
+    showInfoView(); 
+    initRatingRows();
 
-    // Zieht die Daten jetzt aus dem JS Objekt statt aus den HTML Slidern
-    const { data, error } = await supabaseClient
-        .from('user_collections')
-        .insert([{ 
-            user_id: user.id, 
-            snus_id: currentSelectedSnusId,
-            rating_taste: tempRatings.taste,
-            rating_smell: tempRatings.smell,
-            rating_bite: tempRatings.bite,
-            rating_drip: tempRatings.drip,
-            rating_visuals: tempRatings.visuals
-        }])
-        .select()
-        .single();
+    const isUnlocked = globalUserCollection[id];
+    document.getElementById('start-collect-btn').classList.toggle('hidden', !!isUnlocked);
+    document.getElementById('modal-collected-status').classList.toggle('hidden', !isUnlocked);
 
-    if (error) {
-        console.error("Fehler:", error);
-        alert("Konnte nicht hinzugefügt werden.");
-        if(btn) { btn.innerText = "COLLECT & SAVE"; btn.disabled = false; }
-        return;
+    if (isUnlocked) {
+        const dateObj = new Date(isUnlocked.date);
+        document.getElementById('modal-unlocked-date').innerText = `Added on ${dateObj.toLocaleDateString()}`;
     }
 
-    if (navigator.vibrate) navigator.vibrate([50, 50, 100]); 
-    
-    globalUserCollection[currentSelectedSnusId] = {
-        date: data ? data.collected_at : new Date().toISOString(),
-        ratings: { ...tempRatings }
-    };
-    
-    await loadUserStats(user.id);
-    updateLivePerformance(); 
-    filterDex(); 
-
-    closeSnusDetail();
-    
+    document.getElementById('snus-modal').classList.remove('hidden');
     setTimeout(() => {
-        if(btn) { btn.innerText = "COLLECT & SAVE"; btn.disabled = false; }
-    }, 500);
+        document.getElementById('modal-backdrop').classList.add('active'); 
+        document.getElementById('snus-modal-card').classList.remove('translate-y-full'); 
+    }, 10);
+    triggerHapticFeedback();
+}
+
+function closeSnusDetail() {
+    document.getElementById('modal-backdrop').classList.remove('active'); 
+    document.getElementById('snus-modal-card').classList.add('translate-y-full'); 
+    setTimeout(() => {
+        document.getElementById('snus-modal').classList.add('hidden');
+        hideAllViews(); document.getElementById('modal-view-info').classList.remove('hidden');
+    }, 400);
 }
 
 // ==========================================
-// 10. SUCHE & INITIALISIERUNG
+// 6. DB INSERT (BUG GEFIXT)
 // ==========================================
+
+async function collectCurrentSnus() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+    
+    const btn = document.getElementById('final-collect-btn');
+    btn.innerText = "Processing..."; btn.disabled = true;
+
+    // FIX: Explizite Zuordnung der Tabellen-Spalten zu den JS Variablen
+    const { data, error } = await supabaseClient.from('user_collections').insert([{ 
+        user_id: user.id, 
+        snus_id: currentSelectedSnusId, 
+        rating_taste: tempRatings.taste,
+        rating_smell: tempRatings.smell,
+        rating_bite: tempRatings.bite,
+        rating_drip: tempRatings.drip,
+        rating_visuals: tempRatings.visuals
+    }]).select().single();
+
+    if (!error) {
+        globalUserCollection[currentSelectedSnusId] = { date: data.collected_at, ratings: { ...tempRatings } };
+        
+        await startNewCan(currentSelectedSnusId);
+
+        await loadUserStats(user.id); 
+        updateLivePerformance(); 
+        renderDexGrid(globalSnusData);
+        closeSnusDetail();
+    } else {
+        alert("Fehler beim Speichern: " + error.message);
+    }
+    
+    setTimeout(() => { btn.innerText = "Confirm"; btn.disabled = false; }, 500);
+}
+
+// ==========================================
+// 7. ADMIN PANEL (VOLLSTÄNDIG)
+// ==========================================
+
+async function adminAddSnus() {
+    const name = document.getElementById('admin-name').value;
+    const nicotine = document.getElementById('admin-nicotine').value;
+    const rarity = document.getElementById('admin-rarity').value;
+    const flavorsRaw = document.getElementById('admin-flavor').value;
+    const barcode = document.getElementById('admin-barcode').value;
+    const image = document.getElementById('admin-image').value;
+
+    if (!name || !nicotine || !image) {
+        return alert("Bitte Name, Nicotine und Image angeben!");
+    }
+
+    // Flavors formatieren (Komma-getrennt zu Array)
+    const flavorArray = flavorsRaw ? flavorsRaw.split(',').map(s => s.trim()).filter(s => s) : [];
+
+    const { data, error } = await supabaseClient.from('snus_items').insert([{
+        name: name,
+        nicotine: parseInt(nicotine),
+        rarity: rarity,
+        flavor: flavorArray,
+        barcode: barcode || null,
+        image: image
+    }]);
+
+    if (error) {
+        alert("Fehler beim Hinzufügen: " + error.message);
+    } else {
+        alert("Snus erfolgreich hinzugefügt!");
+        // Felder leeren
+        document.getElementById('admin-name').value = '';
+        document.getElementById('admin-nicotine').value = '';
+        document.getElementById('admin-flavor').value = '';
+        document.getElementById('admin-barcode').value = '';
+        document.getElementById('admin-image').value = '';
+        // Dex direkt neu laden, damit der neue Snus sichtbar ist
+        loadDex();
+    }
+}
+
+// ==========================================
+// 8. HELPER & INITIALISIERUNG
+// ==========================================
+
+async function loadUserStats(userId) {
+    const { count } = await supabaseClient.from('user_collections').select('*', { count: 'exact', head: true }).eq('user_id', userId);
+    const scoreEl = document.getElementById('score');
+    const pouchEl = document.getElementById('pouch-count');
+    if(scoreEl) scoreEl.innerText = count * 100;
+    if(pouchEl) pouchEl.innerText = count || 0;
+}
 
 function filterDex() {
-    const searchInput = document.getElementById('dex-search');
-    if (!searchInput) return;
-
-    const searchTerm = searchInput.value.toLowerCase().trim();
-    if (!globalSnusData || globalSnusData.length === 0) return;
-
-    const filteredItems = globalSnusData.filter(snus => {
-        const nameMatch = snus.name && snus.name.toLowerCase().includes(searchTerm);
-        const flavorMatch = snus.flavor && Array.isArray(snus.flavor) && 
-                            snus.flavor.some(f => f.toLowerCase().includes(searchTerm));
-        return nameMatch || flavorMatch;
-    });
-
-    renderDexGrid(filteredItems);
+    const term = document.getElementById('dex-search').value.toLowerCase();
+    renderDexGrid(globalSnusData.filter(s => s.name?.toLowerCase().includes(term) || s.flavor?.some(f => f.toLowerCase().includes(term))));
 }
+
+function setupProfile(user) {
+    const emailEl = document.getElementById('profile-email');
+    const initialsEl = document.getElementById('user-initials');
+    const adminEl = document.getElementById('admin-panel');
+    
+    if(emailEl) emailEl.innerText = user.email; 
+    if(initialsEl) initialsEl.innerText = user.email[0].toUpperCase();
+    if (user.email === 'tarayannorman@gmail.com' && adminEl) {
+        adminEl.classList.remove('hidden');
+    }
+    loadUserStats(user.id);
+}
+
+function triggerHapticFeedback() {
+    if (window.webkit && window.webkit.messageHandlers.hapticHandler) window.webkit.messageHandlers.hapticHandler.postMessage("vibrate");
+    else if (navigator.vibrate) navigator.vibrate(15);
+}
+
+function handleLoginWrapper() { triggerHapticFeedback(); handleLogin(); }
+function switchTabWrapper(tabId) { triggerHapticFeedback(); switchTab(tabId); }
 
 document.addEventListener('DOMContentLoaded', () => checkUser());
 
-function triggerHapticFeedback() {
-    if (window.webkit && window.webkit.messageHandlers.hapticHandler) {
-        window.webkit.messageHandlers.hapticHandler.postMessage("vibrate");
+// ==========================================
+// 9. TOP SNUS OF THE WEEK & SOCIAL
+// ==========================================
+
+async function loadTopSnusOfWeek() {
+    const { data: collections, error } = await supabaseClient
+        .from('user_collections')
+        .select('snus_id, rating_taste, rating_smell, rating_bite, rating_drip, rating_visuals');
+
+    if (error || !collections || collections.length === 0) return;
+
+    const stats = {};
+    collections.forEach(item => {
+        if (!stats[item.snus_id]) {
+            stats[item.snus_id] = { count: 0, taste: 0, smell: 0, bite: 0, drip: 0, visuals: 0 };
+        }
+        stats[item.snus_id].count++;
+        stats[item.snus_id].taste += item.rating_taste || 5;
+        stats[item.snus_id].smell += item.rating_smell || 5;
+        stats[item.snus_id].bite += item.rating_bite || 5;
+        stats[item.snus_id].drip += item.rating_drip || 5;
+        stats[item.snus_id].visuals += item.rating_visuals || 5;
+    });
+
+    let topSnusId = null;
+    let maxCount = 0;
+    for (const [id, stat] of Object.entries(stats)) {
+        if (stat.count > maxCount) {
+            maxCount = stat.count;
+            topSnusId = id;
+        }
+    }
+
+    if (!topSnusId) return;
+
+    const topStat = stats[topSnusId];
+    const avgRatings = {
+        taste: (topStat.taste / maxCount).toFixed(1),
+        smell: (topStat.smell / maxCount).toFixed(1),
+        bite: (topStat.bite / maxCount).toFixed(1),
+        drip: (topStat.drip / maxCount).toFixed(1),
+        visuals: (topStat.visuals / maxCount).toFixed(1)
+    };
+    const overallAvg = (((topStat.taste + topStat.smell + topStat.bite + topStat.drip + topStat.visuals) / 5) / maxCount).toFixed(1);
+
+    const snusInfo = globalSnusData.find(s => s.id == topSnusId);
+    if (!snusInfo) return;
+
+    renderTopSnus(snusInfo, avgRatings, maxCount, overallAvg);
+}
+
+function renderTopSnus(snus, ratings, count, overall) {
+    const container = document.getElementById('top-snus-container');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="bg-[#1C1C1E] rounded-3xl p-6 shadow-lg relative overflow-hidden flex flex-col items-center border border-white/10" onclick="openSnusDetail(${snus.id})">
+            <div class="absolute top-4 left-4 bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-md">
+                <span class="text-[12px] font-semibold text-white tracking-wide">🏆 TOP OF THE WEEK</span>
+            </div>
+            <div class="absolute top-4 right-4">
+                 <span class="text-[12px] font-medium text-[#8E8E93] bg-black/30 px-2 py-1 rounded-lg">${count} Scans</span>
+            </div>
+            
+            <div class="w-32 h-32 mt-12 mb-4 rounded-full overflow-hidden bg-[#2C2C2E] border-4 border-white/5 shadow-2xl flex-shrink-0">
+                <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
+            </div>
+            
+            <h3 class="text-[22px] font-bold text-white tracking-tight">${snus.name}</h3>
+            <p class="text-[15px] text-[#8E8E93] mt-1 font-medium">${snus.nicotine} MG/G • ${snus.rarity || 'Common'}</p>
+            
+            <div class="w-full bg-black/40 rounded-2xl p-5 mt-6 border border-white/5">
+                <div class="flex justify-between items-end mb-4">
+                    <span class="text-[14px] font-semibold text-white">Community Rating</span>
+                    <span class="text-2xl font-bold text-white">${overall}<span class="text-[14px] text-[#8E8E93] font-medium">/10</span></span>
+                </div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+                    ${createAvgBar('Taste', ratings.taste)}
+                    ${createAvgBar('Smell', ratings.smell)}
+                    ${createAvgBar('Bite', ratings.bite)}
+                    ${createAvgBar('Drip', ratings.drip)}
+                    <div class="col-span-2 mt-1">${createAvgBar('Visuals', ratings.visuals)}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ==========================================
+// 10. USAGE LOGS & CAN TRACKING
+// ==========================================
+
+let globalActiveCan = null;
+let globalUsageLogs = [];
+
+async function loadUsageLogs(userId) {
+    const { data, error } = await supabaseClient
+        .from('usage_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('opened_at', { ascending: false });
+    
+    if (!error && data) {
+        globalUsageLogs = data;
+        globalActiveCan = data.find(log => log.is_active === true) || null;
+        updateCanUI();
+        calculateUsageStats();
     }
 }
 
-function handleLoginWrapper() {
-    triggerHapticFeedback();
-    handleLogin();
+async function startNewCan(snusId) {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return false;
+
+    if (globalActiveCan) {
+        const replace = confirm("You currently have an active can. Finish it and start this new one?");
+        if (!replace) return false;
+        await finishCurrentCan(false); 
+    }
+
+    const { data, error } = await supabaseClient.from('usage_logs').insert([{
+        user_id: user.id,
+        snus_id: snusId,
+        is_active: true
+    }]).select().single();
+
+    if (!error && data) {
+        globalActiveCan = data;
+        globalUsageLogs.unshift(data);
+        updateCanUI();
+        triggerHapticFeedback();
+        return true;
+    }
+    return false;
 }
 
-function switchTabWrapper(tabId) {
-    triggerHapticFeedback();
-    switchTab(tabId);
+async function startNewCanFromModal() {
+    if (!currentSelectedSnusId) return;
+    const success = await startNewCan(currentSelectedSnusId);
+    if (success) {
+        closeSnusDetail();
+        switchTabWrapper('home');
+    }
+}
+
+async function finishCurrentCan(updateUI = true) {
+    if (!globalActiveCan) return;
+
+    const { error } = await supabaseClient.from('usage_logs')
+        .update({ finished_at: new Date().toISOString(), is_active: false })
+        .eq('id', globalActiveCan.id);
+
+    if (!error) {
+        globalActiveCan.finished_at = new Date().toISOString();
+        globalActiveCan.is_active = false;
+        globalActiveCan = null;
+        triggerHapticFeedback();
+        if (updateUI) {
+            updateCanUI();
+            calculateUsageStats();
+        }
+    }
+}
+
+function updateCanUI() {
+    const btnContainer = document.getElementById('can-empty-container');
+    if (!btnContainer) return;
+
+    if (globalActiveCan) {
+        const snus = globalSnusData.find(s => s.id == globalActiveCan.snus_id);
+        document.getElementById('active-can-name').innerText = snus ? snus.name : 'Unknown Snus';
+        btnContainer.classList.remove('hidden');
+    } else {
+        btnContainer.classList.add('hidden');
+    }
+}
+
+function calculateUsageStats() {
+    const finishedCans = globalUsageLogs.filter(log => !log.is_active && log.finished_at).slice(0, 5);
+    let totalPouches = 0;
+    let totalMg = 0;
+    let totalDays = 0;
+
+    const pouchesEl = document.getElementById('stat-avg-pouches');
+    const mgEl = document.getElementById('stat-avg-mg');
+    if (!pouchesEl || !mgEl) return;
+
+    if (finishedCans.length > 0) {
+        finishedCans.forEach(can => {
+            const snus = globalSnusData.find(s => s.id == can.snus_id);
+            const nicotine = snus ? (snus.nicotine || 0) : 0;
+            const canMg = nicotine * 20; 
+
+            const openDate = new Date(can.opened_at);
+            const closeDate = new Date(can.finished_at);
+            let days = (closeDate - openDate) / (1000 * 60 * 60 * 24);
+            if (days < 1) days = 1; 
+
+            totalPouches += 20;
+            totalMg += canMg;
+            totalDays += days;
+        });
+
+        pouchesEl.innerText = (totalPouches / totalDays).toFixed(1);
+        mgEl.innerText = (totalMg / totalDays).toFixed(0) + ' MG';
+    } else {
+        pouchesEl.innerText = '0';
+        mgEl.innerText = '0 MG';
+    }
+}
+
+function createAvgBar(label, value) {
+    const percentage = (value / 10) * 100;
+    return `
+        <div>
+            <div class="flex justify-between text-[12px] text-[#8E8E93] mb-1.5 font-medium">
+                <span>${label}</span>
+                <span class="text-white">${value}</span>
+            </div>
+            <div class="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+                <div class="bg-white h-full rounded-full" style="width: ${percentage}%"></div>
+            </div>
+        </div>
+    `;
 }

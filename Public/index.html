@@ -3,375 +3,244 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta property="og:image" content="https://raw.githubusercontent.com/HazeCCS/Snusdex-Assets/main/assets/CircleLOGO.png">
-    <meta property="og:type" content="website" />
-    <meta property="og:description" content="SNUSDEX® - The Ultimate Snus Collection App. Track, Collect & Compete. Your snus, your stats, your community. Join the revolution!" />
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/HazeCCS/Snusdex-Assets/main/assets/LogoIOS.png">
-
     <title>SNUSDEX</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
-        
-        :root {
-            --common: #3f3f46; --uncommon: #22c55e; --rare: #3b82f6;
-            --epic: #a855f7; --legendary: #f59e0b; --exotic: #ec4899;
-            --mythic: #00ffea;
+        /* Apple System Font (SF Pro) erzwingen */
+        @supports (font: -apple-system-body) {
+            body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
         }
-
         body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: black;
-            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #000000;
+            color: #FFFFFF;
             overscroll-behavior: none;
         }
 
-        .hidden { display: none !important; }
+        /* HIG Colors */
+        :root {
+            --ios-bg: #000000;
+            --ios-card: #1C1C1E;
+            --ios-separator: rgba(84, 84, 88, 0.65);
+            --ios-gray: #8E8E93;
+            --common: #8E8E93; --uncommon: #34C759; --rare: #0A84FF;
+            --epic: #BF5AF2; --legendary: #FF9F0A; --exotic: #FF375F; --mythic: #64D2FF;
+        }
 
-        /* Scrollbars global verstecken */
-        * { -ms-overflow-style: none; scrollbar-width: none; }
+        .hidden { display: none !important; }
+        * { -ms-overflow-style: none; scrollbar-width: none; -webkit-tap-highlight-color: transparent; }
         *::-webkit-scrollbar { display: none; }
 
-        /* Tab Fade Animation */
+        /* Smooth View Transitions */
+        .tab-content { animation: tabFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
         @keyframes tabFadeIn {
-            from { opacity: 0; transform: translateY(8px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
         }
-        .tab-content { animation: tabFadeIn 0.25s ease-out forwards; }
-
-        /* Modal Hintergrund (Blur) */
-        #modal-backdrop {
-            transition: opacity 0.4s ease-out, backdrop-filter 0.4s ease-out;
-            opacity: 0; backdrop-filter: blur(0px); pointer-events: none;
-        }
-        #modal-backdrop.active { opacity: 1; backdrop-filter: blur(12px); pointer-events: auto; }
-
-        /* Modal Card Core (Hier ist der Fix für das Stretching!) */
-        #snus-modal-card {
-            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-            max-height: 85vh; 
-            overflow-y: auto; 
-            overflow-x: hidden; 
-            z-index: 999;
-            box-shadow: 0 -20px 60px -10px rgba(0, 0, 0, 0.8);
-        }
-
-        /* Die neue softe Fade-Animation für die 3 Ansichten */
-        .fade-view {
-            animation: fadeViewIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        }
+        .fade-view { animation: fadeViewIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
         @keyframes fadeViewIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Rating System (Die Pille) */
+        /* Apple Collector Card Styling */
+        .collector-main-card {
+            background: linear-gradient(135deg, #2C2C2E 0%, #1C1C1E 100%);
+            box-shadow: 0 10px 40px -10px rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* iOS Grouped Lists */
+        .ios-list-group {
+            background-color: var(--ios-card);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        .ios-list-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px;
+            position: relative;
+        }
+        .ios-list-item:not(:last-child)::after {
+            content: ''; position: absolute; bottom: 0; left: 60px; right: 0;
+            height: 0.5px; background-color: var(--ios-separator);
+        }
+
+        /* Modal Background & Card (Apple Bottom Sheet) */
+        #modal-backdrop {
+            transition: opacity 0.4s ease, backdrop-filter 0.4s ease;
+            opacity: 0; backdrop-filter: blur(0px); pointer-events: none;
+        }
+        #modal-backdrop.active { opacity: 1; backdrop-filter: blur(10px); pointer-events: auto; }
+        
+        #snus-modal-card {
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+            background-color: var(--ios-card);
+            max-height: 90vh; overflow-y: auto; z-index: 999;
+        }
+
+        /* Rating System (Monochrome White HIG) */
         .rating-row {
             display: flex; justify-content: space-between;
-            background: rgba(39, 39, 42, 0.5); border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.1); border-radius: 9999px;
             padding: 4px; position: relative; user-select: none;
         }
         .rating-pill {
             position: absolute; top: 4px; bottom: 4px; left: 4px;
             width: calc((100% - 8px) / 10);
-            background: #a855f7; border-radius: 9999px;
+            background: #FFFFFF; border-radius: 9999px;
             transition: transform 0.35s cubic-bezier(0.65, 0, 0.35, 1); 
-            z-index: 0; box-shadow: 0 0 15px 1px rgba(168, 85, 247, 0.6);
+            z-index: 0; box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
         }
         .rating-btn {
             width: 10%; aspect-ratio: 1/1;
             display: flex; align-items: center; justify-content: center;
-            font-size: 11px; font-weight: 800; z-index: 10; cursor: pointer;
+            font-size: 11px; font-weight: 700; z-index: 10; cursor: pointer;
             transition: color 0.2s;
         }
-        .rating-btn.active { color: white; }
-        .rating-btn.inactive { color: #52525b; }
-
-        /* Seltenheit Farben */
-        .text-common { color: var(--common); } .text-uncommon { color: var(--uncommon); }
-        .text-rare { color: var(--rare); } .text-epic { color: var(--epic); }
-        .text-legendary { color: var(--legendary); } .text-exotic { color: var(--exotic); }
-        .text-mythic { color: var(--mythic); text-shadow: 0 0 15px var(--mythic); }
-        .bg-common { background-color: var(--common); color: var(--common); }
-        .bg-uncommon { background-color: var(--uncommon); color: var(--uncommon); }
-        .bg-rare { background-color: var(--rare); color: var(--rare); }
-        .bg-epic { background-color: var(--epic); color: var(--epic); }
-        .bg-legendary { background-color: var(--legendary); color: var(--legendary); }
-        .bg-exotic { background-color: var(--exotic); color: var(--exotic); }
-        .bg-mythic { background-color: var(--mythic); color: var(--mythic); }
-        
-        /* Dex Cards */
-        .dex-card { @apply relative flex flex-col items-center p-3 rounded-[1.8rem] bg-zinc-900/50 border border-zinc-800 transition-all duration-300; }
-        .dex-card.locked { @apply opacity-30 border-dashed; filter: grayscale(1) brightness(0.5); }
-        .dex-card.unlocked.rarity-common { border-color: var(--common); box-shadow: 0 10px 30px -10px rgba(63, 63, 70, 0.3); }
-        .dex-card.unlocked.rarity-uncommon { border-color: var(--uncommon); box-shadow: 0 10px 30px -10px rgba(21, 211, 100, 0.4); }
-        .dex-card.unlocked.rarity-rare { border-color: var(--rare); box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.4); }
-        .dex-card.unlocked.rarity-epic { border-color: var(--epic); box-shadow: 0 10px 30px -10px rgba(168, 85, 247, 0.4); }
-        .dex-card.unlocked.rarity-exotic { border-color: var(--exotic); box-shadow: 0 10px 30px -10px rgba(236, 72, 153, 0.4); }
-        .dex-card.unlocked.rarity-legendary { border-color: var(--legendary); box-shadow: 0 10px 30px -10px rgba(245, 158, 11, 0.4); }
-        .dex-card.unlocked.rarity-mythic { border-color: var(--mythic); box-shadow: 0 10px 30px -10px rgba(0, 255, 234, 0.4); }
-    
-        /* 1. CAROUSEL CONTAINER (Links bündig & Clean) */
-        #stats-carousel {
-            display: flex;
-            overflow-x: auto;
-            scroll-snap-type: x mandatory;
-            
-            /* Padding links passend zu deinem restlichen Content (meist 24px bis 32px) */
-            padding: 30px 24px; 
-            
-            /* Verhindert das Abschneiden des Glows nach oben/unten */
-            -webkit-overflow-scrolling: touch;
-            align-items: center;
-            gap: 12px; /* Fester Abstand zwischen den Karten */
-        }
-
-        /* 2. STATS CARD BASE (Start-Position) */
-        .stats-card {
-            opacity: 0.4; 
-            transform: scale(0.95); /* Nur minimal kleiner im Hintergrund */
-            filter: blur(1px);
-            transition: all 0.4s ease-out;
-            background: #18181b !important;
-            border: 1px solid #27272a !important;
-            color: #52525b !important;
-            flex-shrink: 0;
-            
-            /* WICHTIG: Karte rastet jetzt links am Rand ein! */
-            scroll-snap-align: start; 
-            
-            /* Breite der Karten festlegen, damit sie nicht springen */
-            width: 280px; 
-        }
-
-        /* 3. STATS CARD ACTIVE (Dezent & Edel) */
-        .stats-card.active {
-            opacity: 1 !important; 
-            transform: scale(1) !important;
-            filter: blur(0px) !important;
-            
-            /* Dein Gradient & Glow */
-            background: linear-gradient(135deg, #ffffff 0%, #f3e8ff 100%) !important;
-            color: #000000 !important;
-            border-color: transparent !important;
-            
-            /* Glow etwas dezenter nach links gerichtet */
-            box-shadow: 10px 10px 40px -10px rgba(168, 85, 247, 0.3) !important;
-        }
+        .rating-btn.active { color: #000000; }
+        .rating-btn.inactive { color: var(--ios-gray); }
     </style>
 </head>
-<body class="pb-32">
+<body class="pb-24">
 
     <div id="auth-overlay" class="fixed inset-0 z-[999] bg-black flex items-center justify-center p-6 transition-opacity duration-500">
-        <div class="w-full max-w-sm bg-zinc-900/50 backdrop-blur-2xl border border-zinc-800 p-8 rounded-[2.5rem] shadow-2xl">
+        <div class="w-full max-w-sm bg-[#1C1C1E] p-8 rounded-[32px] shadow-2xl border border-white/10">
             <div class="mb-8 text-center">
-                <h2 class="text-2xl font-bold tracking-tighter text-white">SNUSDEX® <span class="text-purple-500 text-sm">DEV</span></h2>
-                <p class="text-zinc-500 text-[10px] uppercase tracking-widest mt-2">Work in Progress • Restricted Access</p>
+                <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-black" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                </div>
+                <h2 class="text-2xl font-semibold tracking-tight text-white">Snusdex Elite</h2>
             </div>
-            
             <div class="space-y-4">
-                <input type="email" id="auth-email" placeholder="Email" class="w-full bg-black border border-zinc-800 rounded-2xl px-5 py-4 text-sm focus:border-purple-500 outline-none transition-all">
-                <input type="password" id="auth-password" placeholder="Passwort" class="w-full bg-black border border-zinc-800 rounded-2xl px-5 py-4 text-sm focus:border-purple-500 outline-none transition-all">
-                
-                <button onclick="handleLoginWrapper()" class="w-full bg-white text-black font-bold py-4 rounded-2xl active:scale-95 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                    ACCESS
+                <input type="email" id="auth-email" placeholder="Email" class="w-full bg-black border border-white/10 rounded-xl px-4 py-4 text-[17px] focus:border-white outline-none transition-all">
+                <input type="password" id="auth-password" placeholder="Passwort" class="w-full bg-black border border-white/10 rounded-xl px-4 py-4 text-[17px] focus:border-white outline-none transition-all">
+                <button onclick="handleLoginWrapper()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-xl active:scale-95 transition-transform mt-4">
+                    Sign In
                 </button>
-                
-                <p id="auth-error" class="text-red-500 text-[10px] text-center uppercase hidden"></p>
+                <p id="auth-error" class="text-[#FF3B30] text-sm text-center hidden"></p>
             </div>
         </div>
     </div>
 
-    <header class="flex justify-between items-center fixed top-0 left-0 w-full bg-black/80 backdrop-blur-md z-[100] px-6 py-4 pt-[3.2rem]">
-        <h1 class="text-[1rem] font-bold text-zinc-100 tracking-tighter">SNUSDEX®</h1>
-        <span class="text-[0.8rem] text-zinc-500 font-mono">v1.1.2 PreAlpha</span>
-    </header>
-    <main id="tab-home" class="tab-content mt-20">
-        <div class="p-6">
-            <h2 id="greeting" class="text-zinc-500 text-2xl font-bold mb-2 uppercase tracking-tight">Lade...</h2>
-            <p id="score" class="text-[5rem] font-thin leading-none tracking-tighter">0</p>
-            <p class="text-[10px] text-zinc-600 uppercase tracking-widest mt-2">XP</p>
+    <main id="tab-home" class="tab-content pt-12 pb-10">
+        <header class="px-5 mb-4 flex justify-between items-end">
+            <h1 class="text-[34px] font-bold tracking-tight">Home</h1>
+        </header>
+
+        <div class="px-5 mb-6">
+            <div class="collector-main-card w-full rounded-[24px] p-6 flex flex-col justify-between border border-white/10 h-48">
+                <div class="flex justify-between items-start z-10">
+                    <span class="text-white/60 font-medium text-[13px] tracking-widest uppercase">Collector ID</span>
+                    <span class="text-white/40 text-sm">LVL 14</span>
+                </div>
+                <div class="z-10">
+                    <p class="text-white/80 text-[13px] mb-0.5 uppercase tracking-wide" id="greeting">Loading...</p>
+                    <p class="text-white text-[38px] font-semibold tracking-tight leading-none" id="score">0 <span class="text-[20px] text-white/50 font-medium">XP</span></p>
+                </div>
+            </div>
         </div>
 
-        <section class="mt-8">
-            <h3 class="px-6 mb-4 text-[0.75rem] text-zinc-500 uppercase tracking-[0.3em]">Live Performance</h3>
-            <div id="stats-carousel" class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide px-6 space-x-5 pb-10">
-                <div class="stats-card flex-shrink-0 w-[82vw] snap-center p-8 rounded-[2.5rem] bg-zinc-900 border border-zinc-800">
-                    <div class="text-4xl mb-6">⚡️</div>
-                    <h4 id="stat-flow" class="text-2xl font-bold">0 MG</h4>
-                    <p class="text-[11px] opacity-50 tracking-widest mt-2 uppercase">TOTAL MG COLLECTED</p>
-                </div>
-                <div class="stats-card flex-shrink-0 w-[82vw] snap-center p-8 rounded-[2.5rem] bg-zinc-900 border border-zinc-800">
-                    <div class="text-4xl mb-6">📊</div>
-                    <h4 id="stat-count" class="text-2xl font-bold">0</h4>
-                    <p class="text-[11px] opacity-50 tracking-widest mt-2 uppercase">TOTAL POUCHES</p>
-                </div>
-                <div class="stats-card flex-shrink-0 w-[82vw] snap-center p-8 rounded-[2.5rem] bg-zinc-900 border border-zinc-800">
-                    <div class="text-4xl mb-6">🔥</div>
-                    <h4 id="stat-streak" class="text-2xl font-bold truncate">N/A</h4>
-                    <p class="text-[11px] opacity-50 tracking-widest mt-2 uppercase">LATEST UNLOCK</p>
-                </div>
+        <div class="px-5 grid grid-cols-2 gap-3 mb-8">
+            <div class="bg-[#1C1C1E] rounded-[20px] p-4">
+                <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Collection</h3>
+                <p class="text-[22px] font-semibold text-white" id="stat-count">0</p>
+                <p class="text-[12px] text-[#8E8E93] mt-1">Total Pouches</p>
             </div>
-        </section>
+            <div class="bg-[#1C1C1E] rounded-[20px] p-4">
+                <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Total Limit</h3>
+                <p class="text-[22px] font-semibold text-white" id="stat-flow">0 MG</p>
+                <p class="text-[12px] text-[#8E8E93] mt-1">Nicotine Tracked</p>
+            </div>
+            <div class="bg-[#1C1C1E] rounded-[20px] p-4">
+                <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Usage</h3>
+                <p class="text-[22px] font-semibold text-white"><span id="stat-avg-pouches">0</span></p>
+                <p class="text-[12px] text-[#8E8E93] mt-1">Avg Pouches / Day</p>
+            </div>
+            <div class="bg-[#1C1C1E] rounded-[20px] p-4">
+                <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Intake</h3>
+                <p class="text-[22px] font-semibold text-white" id="stat-avg-mg">0 MG</p>
+                <p class="text-[12px] text-[#8E8E93] mt-1">Avg Daily MG</p>
+            </div>
+        </div>
 
-        <section class="px-6 mt-12 pb-20">
-            <div class="flex justify-between items-end mb-6">
-                <h3 class="text-[0.75rem] text-zinc-500 uppercase tracking-[0.2em]">Collector Showcase</h3>
-                <span class="text-[0.75rem] text-zinc-700 border border-zinc-800 px-2 py-1 rounded">LVL 14</span>
+        <div id="can-empty-container" class="px-5 mb-8 hidden transition-all duration-300">
+            <h2 class="text-[20px] font-semibold text-white mb-3">Active Can</h2>
+            <div class="bg-[#1C1C1E] rounded-[24px] p-5 flex flex-col items-center justify-center border border-white/10 relative overflow-hidden">
+                <p class="text-[13px] text-[#8E8E93] font-medium mb-1 uppercase tracking-wide">Currently Using</p>
+                <h3 id="active-can-name" class="text-[22px] font-bold text-white mb-5 tracking-tight">Loading...</h3>
+                <button onclick="finishCurrentCan(true)" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[16px] shadow-[0_8px_16px_rgba(255,255,255,0.15)] active:scale-95 transition-transform flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    Can Empty
+                </button>
             </div>
-            <div class="grid grid-cols-3 gap-3 bg-zinc-900/30 border border-zinc-900 p-4 rounded-3xl">
-                <div class="aspect-square bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-center relative group active:scale-95 transition-transform">
-                    <span class="text-2xl">🧊</span>
-                </div>
-                <div class="aspect-square bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-center relative group active:scale-95 transition-transform">
-                    <span class="text-2xl">🍬</span>
-                </div>
-                <div class="aspect-square bg-zinc-900/50 border border-dashed border-zinc-800 rounded-2xl flex items-center justify-center text-zinc-800 text-xl font-light">
-                    +
-                </div>
+        </div>
+
+        <div class="px-5">
+            <h2 class="text-[20px] font-semibold text-white mb-3">Recent Scans</h2>
+            <div class="ios-list-group" id="latest-unlocks-list">
+                <div class="p-6 text-center text-[#8E8E93] text-sm">Noch keine Scans vorhanden.</div>
             </div>
-        </section>
+        </div>
     </main>
 
-    <main id="tab-dex" class="tab-content hidden relative mt-20">
-        <div class="px-6 py-8">
-            <h2 class="text-3xl font-bold mb-1">Master Dex</h2>
-            <p class="text-zinc-500 text-[10px] uppercase tracking-[0.2em] mb-8">Discover & Collect</p>
+    <main id="tab-dex" class="tab-content hidden pt-12">
+        <div class="px-5 py-4">
+            <h1 class="text-[34px] font-bold tracking-tight mb-4">Dex</h1>
             
-            <div class="mb-8 relative group">
-                <div class="absolute inset-y-0 left-5 flex items-center pointer-events-none opacity-30 group-focus-within:opacity-100 transition-opacity">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-purple-500">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                    </svg>
+            <div class="relative mb-6">
+                <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <svg class="w-5 h-5 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
                 </div>
-                <input type="text" id="dex-search" oninput="filterDex()" placeholder="Suche nach Name oder Flavor..." 
-                    class="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl py-4 pl-12 pr-6 text-sm outline-none focus:border-purple-500 focus:bg-zinc-900 transition-all placeholder:text-zinc-600">
+                <input type="text" id="dex-search" oninput="filterDex()" placeholder="Search Snus..." 
+                    class="w-full bg-[#1C1C1E] rounded-[10px] py-2.5 pl-10 pr-4 text-[17px] text-white outline-none placeholder:text-[#8E8E93]">
             </div>
 
-            <div id="dex-grid" class="grid grid-cols-3 gap-3 pb-40"></div>
+            <div id="dex-grid" class="grid grid-cols-3 gap-3 pb-32"></div>
         </div>
         
-        <button onclick="startScanner()" class="fixed bottom-28 right-6 bg-purple-600 text-white p-4 rounded-full shadow-[0_0_20px_rgba(147,51,234,0.6)] active:scale-90 transition-transform z-[60]">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
-            </svg>
+        <button onclick="startScanner()" class="fixed bottom-24 right-5 w-14 h-14 bg-white text-black rounded-full shadow-[0_4px_14px_rgba(255,255,255,0.4)] flex items-center justify-center active:scale-90 transition-transform z-[60]">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
         </button>
     </main>
 
-    <main id="tab-social" class="tab-content hidden p-6 text-centerm mt-20">
-        <div class="relative w-full max-w-[390px] mx-auto overflow-hidden rounded-[35px] p-[1.5px] shadow-2xl active:scale-[0.98] transition-transform duration-300">
-        
-        <div class="absolute inset-0 rounded-[35px] pointer-events-none z-20"></div>
-        
-        <div class="relative rounded-[33.5px] p-[18px] bg-gradient-to-br from-[#FF9A7B] via-[#FF8A65] to-[#FFB099] shadow-[inset_0_1px_2px_rgba(255,255,255,0.5)] overflow-hidden">
-            
-            <div class="relative z-10 mb-[12px]">
-                <h2 class="text-[21px] font-bold tracking-[0.01em] uppercase leading-none mb-[6px] text-black/90">
-                    Top Snus of the Week
-                </h2>
-                <div class="h-[2px] w-full bg-black/80 rounded-full"></div>
-            </div>
-
-            <div class="relative z-10 flex gap-[14px] items-center">
-                <div class="flex-shrink-0 w-[115px] h-[115px]">
-                    <div class="relative w-full h-full rounded-full bg-white/90 backdrop-blur-sm shadow-lg flex items-center justify-center border border-white/50">
-                        <svg class="w-14 h-14 text-[#FF8A65]/40" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
-                            <circle cx="12" cy="12" r="5"/>
-                        </svg>
-                        <div class="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/30 to-white/5 pointer-events-none"></div>
-                    </div>
-                </div>
-
-                <div class="flex-1 min-w-0"> <h3 class="text-[16px] font-extrabold leading-none mb-[12px] text-black whitespace-nowrap overflow-hidden text-ellipsis">
-                        Pablo Exclusive Lemonade
-                    </h3>
-
-                    <div class="grid grid-cols-2 gap-x-[10px] gap-y-[6px]">
-                        <div class="flex flex-col">
-                            <span class="text-[13px] font-bold text-black/80 leading-tight">Geschmack</span>
-                            <div class="h-[10px] w-full bg-[#703333]/30 rounded-full overflow-hidden border border-black/5 mt-[2px]">
-                                <div class="h-full bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.4)]" style="width: 55%"></div>
-                            </div>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-[13px] font-bold text-black/80 leading-tight">Drip</span>
-                            <div class="h-[10px] w-full bg-[#703333]/30 rounded-full overflow-hidden border border-black/5 mt-[2px]">
-                                <div class="h-full bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.4)]" style="width: 45%"></div>
-                            </div>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-[13px] font-bold text-black/80 leading-tight">Geruch</span>
-                            <div class="h-[10px] w-full bg-[#703333]/30 rounded-full overflow-hidden border border-black/5 mt-[2px]">
-                                <div class="h-full bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.4)]" style="width: 70%"></div>
-                            </div>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-[13px] font-bold text-black/80 leading-tight">Bite</span>
-                            <div class="h-[10px] w-full bg-[#703333]/30 rounded-full overflow-hidden border border-black/5 mt-[2px]">
-                                <div class="h-full bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.4)]" style="width: 85%"></div>
-                            </div>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-[13px] font-bold text-black/80 leading-tight">Stärke</span>
-                            <div class="h-[10px] w-full bg-[#703333]/30 rounded-full overflow-hidden border border-black/5 mt-[2px]">
-                                <div class="h-full bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.4)]" style="width: 35%"></div>
-                            </div>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-[13px] font-bold text-black/80 leading-tight">Visuals</span>
-                            <div class="h-[10px] w-full bg-[#703333]/30 rounded-full overflow-hidden border border-black/5 mt-[2px]">
-                                <div class="h-full bg-white rounded-full shadow-[0_0_6px_rgba(255,255,255,0.4)]" style="width: 92%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <main id="tab-social" class="tab-content hidden pt-12">
+        <div class="px-5 py-4">
+            <div id="top-snus-container"></div>
         </div>
-    </div>
     </main>
 
-    <main id="tab-profile" class="tab-content hidden px-6 pt-12 mt-20">
-        <div class="flex flex-col items-center">
+    <main id="tab-profile" class="tab-content hidden pt-12">
+        <div class="px-5 py-4">
+            <h1 class="text-[34px] font-bold tracking-tight mb-6">Profile</h1>
             
-            <div class="w-24 h-24 bg-gradient-to-tr from-purple-600 to-zinc-800 rounded-full p-[2px] mb-4 shadow-[0_0_30px_rgba(147,51,234,0.3)]">
-                <div class="w-full h-full bg-black rounded-full flex items-center justify-center overflow-hidden">
-                    <span id="user-initials" class="text-3xl font-bold text-white uppercase">H</span>
+            <div class="ios-list-group mb-8">
+                <div class="p-4 flex items-center gap-4">
+                    <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center">
+                        <span id="user-initials" class="text-2xl font-semibold text-black">H</span>
+                    </div>
+                    <div>
+                        <h3 id="profile-email" class="text-[20px] font-semibold text-white">...</h3>
+                        <p class="text-[13px] text-[#8E8E93]">Snusdex ID</p>
+                    </div>
                 </div>
             </div>
 
-            <h3 id="profile-email" class="text-xl font-bold tracking-tight text-white mb-1">...</h3>
-            <p class="text-zinc-500 text-[10px] uppercase tracking-[0.2em] mb-8">Elite Collector</p>
-
-            <div class="grid grid-cols-2 gap-4 w-full mb-12">
-                <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-3xl text-center">
-                    <span id="pouch-count" class="block text-2xl font-bold text-white">0</span>
-                    <span class="text-[10px] text-zinc-500 uppercase tracking-widest">Gesammelt</span>
-                </div>
-                <div class="bg-zinc-900/50 border border-zinc-800 p-4 rounded-3xl text-center">
-                    <span class="block text-2xl font-bold text-white">#12</span>
-                    <span class="text-[10px] text-zinc-500 uppercase tracking-widest">Rank</span>
-                </div>
+            <div class="ios-list-group mb-8">
+                <button onclick="handleLogout()" class="w-full text-left p-4 text-[#FF3B30] text-[17px] font-medium active:bg-white/5 transition-colors">
+                    Sign Out
+                </button>
             </div>
 
-            <button onclick="handleLogout()" class="w-full bg-zinc-900 border border-zinc-800 text-red-500 font-bold py-5 rounded-[2rem] active:scale-95 transition-all flex items-center justify-center gap-3">
-                <span>ABMELDEN</span>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-                </svg>
-            </button>
-
-            <div id="admin-panel" class="hidden w-full mt-12 pt-8 border-t border-zinc-800 pb-32">
-                <h3 class="text-purple-500 text-[10px] uppercase tracking-[0.3em] mb-6 font-black text-center">Admin: Add New Snus</h3>
-                
-                <div class="space-y-4">
-                    <input type="text" id="admin-name" placeholder="Name (z.B. Pablo Gold)" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-sm outline-none focus:border-purple-500 transition-all">
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <input type="number" id="admin-nicotine" placeholder="mg/g" class="bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-sm outline-none focus:border-purple-500">
-                        <select id="admin-rarity" class="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 text-sm outline-none focus:border-purple-500 text-zinc-400">
+            <div id="admin-panel" class="hidden w-full mt-8">
+                <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider pl-4 mb-2">Admin Panel</h2>
+                <div class="ios-list-group p-4 space-y-4">
+                    <input type="text" id="admin-name" placeholder="Name (z.B. Pablo Gold)" class="w-full bg-black rounded-lg px-4 py-3 text-[17px] outline-none border border-white/10">
+                    <div class="flex gap-4">
+                        <input type="number" id="admin-nicotine" placeholder="mg/g" class="w-1/2 bg-black rounded-lg px-4 py-3 text-[17px] outline-none border border-white/10">
+                        <select id="admin-rarity" class="w-1/2 bg-black rounded-lg px-4 py-3 text-[17px] outline-none text-[#8E8E93] border border-white/10">
                             <option value="Common">Common</option>
                             <option value="Uncommon">Uncommon</option>
                             <option value="Rare">Rare</option>
@@ -381,115 +250,99 @@
                             <option value="Mythic">Mythic</option>
                         </select>
                     </div>
-
-                    <input type="text" id="admin-flavor" placeholder="Flavors (z.B. Mint, Frosted)" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-sm outline-none focus:border-purple-500">
-                    <input type="text" id="admin-barcode" placeholder="Barcode / EAN (Optional)" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-sm outline-none focus:border-purple-500">
-                    <input type="text" id="admin-image" placeholder="Bildname (z.B. pablo-gold.png)" class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-4 text-sm outline-none focus:border-purple-500">
-
-                    <button onclick="adminAddSnus()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-2xl active:scale-95 transition-all shadow-lg shadow-purple-500/20">
-                        IN DATENBANK SPEICHERN
+                    <input type="text" id="admin-flavor" placeholder="Flavors (z.B. Mint, Frost)" class="w-full bg-black rounded-lg px-4 py-3 text-[17px] outline-none border border-white/10">
+                    <input type="text" id="admin-barcode" placeholder="Barcode (Optional)" class="w-full bg-black rounded-lg px-4 py-3 text-[17px] outline-none border border-white/10">
+                    <input type="text" id="admin-image" placeholder="Image Name (pablo-gold.png)" class="w-full bg-black rounded-lg px-4 py-3 text-[17px] outline-none border border-white/10">
+                    
+                    <button onclick="adminAddSnus()" class="w-full bg-white text-black font-semibold py-3 rounded-lg active:scale-95 transition-transform mt-2">
+                        Add to Database
                     </button>
                 </div>
             </div>
-
         </div>
     </main>
 
-        <div id="snus-modal" class="fixed inset-0 z-[999] hidden">
-        <div id="modal-backdrop" class="absolute inset-0 bg-black/60" onclick="closeSnusDetail()"></div>
+    <div id="snus-modal" class="fixed inset-0 z-[999] hidden">
+        <div id="modal-backdrop" class="absolute inset-0 bg-black/40" onclick="closeSnusDetail()"></div>
         
-        <div id="snus-modal-card" class="absolute bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 rounded-t-[2.5rem] p-8 pb-10 max-w-md mx-auto translate-y-full transition-transform duration-400 ease-out">
-            
-            <div class="flex justify-between items-start mb-2">
-                <span id="modal-id" class="text-zinc-500 font-mono text-sm tracking-widest mt-1">#000</span>
-                <div class="flex flex-col items-end">
-                    <div class="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 px-3 py-1.5 rounded-full">
-                        <div id="modal-rarity-dot" class="w-2 h-2 rounded-full bg-zinc-500 shadow-[0_0_10px_currentColor]"></div>
-                        <span id="modal-rarity-text" class="text-[10px] text-zinc-400 uppercase tracking-widest font-bold">Common</span>
-                    </div>
-                </div>
-            </div>
+        <div id="snus-modal-card" class="absolute bottom-0 left-0 right-0 rounded-t-[32px] p-6 pb-12 max-w-md mx-auto translate-y-full">
+            <div class="w-10 h-1.5 bg-[#3A3A3C] rounded-full mx-auto mb-6"></div>
 
-            <div id="modal-views-wrapper" class="w-full mt-2">
-                
+            <div id="modal-views-wrapper" class="w-full">
                 <div id="modal-view-info" class="fade-view">
-                    
-                    <div class="w-full flex justify-center mb-6 relative">
-                        <div class="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent z-10"></div>
-                        <img id="modal-image" src="" alt="Snus" class="w-52 h-52 object-contain drop-shadow-2xl z-20">
+                    <div class="w-full flex justify-center mb-6 h-48 relative">
+                        <img id="modal-image" src="" alt="Snus" class="h-full object-contain drop-shadow-2xl z-20">
                     </div>
 
-                    <h2 id="modal-name" class="text-3xl font-black uppercase tracking-tighter mb-1 text-center">Name</h2>
-                    <p id="modal-nicotine" class="text-zinc-500 text-xs uppercase tracking-[0.2em] text-center mb-6">0 MG/G</p>
-
-                    <div id="modal-flavors" class="flex flex-wrap justify-center gap-2 mb-8"></div>
+                    <div class="text-center mb-8">
+                        <h2 id="modal-name" class="text-[28px] font-bold tracking-tight text-white mb-1">Name</h2>
+                        <p id="modal-nicotine" class="text-[15px] text-[#8E8E93]">0 MG/G • <span id="modal-rarity-text">Common</span></p>
+                    </div>
                     
-                    <button id="start-collect-btn" onclick="showRatingView()" class="w-full bg-white text-black font-black py-5 rounded-[2rem] active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-                        ZUR SAMMLUNG HINZUFÜGEN
+                    <button id="start-collect-btn" onclick="showRatingView()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform">
+                        Add to Collection
                     </button>
 
-                    <div id="modal-collected-status" class="hidden mt-6 text-center">
-                        <p class="text-purple-500 font-bold uppercase tracking-widest text-xs mb-1">Bereits in deiner Sammlung ✨</p>
-                        <span id="modal-unlocked-date" class="text-[9px] text-zinc-600 uppercase tracking-[0.3em] block mb-4"></span>
-                        <button onclick="showSavedRating()" class="px-6 py-2.5 bg-zinc-800 border border-zinc-700 rounded-full text-[10px] font-bold uppercase tracking-widest text-white active:scale-95 transition-all shadow-lg">
-                            MY RATING ANSEHEN
+                    <div id="modal-collected-status" class="hidden mt-4 text-center">
+                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#34C759]/20 mb-3">
+                            <svg class="w-6 h-6 text-[#34C759]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        </div>
+                        <p class="text-white font-semibold text-[17px]">Saved in Dex</p>
+                        <span id="modal-unlocked-date" class="text-[13px] text-[#8E8E93] block mb-4"></span>
+                        <button onclick="startNewCanFromModal()" class="w-full bg-white text-black font-semibold text-[17px] py-3.5 rounded-[14px] active:scale-95 transition-transform mb-3">
+                            Start New Can
+                        </button>
+                        <button onclick="showSavedRating()" class="w-full bg-[#2C2C2E] text-white font-medium text-[17px] py-3.5 rounded-[14px] active:scale-95 transition-transform">
+                            View Rating
                         </button>
                     </div>
                 </div>
 
                 <div id="modal-view-rating" class="hidden fade-view">
-                    <p class="text-center text-purple-500 text-[10px] uppercase tracking-[0.3em] font-bold mb-6">Rate to collect</p>
-                    <div class="space-y-4 mb-8 px-2">
-                        <div class="rating-group" data-category="taste"><div class="flex justify-between text-[10px] uppercase tracking-widest mb-2 px-2"><span class="text-zinc-400">Geschmack</span><span class="text-purple-400 font-bold rating-val">5/10</span></div><div class="rating-row" id="row-taste"></div></div>
-                        <div class="rating-group" data-category="smell"><div class="flex justify-between text-[10px] uppercase tracking-widest mb-2 px-2"><span class="text-zinc-400">Geruch</span><span class="text-purple-400 font-bold rating-val">5/10</span></div><div class="rating-row" id="row-smell"></div></div>
-                        <div class="rating-group" data-category="bite"><div class="flex justify-between text-[10px] uppercase tracking-widest mb-2 px-2"><span class="text-zinc-400">Bite</span><span class="text-purple-400 font-bold rating-val">5/10</span></div><div class="rating-row" id="row-bite"></div></div>
-                        <div class="rating-group" data-category="drip"><div class="flex justify-between text-[10px] uppercase tracking-widest mb-2 px-2"><span class="text-zinc-400">Drip</span><span class="text-purple-400 font-bold rating-val">5/10</span></div><div class="rating-row" id="row-drip"></div></div>
-                        <div class="rating-group" data-category="visuals"><div class="flex justify-between text-[10px] uppercase tracking-widest mb-2 px-2"><span class="text-zinc-400">Visuals</span><span class="text-purple-400 font-bold rating-val">5/10</span></div><div class="rating-row" id="row-visuals"></div></div>
+                    <h2 class="text-center text-[20px] font-semibold text-white mb-6">Rate Product</h2>
+                    <div class="space-y-4 mb-8">
+                        <div class="rating-group" data-category="taste"><div class="flex justify-between text-[13px] text-[#8E8E93] mb-2 px-1"><span>Taste</span><span class="text-white font-semibold rating-val">5/10</span></div><div class="rating-row" id="row-taste"></div></div>
+                        <div class="rating-group" data-category="smell"><div class="flex justify-between text-[13px] text-[#8E8E93] mb-2 px-1"><span>Smell</span><span class="text-white font-semibold rating-val">5/10</span></div><div class="rating-row" id="row-smell"></div></div>
+                        <div class="rating-group" data-category="bite"><div class="flex justify-between text-[13px] text-[#8E8E93] mb-2 px-1"><span>Bite</span><span class="text-white font-semibold rating-val">5/10</span></div><div class="rating-row" id="row-bite"></div></div>
+                        <div class="rating-group" data-category="drip"><div class="flex justify-between text-[13px] text-[#8E8E93] mb-2 px-1"><span>Drip</span><span class="text-white font-semibold rating-val">5/10</span></div><div class="rating-row" id="row-drip"></div></div>
+                        <div class="rating-group" data-category="visuals"><div class="flex justify-between text-[13px] text-[#8E8E93] mb-2 px-1"><span>Visuals</span><span class="text-white font-semibold rating-val">5/10</span></div><div class="rating-row" id="row-visuals"></div></div>
                     </div>
-                    <button id="final-collect-btn" onclick="collectCurrentSnus()" class="w-full bg-purple-600 text-white font-black py-5 rounded-[2rem] active:scale-95 transition-all shadow-[0_0_30px_rgba(147,51,234,0.4)]">
-                        COLLECT & SAVE
+                    <button id="final-collect-btn" onclick="collectCurrentSnus()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform">
+                        Confirm
                     </button>
                 </div>
 
                 <div id="modal-view-saved-rating" class="hidden fade-view">
-                    <p class="text-center text-purple-500 text-[10px] uppercase tracking-[0.3em] font-bold mb-6">My Rating</p>
-                    <div id="saved-rating-bars" class="space-y-3 mb-8 px-2"></div>
-                    <button onclick="showInfoView()" class="w-full bg-zinc-800 text-white font-black py-4 rounded-[2rem] active:scale-95 transition-all">
-                        ZURÜCK ZUR INFO
+                    <h2 class="text-center text-[20px] font-semibold text-white mb-6">Your Rating</h2>
+                    <div id="saved-rating-bars" class="space-y-4 mb-8"></div>
+                    <button onclick="showInfoView()" class="w-full bg-[#2C2C2E] text-white font-medium text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform">
+                        Back to Info
                     </button>
                 </div>
-
             </div>
         </div>
     </div>
-    <footer>
-        <nav class="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-zinc-900 pb-10 pt-4 px-6 z-[50]">
-            <div class="max-w-md mx-auto flex justify-between items-center">
-                <button onclick="switchTabWrapper('home')" class="nav-btn flex flex-col items-center gap-1 text-purple-500 transition-all active:scale-95" id="btn-home">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                    <span class="text-[0.9rem] uppercase font-black tracking-tighter">Home</span>
-                </button>
 
-                <button onclick="switchTabWrapper('dex')" class="nav-btn flex flex-col items-center gap-1 text-zinc-500 transition-all active:scale-95" id="btn-dex">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                        <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>
-                    </svg>
-                    <span class="text-[0.9rem] uppercase font-black tracking-tighter">Dex</span>
-                </button>
-
-                <button onclick="switchTabWrapper('social')" class="nav-btn flex flex-col items-center gap-1 text-zinc-500 transition-all active:scale-95" id="btn-social">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
-                    <span class="text-[0.9rem] uppercase font-black tracking-tighter">Social</span>
-                </button>
-
-                <button onclick="switchTabWrapper('profile')" class="nav-btn flex flex-col items-center gap-1 text-zinc-500 transition-all active:scale-95" id="btn-profile">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                    <span class="text-[0.9rem] uppercase font-black tracking-tighter">Profil</span>
-                </button>
-            </div>
-        </nav>
-    </footer>
-
+    <nav class="fixed bottom-0 left-0 right-0 bg-[#1C1C1E]/90 backdrop-blur-xl border-t border-white/10 pb-8 pt-3 px-6 z-[50]">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <button onclick="switchTabWrapper('home')" class="nav-btn flex flex-col items-center gap-1 text-white transition-colors active:scale-95" id="btn-home">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                <span class="text-[10px] font-medium">Home</span>
+            </button>
+            <button onclick="switchTabWrapper('dex')" class="nav-btn flex flex-col items-center gap-1 text-[#8E8E93] transition-colors active:scale-95" id="btn-dex">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+                <span class="text-[10px] font-medium">Dex</span>
+            </button>
+            <button onclick="switchTabWrapper('social')" class="nav-btn flex flex-col items-center gap-1 text-[#8E8E93] transition-colors active:scale-95" id="btn-social">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                <span class="text-[10px] font-medium">Social</span>
+            </button>
+            <button onclick="switchTabWrapper('profile')" class="nav-btn flex flex-col items-center gap-1 text-[#8E8E93] transition-colors active:scale-95" id="btn-profile">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                <span class="text-[10px] font-medium">Profile</span>
+            </button>
+        </div>
+    </nav>
     <script src="app.js"></script>
 </body>
 </html>
