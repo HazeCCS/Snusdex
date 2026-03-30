@@ -159,7 +159,6 @@
                         <p class="text-[12px] text-[#8E8E93] mt-1">Total Nicotine</p>
                     </div>
                 </div>
-                
                 <div class="flex gap-3">
                     <div class="flex-1 bg-[#1C1C1E] rounded-[20px] p-4 border border-white/5">
                         <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Usage</h3>
@@ -189,12 +188,15 @@
         <div class="px-5 mt-8 mb-6">
             <h2 class="text-[20px] font-semibold text-white mb-3">Active Cans</h2>
             <div id="active-cans-list" class="space-y-3">
-                </div>
+                
+            </div>
         </div>
+            
 
         <div class="px-5">
             <h2 class="text-[20px] font-semibold text-white mb-3">Recent Scans</h2>
-            <div class="ios-list-group" id="latest-unlocks-list">
+            <div id="latest-unlocks-list" class="bg-[#1C1C1E] border border-white/5 rounded-2xl shadow-sm overflow-hidden mb-3">
+
                 <div class="p-6 text-center text-[#8E8E93] text-sm">Noch keine Scans vorhanden.</div>
             </div>
         </div>
@@ -298,7 +300,7 @@
                     </div>
                     
                     <button id="start-collect-btn" onclick="showRatingView()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform">
-                        Add to Collection
+                        Add to Collection(for testing)
                     </button>
 
                     <div id="modal-collected-status" class="hidden mt-4 text-center">
@@ -313,7 +315,7 @@
                         </button>
 
                         <button id="open-can-btn" onclick="startNewCanFromModal()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform shadow-[0_4px_14px_rgba(255,255,255,0.1)]">
-                            Open New Can
+                            Open New Can(for testing)
                         </button>
                     </div>
                 </div>

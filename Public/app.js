@@ -191,23 +191,23 @@ function updateLivePerformance() {
         const dateStr = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
         
         listEl.innerHTML += `
-            <div class="ios-list-item flex items-center justify-between py-3 px-4 border-b border-white/5 last:border-0 cursor-pointer active:bg-white/5 transition-colors" onclick="openSnusDetail(${snus.id})">
-                <div class="flex items-center gap-3 min-w-0 flex-1">
-                    <div class="w-11 h-11 rounded-full overflow-hidden bg-[#2C2C2E] flex-shrink-0 border border-white/10 p-1">
-                        <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain" onerror="this.style.display='none'">
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">${snus.name}</h4>
-                        <p class="text-[13px] text-[#8E8E93] font-medium mt-0.5">${dateStr}</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 pl-4 flex-shrink-0 text-right">
-                    <span class="text-[17px] font-semibold text-white tracking-tight">${snus.nicotine}mg</span>
-                    <svg class="w-4 h-4 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                    </svg>
-                </div>
-            </div>
+            <div class="flex items-center justify-between p-3 border-b border-white/5 last:border-0 cursor-pointer active:bg-white/5 transition-colors" onclick="openSnusDetail(${snus.id})">
+    <div class="flex items-center gap-3 min-w-0 flex-1">
+        <div class="w-11 h-11 flex items-center justify-center flex-shrink-0">
+            <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain" onerror="this.style.display='none'">
+        </div>
+        <div class="min-w-0 flex-1">
+            <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">${snus.name}</h4>
+            <p class="text-[13px] text-[#8E8E93] font-medium mt-0.5">${dateStr}</p>
+        </div>
+    </div>
+    <div class="flex items-center gap-2 pl-4 flex-shrink-0 text-right">
+        <span class="text-[17px] font-semibold text-white tracking-tight">${snus.nicotine}mg</span>
+        <svg class="w-4 h-4 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+    </div>
+</div>
         `;
     });
 }
@@ -613,7 +613,6 @@ async function loadUsageData() {
         .order('opened_at', { ascending: false });
 
     if (!error && logs) {
-        // Aktive Dosen filtern
         globalActiveLogs = logs.filter(l => l.is_active === true);
         
         renderActiveCansUI();
@@ -644,7 +643,7 @@ function renderActiveCansUI() {
     container.innerHTML = '';
 
     if (globalActiveLogs.length === 0) {
-        container.innerHTML = '<p class="text-[13px] text-zinc-500 px-5 py-2">Keine aktiven Dosen.</p>';
+        container.innerHTML = '<div class="flex items-center justify-between px-1 py-2"><p class="text-[13px] text-zinc-500">Keine aktiven Dosen.</p><button onclick="openScanModal()" class="flex items-center gap-1 px-3 py-1.5 bg-white/10 rounded-full text-[13px] font-medium text-white active:bg-white/20 transition-colors tracking-wide">Öffne die nächste<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg></button></div>';
         return;
     }
 
@@ -653,9 +652,9 @@ function renderActiveCansUI() {
         const snusImg = can.snus_items ? can.snus_items.image : '';
 
         container.innerHTML += `
-            <div class="flex items-center justify-between bg-[#1C1C1E] border border-white/5 rounded-2xl p-3 mb-3 mx-5 shadow-sm">
+            <div class="flex items-center justify-between bg-[#1C1C1E] border border-white/5 rounded-2xl p-3 mb-3 shadow-sm">
                 <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-10 h-10 rounded-full bg-black flex items-center justify-center p-1 border border-white/5">
+                    <div class="w-10 h-10 flex items-center justify-center">
                         <img src="${GITHUB_BASE}${snusImg}" class="h-full object-contain">
                     </div>
                     <div class="min-w-0">
@@ -743,6 +742,8 @@ function closeScanModal() {
     
     scanModalCard.style.transform = ''; 
 
+    triggerHapticFeedback(),
+
     setTimeout(() => {
         scanModal.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
@@ -780,10 +781,49 @@ if (scanModalCard) {
 
         if (deltaY > 100) {
             closeScanModal();
-            triggerHapticFeedback();
         } else {
             scanModalCard.style.transform = '';
         }
     });
 }
+
+
+const snusModalCardElement = document.getElementById('snus-modal-card');
+let snusStartY = 0;
+let snusCurrentY = 0;
+let isSnusDragging = false;
+
+if (snusModalCardElement) {
+    snusModalCardElement.addEventListener('touchstart', (e) => {
+        snusStartY = e.touches[0].clientY;
+        isSnusDragging = true;
+        snusModalCardElement.style.transition = 'none';
+    }, { passive: true });
+
+    snusModalCardElement.addEventListener('touchmove', (e) => {
+        if (!isSnusDragging) return;
+        snusCurrentY = e.touches[0].clientY;
+        const deltaY = snusCurrentY - snusStartY;
+
+        if (deltaY > 0) {
+            snusModalCardElement.style.transform = `translateY(${deltaY}px)`;
+        }
+    }, { passive: true });
+
+    snusModalCardElement.addEventListener('touchend', (e) => {
+        if (!isSnusDragging) return;
+        isSnusDragging = false;
+        
+        const deltaY = snusCurrentY - snusStartY;
+        
+        snusModalCardElement.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
+
+        if (deltaY > 100) {
+            closeSnusDetail(); 
+        } else {
+            snusModalCardElement.style.transform = '';
+        }
+    });
+}
+
 // ==========================================
