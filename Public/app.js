@@ -11,15 +11,39 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // 2. AUTHENTIFIZIERUNG & GREETING
 // ==========================================
 
+// ==========================================
+// GREETING LOGIK (Zeit & Name)
+// ==========================================
 async function updateGreeting() {
     const greetingElement = document.getElementById('greeting');
     if (!greetingElement) return;
 
+    // 1. Session holen
     const { data: { session } } = await supabaseClient.auth.getSession();
-    let displayIdent = "Snuser";
-    if (session?.user?.email) displayIdent = session.user.email.split('@')[0];
+    let displayIdent = "Collector";
     
-    greetingElement.innerText = displayIdent;
+    if (session && session.user && session.user.email) {
+        // Alles vor dem @ nehmen und den ersten Buchstaben groß machen
+        let rawName = session.user.email.split('@')[0];
+        displayIdent = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+    }
+
+    // 2. Zeitbasierte Nachricht ermitteln
+    const hour = new Date().getHours();
+    let message = "";
+
+    if (hour >= 5 && hour < 12) {
+        message = "Guten Morgen";
+    } else if (hour >= 12 && hour < 18) {
+        message = "Guten Tag";
+    } else if (hour >= 18 && hour < 22) {
+        message = "Guten Abend";
+    } else {
+        message = "Gute Nacht"; // 22:00 bis 04:59
+    }
+
+    // 3. Im HTML ausgeben (Nachricht in Grau, Name in Weiß und Fett)
+    greetingElement.innerHTML = `${message}, <span class="text-white font-semibold">${displayIdent}</span>`;
 }
 
 async function checkUser() {
@@ -34,8 +58,8 @@ async function checkUser() {
         
         // WICHTIG: await verhindert das Aufhängen! 
         // Erst Dex laden, DANN Usage laden.
-        await loadDex(); 
-        await loadUsageData(); 
+        loadDex(); 
+        loadUsageData(); 
         
         updateGreeting();
     } else {
@@ -646,33 +670,45 @@ function renderActiveCansUI() {
 
 function calculateUsageStats(allLogs) {
     const finishedCans = allLogs.filter(log => !log.is_active && log.finished_at);
-    const statFlow = document.getElementById('stat-flow');
+    
+    // Die HTML Elemente greifen
+    const statFlow = document.getElementById('stat-flow');               // Lifetime MG
+    const avgPouchesEl = document.getElementById('stat-avg-pouches');    // Pouches / Day
+    const avgMgEl = document.getElementById('stat-avg-mg');              // MG / Day
     
     if (finishedCans.length === 0) {
-        if(statFlow) statFlow.innerText = `0 MG / DAY`;
+        if(statFlow) statFlow.innerText = `0 MG`;
+        if(avgPouchesEl) avgPouchesEl.innerText = '0';
+        if(avgMgEl) avgMgEl.innerText = '0 MG';
         return;
     }
 
     let totalMgHistory = 0;
+    let totalPouchesHistory = 0;
 
+    // 1. Alles summieren, was jemals konsumiert wurde (Lifetime)
     finishedCans.forEach(can => {
-        // mg/g durch 2 (ein Pouch wiegt 0.5g) mal 20 Pouches
         const mgPerPouch = (can.mg_per_gram || 0) / 2;
         const mgPerCan = mgPerPouch * (can.pouches_per_can || 20);
+        
         totalMgHistory += mgPerCan;
+        totalPouchesHistory += (can.pouches_per_can || 20);
     });
 
-    // Zeitraum berechnen (Von der allerersten geöffneten Dose bis heute)
-    // Da wir absteigend sortieren, ist das letzte Element im Array das älteste
+    // 2. Den Zeitraum berechnen (Erste Dose bis heute)
     const firstEverLog = finishedCans[finishedCans.length - 1]; 
     const startDate = new Date(firstEverLog.opened_at);
     const today = new Date();
     
     let totalDaysSpan = (today - startDate) / (1000 * 60 * 60 * 24);
-    if (totalDaysSpan < 1) totalDaysSpan = 1; // Schutz vor Division durch 0
+    if (totalDaysSpan < 1) totalDaysSpan = 1; // Minimum 1 Tag
 
+    // 3. Tagesdurchschnitt berechnen
     const avgMgPerDay = (totalMgHistory / totalDaysSpan).toFixed(0);
+    const avgPouchesPerDay = (totalPouchesHistory / totalDaysSpan).toFixed(1);
 
-    // UPDATE: Dieses Feld gehört jetzt NUR NOCH dieser Funktion!
-    if(statFlow) statFlow.innerText = `${avgMgPerDay} MG / DAY`;
+    // 4. UI updaten (genau nach deiner Vorgabe)
+    if(statFlow) statFlow.innerText = `${totalMgHistory.toLocaleString()} MG`; // Oben rechts (Lifetime)
+    if(avgPouchesEl) avgPouchesEl.innerText = avgPouchesPerDay;                // Unten links (Daily Pouches)
+    if(avgMgEl) avgMgEl.innerText = `${avgMgPerDay} MG`;                       // Unten rechts (Daily MG)
 }

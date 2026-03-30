@@ -143,28 +143,33 @@
             </div>
         </div>
 
-        <div class="px-5 grid grid-cols-2 gap-3 mb-8">
-            <div class="bg-[#1C1C1E] rounded-[20px] p-4">
-                <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Collection</h3>
-                <p class="text-[22px] font-semibold text-white" id="stat-count">0</p>
-                <p class="text-[12px] text-[#8E8E93] mt-1">Total Pouches</p>
+            <div class="px-5 flex flex-col gap-3 mb-8">
+                <div class="flex gap-3">
+                    <div class="flex-1 bg-[#1C1C1E] rounded-[20px] p-4 border border-white/5">
+                        <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Collection</h3>
+                        <p class="text-[22px] font-semibold text-white" id="stat-count">0</p>
+                        <p class="text-[12px] text-[#8E8E93] mt-1">Total Pouches (Dex)</p>
+                    </div>
+                    <div class="flex-1 bg-[#1C1C1E] rounded-[20px] p-4 border border-white/5">
+                        <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Lifetime Tracked</h3>
+                        <p class="text-[22px] font-semibold text-white" id="stat-flow">0 MG</p>
+                        <p class="text-[12px] text-[#8E8E93] mt-1">Total Nicotine</p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <div class="flex-1 bg-[#1C1C1E] rounded-[20px] p-4 border border-white/5">
+                        <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Usage</h3>
+                        <p class="text-[22px] font-semibold text-white" id="stat-avg-pouches">0</p>
+                        <p class="text-[12px] text-[#8E8E93] mt-1">Avg Pouches / Day</p>
+                    </div>
+                    <div class="flex-1 bg-[#1C1C1E] rounded-[20px] p-4 border border-white/5">
+                        <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Intake</h3>
+                        <p class="text-[22px] font-semibold text-white" id="stat-avg-mg">0 MG</p>
+                        <p class="text-[12px] text-[#8E8E93] mt-1">Avg Daily MG</p>
+                    </div>
+                </div>
             </div>
-            <div class="bg-[#1C1C1E] rounded-[20px] p-4">
-                <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Total Limit</h3>
-                <p class="text-[22px] font-semibold text-white" id="stat-flow">0 MG</p>
-                <p class="text-[12px] text-[#8E8E93] mt-1">Nicotine Tracked</p>
-            </div>
-            <div class="bg-[#1C1C1E] rounded-[20px] p-4">
-                <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Usage</h3>
-                <p class="text-[22px] font-semibold text-white"><span id="stat-avg-pouches">0</span></p>
-                <p class="text-[12px] text-[#8E8E93] mt-1">Avg Pouches / Day</p>
-            </div>
-            <div class="bg-[#1C1C1E] rounded-[20px] p-4">
-                <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1">Intake</h3>
-                <p class="text-[22px] font-semibold text-white" id="stat-avg-mg">0 MG</p>
-                <p class="text-[12px] text-[#8E8E93] mt-1">Avg Daily MG</p>
-            </div>
-        </div>
 
         <div id="can-empty-container" class="px-5 mb-8 hidden transition-all duration-300">
             <h2 class="text-[20px] font-semibold text-white mb-3">Active Can</h2>
