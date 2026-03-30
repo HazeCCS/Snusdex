@@ -178,6 +178,12 @@
             </div>
         </div>
 
+        <div class="px-5 mt-8 mb-6">
+            <h2 class="text-[20px] font-semibold text-white mb-3">Active Cans</h2>
+            <div id="active-cans-list" class="space-y-3">
+                </div>
+        </div>
+
         <div class="px-5">
             <h2 class="text-[20px] font-semibold text-white mb-3">Recent Scans</h2>
             <div class="ios-list-group" id="latest-unlocks-list">
@@ -287,13 +293,15 @@
                         <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#34C759]/20 mb-3">
                             <svg class="w-6 h-6 text-[#34C759]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                         </div>
-                        <p class="text-white font-semibold text-[17px]">Saved in Dex</p>
-                        <span id="modal-unlocked-date" class="text-[13px] text-[#8E8E93] block mb-4"></span>
-                        <button onclick="startNewCanFromModal()" class="w-full bg-white text-black font-semibold text-[17px] py-3.5 rounded-[14px] active:scale-95 transition-transform mb-3">
-                            Start New Can
-                        </button>
-                        <button onclick="showSavedRating()" class="w-full bg-[#2C2C2E] text-white font-medium text-[17px] py-3.5 rounded-[14px] active:scale-95 transition-transform">
+                        <p class="text-white font-semibold text-[17px]">Saved in Library</p>
+                        <span id="modal-unlocked-date" class="text-[13px] text-[#8E8E93] block mb-6"></span>
+                        
+                        <button onclick="showSavedRating()" class="w-full bg-[#2C2C2E] text-white font-medium text-[17px] py-3.5 rounded-[14px] active:scale-95 transition-transform mb-3">
                             View Rating
+                        </button>
+
+                        <button id="open-can-btn" onclick="startNewCanFromModal()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform shadow-[0_4px_14px_rgba(255,255,255,0.1)]">
+                            Open New Can
                         </button>
                     </div>
                 </div>

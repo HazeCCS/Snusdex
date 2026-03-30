@@ -29,9 +29,14 @@ async function checkUser() {
     if (session) {
         overlay.classList.add('opacity-0');
         setTimeout(() => overlay.classList.add('hidden'), 500);
+        
         setupProfile(session.user);
         loadDex(); 
         updateGreeting();
+
+        // DAS HIER FEHLTE: Beim Start direkt die aktiven Dosen laden!
+        loadUsageData(); 
+        
     } else {
         overlay.classList.remove('hidden', 'opacity-0');
     }
@@ -146,7 +151,6 @@ function updateLivePerformance() {
     if(flowEl) flowEl.innerText = `${totalMg.toLocaleString()} MG`;
     if(countEl) countEl.innerText = collectedItems.length;
 
-    // Recent Scans List (Apple Grouped List Style)
     const listEl = document.getElementById('latest-unlocks-list');
     if(!listEl) return;
     
@@ -161,19 +165,26 @@ function updateLivePerformance() {
         const dateStr = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
         
         listEl.innerHTML += `
-            <div class="ios-list-item flex justify-between items-center py-3 border-b border-white/10 last:border-0 cursor-pointer active:bg-white/5 transition-colors" onclick="openSnusDetail(${snus.id})">
-                <div class="flex items-center gap-3 w-full">
-                    <div class="w-12 h-12 rounded-full overflow-hidden bg-[#2C2C2E] flex-shrink-0 border border-white/10">
-                        <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+            <div class="ios-list-item flex items-center justify-between py-3 px-4 border-b border-white/5 last:border-0 cursor-pointer active:bg-white/5 transition-colors" onclick="openSnusDetail(${snus.id})">
+                
+                <div class="flex items-center gap-3 min-w-0 flex-1">
+                    <div class="w-11 h-11 rounded-full overflow-hidden bg-[#2C2C2E] flex-shrink-0 border border-white/10 p-1">
+                        <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain" onerror="this.style.display='none'">
                     </div>
-                    <div class="flex-1 min-w-0">
-                        <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">${snus.name}</h4>
+                    
+                    <div class="min-w-0 flex-1">
+                        <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">
+                            ${snus.name}
+                        </h4>
                         <p class="text-[13px] text-[#8E8E93] font-medium mt-0.5">${dateStr}</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 pl-3 flex-shrink-0">
+
+                <div class="flex items-center gap-2 pl-4 flex-shrink-0 text-right">
                     <span class="text-[17px] font-semibold text-white tracking-tight">${snus.nicotine}mg</span>
-                    <svg class="w-5 h-5 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+                    <svg class="w-4 h-4 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
                 </div>
             </div>
         `;
@@ -410,30 +421,43 @@ document.addEventListener('DOMContentLoaded', () => checkUser());
 // ==========================================
 
 async function loadTopSnusOfWeek() {
+    // 1. Daten holen (Hier könntest du später noch ein .gte('collected_at', ...) für die letzte Woche einbauen)
     const { data: collections, error } = await supabaseClient
         .from('user_collections')
-        .select('snus_id, rating_taste, rating_smell, rating_bite, rating_drip, rating_visuals');
+        .select('snus_id, rating_taste, rating_smell, rating_bite, rating_drip, rating_visuals, rating_strength'); // rating_strength falls vorhanden
 
     if (error || !collections || collections.length === 0) return;
 
     const stats = {};
+
+    // 2. Summen bilden
     collections.forEach(item => {
         if (!stats[item.snus_id]) {
-            stats[item.snus_id] = { count: 0, taste: 0, smell: 0, bite: 0, drip: 0, visuals: 0 };
+            stats[item.snus_id] = { count: 0, taste: 0, smell: 0, bite: 0, drip: 0, visuals: 0, strength: 0 };
         }
-        stats[item.snus_id].count++;
-        stats[item.snus_id].taste += item.rating_taste || 5;
-        stats[item.snus_id].smell += item.rating_smell || 5;
-        stats[item.snus_id].bite += item.rating_bite || 5;
-        stats[item.snus_id].drip += item.rating_drip || 5;
-        stats[item.snus_id].visuals += item.rating_visuals || 5;
+        const s = stats[item.snus_id];
+        s.count++;
+        s.taste += item.rating_taste || 5;
+        s.smell += item.rating_smell || 5;
+        s.bite += item.rating_bite || 5;
+        s.drip += item.rating_drip || 5;
+        s.visuals += item.rating_visuals || 5;
+        s.strength += item.rating_strength || 5; // Falls du Stärke auch trackst
     });
 
+    // 3. Den Snus mit dem höchsten Gesamtdurchschnitt finden
     let topSnusId = null;
-    let maxCount = 0;
-    for (const [id, stat] of Object.entries(stats)) {
-        if (stat.count > maxCount) {
-            maxCount = stat.count;
+    let highestAverage = 0;
+
+    for (const [id, s] of Object.entries(stats)) {
+        // Durchschnitt aller 6 Kategorien für diesen speziellen Snus berechnen
+        // Wir teilen die Summe aller Ratings durch (Anzahl der Scans * 6 Kategorien)
+        const totalPoints = s.taste + s.smell + s.bite + s.drip + s.visuals + s.strength;
+        const currentAvg = totalPoints / (s.count * 6); 
+
+        // Nur Snus berücksichtigen, die z.B. mindestens 2-3 mal bewertet wurden (Vermeidet 10/10 Glückstreffer)
+        if (currentAvg > highestAverage) {
+            highestAverage = currentAvg;
             topSnusId = id;
         }
     }
@@ -441,19 +465,25 @@ async function loadTopSnusOfWeek() {
     if (!topSnusId) return;
 
     const topStat = stats[topSnusId];
+    const maxCount = topStat.count;
+
+    // 4. Finale Werte für das UI vorbereiten
     const avgRatings = {
         taste: (topStat.taste / maxCount).toFixed(1),
         smell: (topStat.smell / maxCount).toFixed(1),
         bite: (topStat.bite / maxCount).toFixed(1),
         drip: (topStat.drip / maxCount).toFixed(1),
-        visuals: (topStat.visuals / maxCount).toFixed(1)
+        visuals: (topStat.visuals / maxCount).toFixed(1),
+        strength: (topStat.strength / maxCount).toFixed(1)
     };
-    const overallAvg = (((topStat.taste + topStat.smell + topStat.bite + topStat.drip + topStat.visuals) / 5) / maxCount).toFixed(1);
+    
+    // Gesamtscore (0-10)
+    const overallAvg = (highestAverage).toFixed(1);
 
     const snusInfo = globalSnusData.find(s => s.id == topSnusId);
-    if (!snusInfo) return;
-
-    renderTopSnus(snusInfo, avgRatings, maxCount, overallAvg);
+    if (snusInfo) {
+        renderTopSnus(snusInfo, avgRatings, maxCount, overallAvg);
+    }
 }
 
 function renderTopSnus(snus, ratings, count, overall) {
@@ -494,139 +524,190 @@ function renderTopSnus(snus, ratings, count, overall) {
 }
 
 // ==========================================
-// 10. USAGE LOGS & CAN TRACKING
+// 10. USAGE LOGS & CONCURRENT CAN TRACKING
 // ==========================================
 
-let globalActiveCan = null;
-let globalUsageLogs = [];
-
-async function loadUsageLogs(userId) {
-    const { data, error } = await supabaseClient
-        .from('usage_logs')
-        .select('*')
-        .eq('user_id', userId)
-        .order('opened_at', { ascending: false });
-    
-    if (!error && data) {
-        globalUsageLogs = data;
-        globalActiveCan = data.find(log => log.is_active === true) || null;
-        updateCanUI();
-        calculateUsageStats();
-    }
-}
+let globalActiveLogs = []; // Array für alle aktuell offenen Dosen
 
 async function startNewCan(snusId) {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return false;
 
-    if (globalActiveCan) {
-        const replace = confirm("You currently have an active can. Finish it and start this new one?");
-        if (!replace) return false;
-        await finishCurrentCan(false); 
-    }
+    // mg_per_gram aus dem globalen Dex ziehen
+    const snus = globalSnusData.find(s => s.id == snusId);
+    const mgVal = snus ? snus.nicotine : 0;
 
-    const { data, error } = await supabaseClient.from('usage_logs').insert([{
-        user_id: user.id,
-        snus_id: snusId,
-        is_active: true
-    }]).select().single();
-
-    if (!error && data) {
-        globalActiveCan = data;
-        globalUsageLogs.unshift(data);
-        updateCanUI();
-        triggerHapticFeedback();
-        return true;
-    }
-    return false;
-}
-
-async function startNewCanFromModal() {
-    if (!currentSelectedSnusId) return;
-    const success = await startNewCan(currentSelectedSnusId);
-    if (success) {
-        closeSnusDetail();
-        switchTabWrapper('home');
-    }
-}
-
-async function finishCurrentCan(updateUI = true) {
-    if (!globalActiveCan) return;
-
-    const { error } = await supabaseClient.from('usage_logs')
-        .update({ finished_at: new Date().toISOString(), is_active: false })
-        .eq('id', globalActiveCan.id);
+    const { error } = await supabaseClient
+        .from('usage_logs')
+        .insert([{ 
+            user_id: user.id, 
+            snus_id: snusId, 
+            mg_per_gram: mgVal,
+            is_active: true 
+        }]);
 
     if (!error) {
-        globalActiveCan.finished_at = new Date().toISOString();
-        globalActiveCan.is_active = false;
-        globalActiveCan = null;
         triggerHapticFeedback();
-        if (updateUI) {
-            updateCanUI();
-            calculateUsageStats();
-        }
-    }
-}
-
-function updateCanUI() {
-    const btnContainer = document.getElementById('can-empty-container');
-    if (!btnContainer) return;
-
-    if (globalActiveCan) {
-        const snus = globalSnusData.find(s => s.id == globalActiveCan.snus_id);
-        document.getElementById('active-can-name').innerText = snus ? snus.name : 'Unknown Snus';
-        btnContainer.classList.remove('hidden');
+        await loadUsageData(); // UI aktualisieren
+        return true; // WICHTIG: Signalisiert Erfolg!
     } else {
-        btnContainer.classList.add('hidden');
+        console.error("Supabase Error:", error.message);
+        return false;
     }
 }
 
-function calculateUsageStats() {
-    const finishedCans = globalUsageLogs.filter(log => !log.is_active && log.finished_at).slice(0, 5);
-    let totalPouches = 0;
-    let totalMg = 0;
-    let totalDays = 0;
+// Diese Funktion wird vom Button im Modal aufgerufen
+async function startNewCanFromModal() {
+    if (!currentSelectedSnusId) {
+        console.error("Fehler: Keine Snus-ID gefunden.");
+        return;
+    }
 
-    const pouchesEl = document.getElementById('stat-avg-pouches');
-    const mgEl = document.getElementById('stat-avg-mg');
-    if (!pouchesEl || !mgEl) return;
+    // Button visuell blockieren, damit der User nicht 5x klickt
+    const btn = document.getElementById('open-can-btn');
+    if (btn) { btn.innerText = "Processing..."; btn.disabled = true; }
 
-    if (finishedCans.length > 0) {
-        finishedCans.forEach(can => {
-            const snus = globalSnusData.find(s => s.id == can.snus_id);
-            const nicotine = snus ? (snus.nicotine || 0) : 0;
-            const canMg = nicotine * 20; 
+    const success = await startNewCan(currentSelectedSnusId);
 
-            const openDate = new Date(can.opened_at);
-            const closeDate = new Date(can.finished_at);
-            let days = (closeDate - openDate) / (1000 * 60 * 60 * 24);
-            if (days < 1) days = 1; 
-
-            totalPouches += 20;
-            totalMg += canMg;
-            totalDays += days;
-        });
-
-        pouchesEl.innerText = (totalPouches / totalDays).toFixed(1);
-        mgEl.innerText = (totalMg / totalDays).toFixed(0) + ' MG';
+    if (success) {
+        closeSnusDetail();
+        // Wir wechseln automatisch zum Home/Wallet-Tab, damit der User seine neue Dose sieht!
+        switchTab('home'); 
     } else {
-        pouchesEl.innerText = '0';
-        mgEl.innerText = '0 MG';
+        alert("Fehler beim Öffnen. Hast du das SQL-Update (mg_per_gram) in Supabase ausgeführt?");
+    }
+
+    if (btn) { btn.innerText = "Open New Can"; btn.disabled = false; }
+}
+
+// Zentrale Lade-Funktion für alles, was mit Konsum zu tun hat
+async function loadUsageData() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+
+    const { data: logs, error } = await supabaseClient
+        .from('usage_logs')
+        .select('*, snus_items(name, image)')
+        .eq('user_id', user.id)
+        .order('opened_at', { ascending: false });
+
+    if (!error && logs) {
+        // Aktive Dosen filtern
+        globalActiveLogs = logs.filter(l => l.is_active === true);
+        
+        renderActiveCansUI();
+        calculateUsageStats(logs);
     }
 }
 
-function createAvgBar(label, value) {
-    const percentage = (value / 10) * 100;
-    return `
-        <div>
-            <div class="flex justify-between text-[12px] text-[#8E8E93] mb-1.5 font-medium">
-                <span>${label}</span>
-                <span class="text-white">${value}</span>
+async function finishSpecificCan(logId) {
+    triggerHapticFeedback();
+    
+    const { error } = await supabaseClient
+        .from('usage_logs')
+        .update({ 
+            finished_at: new Date().toISOString(), 
+            is_active: false 
+        })
+        .eq('id', logId);
+
+    if (!error) {
+        await loadUsageData(); // Alles neu laden & berechnen
+    }
+}
+
+function renderActiveCansUI() {
+    const container = document.getElementById('active-cans-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (globalActiveLogs.length === 0) {
+        container.innerHTML = '<p class="text-[13px] text-zinc-500 px-5 py-2">Keine aktiven Dosen.</p>';
+        return;
+    }
+
+    globalActiveLogs.forEach(can => {
+        const snusName = can.snus_items ? can.snus_items.name : 'Unknown';
+        const snusImg = can.snus_items ? can.snus_items.image : '';
+
+        container.innerHTML += `
+            <div class="flex items-center justify-between bg-[#1C1C1E] border border-white/5 rounded-2xl p-3 mb-3 mx-5 shadow-sm">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-10 h-10 rounded-full bg-black flex items-center justify-center p-1 border border-white/5">
+                        <img src="${GITHUB_BASE}${snusImg}" class="h-full object-contain">
+                    </div>
+                    <div class="min-w-0">
+                        <h4 class="text-white text-[15px] font-semibold truncate">${snusName}</h4>
+                        <p class="text-[11px] text-[#8E8E93] uppercase tracking-wider">Aktiv</p>
+                    </div>
+                </div>
+                <button onclick="finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-transform">
+                    EMPTY
+                </button>
             </div>
-            <div class="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
-                <div class="bg-white h-full rounded-full" style="width: ${percentage}%"></div>
-            </div>
-        </div>
-    `;
+        `;
+    });
+}
+
+function calculateUsageStats(allLogs) {
+    // Nur abgeschlossene Dosen nehmen
+    const finishedCans = allLogs.filter(log => !log.is_active && log.finished_at);
+    
+    // Fallback, wenn noch keine Dose leer ist
+    if (finishedCans.length === 0) {
+        const statFlow = document.getElementById('stat-flow');
+        if(statFlow) statFlow.innerText = `0 MG / DAY`;
+        
+        const avgPouchesEl = document.getElementById('stat-avg-pouches');
+        if(avgPouchesEl) avgPouchesEl.innerText = '0';
+        
+        const avgMgEl = document.getElementById('stat-avg-mg');
+        if(avgMgEl) avgMgEl.innerText = '0 MG';
+        return;
+    }
+
+    let totalMgHistory = 0;
+    let totalPouchesHistory = 0;
+
+    // 1. Alles summieren, was jemals konsumiert wurde
+    finishedCans.forEach(can => {
+        // 0,5g Logik (mg_per_gram / 2)
+        const mgPerPouch = (can.mg_per_gram || 0) / 2;
+        const mgPerCan = mgPerPouch * (can.pouches_per_can || 20);
+        
+        totalMgHistory += mgPerCan;
+        totalPouchesHistory += (can.pouches_per_can || 20);
+    });
+
+    // 2. Den ECHTEN Zeitraum berechnen
+    // allLogs ist nach 'opened_at' absteigend sortiert (neueste zuerst).
+    // Also ist das allerletzte Element im Array die allererste Dose, die du je geöffnet hast.
+    const firstEverLog = finishedCans[finishedCans.length - 1]; 
+    const startDate = new Date(firstEverLog.opened_at);
+    const today = new Date(); // Zeitraum bis JETZT
+    
+    // Differenz in Tagen berechnen
+    let totalDaysSpan = (today - startDate) / (1000 * 60 * 60 * 24);
+    
+    // Schutzmechanismus: Wenn du die App erst heute installiert hast,
+    // rechnen wir mit 1 Tag, damit wir nicht durch 0 teilen (was Fehler auslöst).
+    if (totalDaysSpan < 1) {
+        totalDaysSpan = 1;
+    }
+
+    // 3. Echten Tagesdurchschnitt berechnen (Gesamte Menge / Gesamte Tage)
+    const avgMgPerDay = (totalMgHistory / totalDaysSpan).toFixed(0);
+    const avgPouchesPerDay = (totalPouchesHistory / totalDaysSpan).toFixed(1);
+
+    // 4. UI mit den CEO-Werten befüllen
+    const statFlow = document.getElementById('stat-flow');
+    if(statFlow) statFlow.innerText = `${avgMgPerDay} MG / DAY`;
+
+    // Falls du diese spezifischen Elemente im HTML hast (für mehr Details)
+    const avgPouchesEl = document.getElementById('stat-avg-pouches');
+    if(avgPouchesEl) avgPouchesEl.innerText = avgPouchesPerDay;
+    
+    const avgMgEl = document.getElementById('stat-avg-mg');
+    if(avgMgEl) avgMgEl.innerText = avgMgPerDay + ' MG';
 }
