@@ -286,6 +286,7 @@ function openSnusDetail(id) {
     document.getElementById('modal-name').innerText = snus.name;
     document.getElementById('modal-nicotine').innerText = `${snus.nicotine} MG/G • ${snus.rarity || 'Common'}`;
     document.getElementById('modal-image').src = `${GITHUB_BASE}${snus.image}`;
+    document.body.classList.add('overflow-hidden'); 
 
     showInfoView(); 
     initRatingRows();
@@ -310,6 +311,7 @@ function openSnusDetail(id) {
 function closeSnusDetail() {
     document.getElementById('modal-backdrop').classList.remove('active'); 
     document.getElementById('snus-modal-card').classList.add('translate-y-full'); 
+    document.body.classList.remove('overflow-hidden');
     setTimeout(() => {
         document.getElementById('snus-modal').classList.add('hidden');
         hideAllViews(); document.getElementById('modal-view-info').classList.remove('hidden');
