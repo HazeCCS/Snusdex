@@ -790,6 +790,9 @@ if (scanModalCard) {
 }
 
 
+// ==========================================
+// SNUS DETAIL MODAL DRAG LOGIC (FIXED)
+// ==========================================
 const snusModalCardElement = document.getElementById('snus-modal-card');
 let snusStartY = 0;
 let snusCurrentY = 0;
@@ -797,7 +800,17 @@ let isSnusDragging = false;
 
 if (snusModalCardElement) {
     snusModalCardElement.addEventListener('touchstart', (e) => {
+        // --- CEO-FIX START ---
+        // Wir prüfen, ob der Finger ein Element berührt, das NICHT ziehen soll.
+        // Falls du dein Rating in einem Div mit der Klasse "rating-grid" hast, füge sie hier hinzu.
+        if (e.target.closest('button, input, select, textarea, .no-drag, .rating-stars, [role="button"]')) {
+            isSnusDragging = false;
+            return; // Beendet die Funktion hier, das Modal bewegt sich nicht.
+        }
+        // --- CEO-FIX ENDE ---
+
         snusStartY = e.touches[0].clientY;
+        snusCurrentY = snusStartY; // Reset für saubere Berechnung
         isSnusDragging = true;
 
         snusModalCardElement.style.transition = 'none';
@@ -805,9 +818,11 @@ if (snusModalCardElement) {
 
     snusModalCardElement.addEventListener('touchmove', (e) => {
         if (!isSnusDragging) return;
+        
         snusCurrentY = e.touches[0].clientY;
         const deltaY = snusCurrentY - snusStartY;
 
+        // Nur nach unten ziehen erlauben
         if (deltaY > 0) {
             snusModalCardElement.style.transform = `translateY(${deltaY}px)`;
         }
@@ -819,20 +834,22 @@ if (snusModalCardElement) {
         
         const deltaY = snusCurrentY - snusStartY;
         
+        // Sanfte Apple-Animation zurück
         snusModalCardElement.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
 
         if (deltaY > 100) {
+            // Modal ganz nach unten aus dem Bild schieben
             snusModalCardElement.style.transform = 'translateY(100%)';
             
             setTimeout(() => {
                 closeSnusDetail(); 
-                
                 setTimeout(() => {
                     snusModalCardElement.style.transform = '';
                 }, 50);
             }, 400);
 
         } else {
+            // Modal schnappt zurück auf Ursprung
             snusModalCardElement.style.transform = 'translateY(0px)';
             
             setTimeout(() => {
