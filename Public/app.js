@@ -797,6 +797,7 @@ if (snusModalCardElement) {
     snusModalCardElement.addEventListener('touchstart', (e) => {
         snusStartY = e.touches[0].clientY;
         isSnusDragging = true;
+        // Animation aus beim Greifen, damit es direkt am Finger klebt
         snusModalCardElement.style.transition = 'none';
     }, { passive: true });
 
@@ -816,12 +817,31 @@ if (snusModalCardElement) {
         
         const deltaY = snusCurrentY - snusStartY;
         
+        // Butterweiche Animation wieder einschalten fürs Loslassen
         snusModalCardElement.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
 
         if (deltaY > 100) {
-            closeSnusDetail(); 
+            // 1. Karte sanft GANZ nach unten wischen lassen
+            snusModalCardElement.style.transform = 'translateY(100%)';
+            
+            // 2. Warten, bis die 0.4s Animation fertig ist, DANN erst dein closeSnusDetail() ausführen
+            setTimeout(() => {
+                closeSnusDetail(); 
+                
+                // 3. Kurz danach den Transform aufräumen, damit die Karte beim nächsten Öffnen wieder richtig steht
+                setTimeout(() => {
+                    snusModalCardElement.style.transform = '';
+                }, 50);
+            }, 400);
+
         } else {
-            snusModalCardElement.style.transform = '';
+            // Wenn nicht weit genug gewischt: Sanft und explizit zurück auf Start (0px) gleiten
+            snusModalCardElement.style.transform = 'translateY(0px)';
+            
+            // Nach der Animation wieder aufräumen
+            setTimeout(() => {
+                snusModalCardElement.style.transform = '';
+            }, 400);
         }
     });
 }
