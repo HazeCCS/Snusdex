@@ -712,3 +712,72 @@ function calculateUsageStats(allLogs) {
     if(avgPouchesEl) avgPouchesEl.innerText = avgPouchesPerDay;                // Unten links (Daily Pouches)
     if(avgMgEl) avgMgEl.innerText = `${avgMgPerDay} MG`;                       // Unten rechts (Daily MG)
 }
+
+
+const scanModal = document.getElementById('scan-modal');
+const scanModalCard = document.getElementById('scan-modal-card');
+const scanModalBackdrop = document.getElementById('scan-modal-backdrop');
+
+function openScanModal() {
+    scanModal.classList.remove('hidden');
+    
+    document.body.classList.add('overflow-hidden');
+    
+    setTimeout(() => {
+        scanModalBackdrop.classList.remove('opacity-0');
+        scanModalBackdrop.classList.add('opacity-100');
+        scanModalCard.classList.remove('translate-y-full');
+        scanModalCard.classList.add('translate-y-0');
+    }, 10);
+}
+
+function closeScanModal() {
+    scanModalCard.classList.remove('translate-y-0');
+    scanModalCard.classList.add('translate-y-full');
+    scanModalBackdrop.classList.remove('opacity-100');
+    scanModalBackdrop.classList.add('opacity-0');
+    
+    scanModalCard.style.transform = ''; 
+
+    setTimeout(() => {
+        scanModal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }, 400);
+}
+
+let scanStartY = 0;
+let scanCurrentY = 0;
+let isScanDragging = false;
+
+if (scanModalCard) {
+    scanModalCard.addEventListener('touchstart', (e) => {
+        scanStartY = e.touches[0].clientY;
+        isScanDragging = true;
+        scanModalCard.style.transition = 'none';
+    }, { passive: true });
+
+    scanModalCard.addEventListener('touchmove', (e) => {
+        if (!isScanDragging) return;
+        scanCurrentY = e.touches[0].clientY;
+        const deltaY = scanCurrentY - scanStartY;
+
+        if (deltaY > 0) {
+            scanModalCard.style.transform = `translateY(${deltaY}px)`;
+        }
+    }, { passive: true });
+
+    scanModalCard.addEventListener('touchend', (e) => {
+        if (!isScanDragging) return;
+        isScanDragging = false;
+        
+        const deltaY = scanCurrentY - scanStartY;
+        
+        scanModalCard.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
+
+        if (deltaY > 100) {
+            closeScanModal();
+        } else {
+            scanModalCard.style.transform = '';
+        }
+    });
+}
