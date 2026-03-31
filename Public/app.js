@@ -712,9 +712,9 @@ function calculateUsageStats(allLogs) {
     const avgPouchesPerDay = (totalPouchesHistory / totalDaysSpan).toFixed(1);
 
     // 4. UI updaten (genau nach deiner Vorgabe)
-    if(statFlow) statFlow.innerText = `${totalMgHistory.toLocaleString()} MG`; // Oben rechts (Lifetime)
-    if(avgPouchesEl) avgPouchesEl.innerText = avgPouchesPerDay;                // Unten links (Daily Pouches)
-    if(avgMgEl) avgMgEl.innerText = `${avgMgPerDay} MG`;                       // Unten rechts (Daily MG)
+    if(statFlow) statFlow.innerText = `${totalMgHistory.toLocaleString()} MG`;
+    if(avgPouchesEl) avgPouchesEl.innerText = avgPouchesPerDay;
+    if(avgMgEl) avgMgEl.innerText = `${avgMgPerDay} MG`;                     
 }
 
 
