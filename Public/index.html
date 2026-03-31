@@ -11,14 +11,18 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
 
-                #scanner-reader video {
+                /* Verhindert, dass iOS eigene Player-Buttons über die Kamera legt */
+        #scanner-reader video::-webkit-media-controls {
+            display: none !important;
+        }
+
+        #scanner-reader video {
             object-fit: cover !important;
             width: 100% !important;
             height: 100% !important;
-            /* Verhindert schwarze Balken auf iPhones */
-            transform: scale(1.01); 
+            /* Verhindert, dass man das Video "anklicken" kann (was den Player startet) */
+            pointer-events: none !important; 
         }
-
         /* Versteckt UI-Elemente der Library */
         #scanner-reader img { display: none !important; }
         #scanner-reader span { display: none !important; }

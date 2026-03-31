@@ -886,20 +886,20 @@ async function openScanModal() {
 
 async function startScanner() {
     if (html5QrCode) {
-        await html5QrCode.clear();
+        try { await html5QrCode.clear(); } catch(e) {}
     }
     
     html5QrCode = new Html5Qrcode("scanner-reader");
     
     const config = { 
-        fps: 20, 
+        fps: 25, // Höher für flüssigeres Tracking
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
+        // WICHTIG: Das hier sagt dem Browser: "KEIN VOLLBILD"
         videoConstraints: {
             facingMode: "environment",
-            // Zwingt iOS das Video inline zu behalten
-            width: { min: 640, ideal: 1280 },
-            height: { min: 640, ideal: 720 }
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
         }
     };
 
@@ -910,59 +910,83 @@ async function startScanner() {
             onScanSuccess
         );
         
-        // Inline-Attribute manuell für iOS nachinjizieren
+        // --- DER IOS-KILLER-CODE ---
         const video = document.querySelector('#scanner-reader video');
         if (video) {
+            // Diese Attribute sind für Xcode/iOS Pflicht:
             video.setAttribute('playsinline', 'true');
             video.setAttribute('webkit-playsinline', 'true');
-            video.muted = true;
-            video.play();
+            video.setAttribute('muted', 'true');
+            video.muted = true; // Doppelt hält besser
+            video.setAttribute('autoplay', 'true');
+            
+            // Verhindert das "Pausieren"-Icon aus deinem Screenshot
+            video.play().catch(e => console.log("Autoplay blockiert:", e));
         }
         
         document.getElementById('kamera-placeholder').style.display = 'none';
     } catch (err) {
         console.error("Scanner Error:", err);
-        document.getElementById('kamera-placeholder').innerText = "Kamera Zugriff verweigert";
     }
 }
 
 async function onScanSuccess(decodedText) {
+    // 1. Sicherheitssperre: Wir wollen nicht 50 Scans gleichzeitig triggern
     if (isProcessingScan) return;
     isProcessingScan = true;
 
+    // 2. Feedback: Handy vibriert kurz (Haptic)
     triggerHapticFeedback();
     
-    // Visuelles Feedback: Ring wird Grün
+    // Visuelles Feedback: Ring wird grün (Signal für den User: "Hab's!")
     const ring = document.getElementById('scan-target-ring');
-    ring.style.borderColor = "#34C759";
-    ring.style.boxShadow = "0 0 0 999px rgba(52, 199, 89, 0.2)";
+    if (ring) {
+        ring.style.borderColor = "#34C759";
+        ring.style.boxShadow = "0 0 0 999px rgba(52, 199, 89, 0.3)";
+    }
 
-    // Datenbank Abgleich (Beispiel Pablo: 5740031410243)
-    const { data, error } = await supabaseClient
+    // 3. Datenbank-Check in Supabase
+    // Wir suchen in der Spalte 'barcode' nach der Nummer (z.B. 5740031410243)
+    const { data: snusItem, error } = await supabaseClient
         .from('snus_items')
         .select('id')
         .eq('barcode', decodedText)
         .single();
 
-    if (error || !data) {
+    if (error || !snusItem) {
         console.log("Barcode nicht gefunden:", decodedText);
-        // Kurze Pause vor nächstem Versuch
+        // Falls nicht gefunden: Ring kurz rot machen und nach 2 Sek. wieder freigeben
+        if (ring) ring.style.borderColor = "#FF3B30"; 
         setTimeout(() => {
-            ring.style.borderColor = "";
-            ring.style.boxShadow = "";
+            if (ring) {
+                ring.style.borderColor = "";
+                ring.style.boxShadow = "";
+            }
             isProcessingScan = false;
         }, 2000);
         return;
     }
 
-    // Erfolg: Schließen und Snus öffnen
+    // 4. DER AUTO-CLOSE & OPEN MOVE
+    // Zuerst Kamera stoppen, damit das System entlastet wird
+    await stopScanner();
+    
+    // Dann das Scan-Modal schließen
     closeScanModal();
+
+    // Kurze Pause (ca. 400ms), damit die Schließ-Animation vom Scan-Modal 
+    // fertig ist, bevor das Snus-Detail-Modal hochfährt. Sieht sauberer aus!
     setTimeout(() => {
-        openSnusDetail(data.id);
+        // Hier rufst du deine bestehende Funktion auf, die die Details anzeigt
+        openSnusDetail(snusItem.id); 
+        
+        // Reset für den nächsten Scan (falls man das Modal wieder öffnet)
         isProcessingScan = false;
-        ring.style.borderColor = "";
-        ring.style.boxShadow = "";
-    }, 500);
+        if (ring) {
+            ring.style.borderColor = "";
+            ring.style.boxShadow = "";
+        }
+    }, 450);
 }
 
 function closeScanModal() {
