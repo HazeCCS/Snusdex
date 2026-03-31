@@ -950,11 +950,13 @@ async function onScanSuccess(decodedText) {
 // ==========================================
 // MODAL UPDATE
 // ==========================================
+// --- 1. MODAL ÖFFNEN UND KAMERA STARTEN ---
 function openScanModal() {
     triggerHapticFeedback();
     scanModal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
     
+    // 1. Animation starten
     setTimeout(() => {
         scanModalBackdrop.classList.remove('opacity-0');
         scanModalBackdrop.classList.add('opacity-100');
@@ -962,8 +964,10 @@ function openScanModal() {
         scanModalCard.classList.add('translate-y-0');
     }, 10);
 
-    // HIER STARTEN WIR DIE KAMERA
-    startScanner();
+    // 2. WARTEN bis das Modal steht, DANN Kamera anfragen (Safari mag das lieber)
+    setTimeout(() => {
+        startScanner();
+    }, 400);
 }
 
 function closeScanModal() {
