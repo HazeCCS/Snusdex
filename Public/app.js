@@ -988,5 +988,50 @@ function closeScanModal() {
     }, 400);
 }
 
+let isLoginMode = true;
+
+    function toggleAuthMode() {
+        isLoginMode = !isLoginMode;
+
+        const subtitle = document.getElementById('auth-subtitle');
+        const googleBtnText = document.getElementById('google-btn-text');
+        const appleBtnText = document.getElementById('apple-btn-text');
+        const registerFields = document.getElementById('register-fields');
+        const mainBtn = document.getElementById('auth-main-btn');
+        const toggleText = document.getElementById('toggle-text');
+        const toggleAction = document.querySelector('#toggle-text + span');
+        const errorMsg = document.getElementById('auth-error');
+
+        errorMsg.classList.add('hidden');
+
+        if (isLoginMode) {
+            subtitle.innerText = "Willkommen zurück";
+            googleBtnText.innerText = "Mit Google anmelden";
+            appleBtnText.innerText = "Mit Apple anmelden";
+            registerFields.classList.add('hidden');
+            mainBtn.innerText = "Anmelden";
+            toggleText.innerText = "Noch kein Account? ";
+            toggleAction.innerText = "Registrieren";
+        } else {
+            subtitle.innerText = "Erstelle deinen Account";
+            googleBtnText.innerText = "Mit Google registrieren";
+            appleBtnText.innerText = "Mit Apple registrieren";
+            registerFields.classList.remove('hidden');
+            mainBtn.innerText = "Registrieren";
+            toggleText.innerText = "Bereits einen Account? ";
+            toggleAction.innerText = "Anmelden";
+        }
+    }
+
+    function handleAuthAction() {
+        if (isLoginMode) {
+            handleLoginWrapper();
+        } else {
+            handleRegisterWrapper();
+        }
+    }
+
+
+
 // ==========================================
 //empty commit 13
