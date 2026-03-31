@@ -863,129 +863,153 @@ if (snusModalCardElement) {
 // BARCODE SCANNER & KAMERA LOGIK
 // ==========================================
 let html5QrCode = null;
-let isProcessingScan = false; // Verhindert, dass er 10x pro Sekunde scannt
+let isProcessingScan = false;
+
+async function openScanModal() {
+    triggerHapticFeedback();
+    const modal = document.getElementById('scan-modal');
+    const backdrop = document.getElementById('scan-modal-backdrop');
+    const card = document.getElementById('scan-modal-card');
+
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    
+    setTimeout(() => {
+        backdrop.classList.add('opacity-100');
+        card.classList.remove('translate-y-full');
+        card.classList.add('translate-y-0');
+    }, 10);
+
+    // Kamera-Start verzögern, bis Modal-Animation fertig ist (iOS Fix)
+    setTimeout(startScanner, 500);
+}
 
 async function startScanner() {
-    if (!html5QrCode) {
-        html5QrCode = new Html5Qrcode("scanner-reader");
+    if (html5QrCode) {
+        try { await html5QrCode.clear(); } catch(e) {}
     }
-
-    // iPhone Rückkamera erzwingen
+    
+    html5QrCode = new Html5Qrcode("scanner-reader");
+    
     const config = { 
-        fps: 10, // 10 Scans pro Sekunde reicht völlig
+        fps: 25, // Höher für flüssigeres Tracking
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
-        disableFlip: false
+        // WICHTIG: Das hier sagt dem Browser: "KEIN VOLLBILD"
+        videoConstraints: {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        }
     };
 
     try {
         await html5QrCode.start(
             { facingMode: "environment" }, 
             config,
-            onScanSuccess,
-            (errorMessage) => {
-                // Ignorieren - er wirft diesen Error jeden Frame, wenn er keinen Code findet. Das ist normal.
-            }
+            onScanSuccess
         );
+        
+        // --- DER IOS-KILLER-CODE ---
+        const video = document.querySelector('#scanner-reader video');
+        if (video) {
+            // Diese Attribute sind für Xcode/iOS Pflicht:
+            video.setAttribute('playsinline', 'true');
+            video.setAttribute('webkit-playsinline', 'true');
+            video.setAttribute('muted', 'true');
+            video.muted = true; // Doppelt hält besser
+            video.setAttribute('autoplay', 'true');
+            
+            // Verhindert das "Pausieren"-Icon aus deinem Screenshot
+            video.play().catch(e => console.log("Autoplay blockiert:", e));
+        }
+        
         document.getElementById('kamera-placeholder').style.display = 'none';
     } catch (err) {
-        console.error("Fehler beim Kamerastart:", err);
-        document.getElementById('kamera-placeholder').innerText = "Kamera blockiert";
+        console.error("Scanner Error:", err);
     }
 }
 
-async function stopScanner() {
-    if (html5QrCode && html5QrCode.isScanning) {
-        try {
-            await html5QrCode.stop();
-        } catch (err) {
-            console.error("Scanner konnte nicht gestoppt werden:", err);
-        }
-    }
-}
-
-// Der Moment, wenn ein Barcode erkannt wird
 async function onScanSuccess(decodedText) {
+    // 1. Sicherheitssperre: Wir wollen nicht 50 Scans gleichzeitig triggern
     if (isProcessingScan) return;
-    isProcessingScan = true; // Lock einschalten
+    isProcessingScan = true;
 
-    // 1. Visuelles Feedback (Ring wird Apple-Grün und Handy vibriert)
+    // 2. Feedback: Handy vibriert kurz (Haptic)
     triggerHapticFeedback();
+    
+    // Visuelles Feedback: Ring wird grün (Signal für den User: "Hab's!")
     const ring = document.getElementById('scan-target-ring');
-    if (ring) ring.classList.replace('border-white/80', 'border-[#34C759]');
+    if (ring) {
+        ring.style.borderColor = "#34C759";
+        ring.style.boxShadow = "0 0 0 999px rgba(52, 199, 89, 0.3)";
+    }
 
-    // 2. Datenbank-Abfrage in Supabase
+    // 3. Datenbank-Check in Supabase
+    // Wir suchen in der Spalte 'barcode' nach der Nummer (z.B. 5740031410243)
     const { data: snusItem, error } = await supabaseClient
         .from('snus_items')
-        .select('id, name')
+        .select('id')
         .eq('barcode', decodedText)
         .single();
 
     if (error || !snusItem) {
-        // Nicht gefunden
-        alert(`Dose nicht erkannt! Barcode: ${decodedText}`);
-        
-        // Ring wieder weiß machen und Lock nach 2 Sekunden aufheben
+        console.log("Barcode nicht gefunden:", decodedText);
+        // Falls nicht gefunden: Ring kurz rot machen und nach 2 Sek. wieder freigeben
+        if (ring) ring.style.borderColor = "#FF3B30"; 
         setTimeout(() => {
-            if (ring) ring.classList.replace('border-[#34C759]', 'border-white/80');
+            if (ring) {
+                ring.style.borderColor = "";
+                ring.style.boxShadow = "";
+            }
             isProcessingScan = false;
         }, 2000);
         return;
     }
 
-    // 3. Gefunden! Scanner stoppen, Modal zu und Detailansicht auf!
-    stopScanner();
-    closeScanModal();
+    // 4. DER AUTO-CLOSE & OPEN MOVE
+    // Zuerst Kamera stoppen, damit das System entlastet wird
+    await stopScanner();
     
-    // Kurze Pause, damit die Modals nicht kollidieren
+    // Dann das Scan-Modal schließen
+    closeScanModal();
+
+    // Kurze Pause (ca. 400ms), damit die Schließ-Animation vom Scan-Modal 
+    // fertig ist, bevor das Snus-Detail-Modal hochfährt. Sieht sauberer aus!
     setTimeout(() => {
+        // Hier rufst du deine bestehende Funktion auf, die die Details anzeigt
         openSnusDetail(snusItem.id); 
         
-        // Reset für den nächsten Scan
-        if (ring) ring.classList.replace('border-[#34C759]', 'border-white/80');
+        // Reset für den nächsten Scan (falls man das Modal wieder öffnet)
         isProcessingScan = false;
+        if (ring) {
+            ring.style.borderColor = "";
+            ring.style.boxShadow = "";
+        }
     }, 450);
 }
 
-// ==========================================
-// MODAL UPDATE
-// ==========================================
-// --- 1. MODAL ÖFFNEN UND KAMERA STARTEN ---
-function openScanModal() {
-    triggerHapticFeedback();
-    scanModal.classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
-    
-    // 1. Animation starten
-    setTimeout(() => {
-        scanModalBackdrop.classList.remove('opacity-0');
-        scanModalBackdrop.classList.add('opacity-100');
-        scanModalCard.classList.remove('translate-y-full');
-        scanModalCard.classList.add('translate-y-0');
-    }, 10);
-
-    // 2. WARTEN bis das Modal steht, DANN Kamera anfragen (Safari mag das lieber)
-    setTimeout(() => {
-        startScanner();
-    }, 400);
-}
-
 function closeScanModal() {
-    // HIER STOPPEN WIR DIE KAMERA
-    stopScanner();
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            document.getElementById('scanner-reader').innerHTML = '';
+            html5QrCode = null;
+        }).catch(err => console.log(err));
+    }
 
-    scanModalCard.classList.remove('translate-y-0');
-    scanModalCard.classList.add('translate-y-full');
-    scanModalBackdrop.classList.remove('opacity-100');
-    scanModalBackdrop.classList.add('opacity-0');
+    const backdrop = document.getElementById('scan-modal-backdrop');
+    const card = document.getElementById('scan-modal-card');
+
+    card.classList.add('translate-y-full');
+    backdrop.classList.remove('opacity-100');
     
-    scanModalCard.style.transform = ''; 
     triggerHapticFeedback();
 
     setTimeout(() => {
-        scanModal.classList.add('hidden');
+        document.getElementById('scan-modal').classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
     }, 400);
+<<<<<<< HEAD
 }
 
 let isLoginMode = true;
@@ -1057,3 +1081,6 @@ let isLoginMode = true;
 
 // ==========================================
 //empty commit 13
+=======
+}
+>>>>>>> refs/remotes/origin/main
