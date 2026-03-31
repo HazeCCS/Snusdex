@@ -126,13 +126,13 @@
 </head>
 <body class="pb-24">
 
-    <div id="dev-tools" class="fixed top-4 left-1/2 -translate-x-1/2 bg-red-600/90 text-white p-3 rounded-xl text-sm z-[1000] flex gap-4 shadow-lg backdrop-blur-sm border border-red-400">
-        <span class="font-bold uppercase tracking-wider opacity-80">Dev:</span>
-        <button onclick="showVerificationScreen()" class="hover:underline font-semibold">Skip zu E-Mail Code</button>
-        <div class="w-[2px] bg-white/50"></div>
-        <button onclick="hideVerificationScreen()" class="hover:underline font-semibold">Zurück zum Login</button>
-    </div>
     <div id="auth-overlay" class="fixed inset-0 z-[999] bg-black flex items-center justify-center p-6 transition-opacity duration-500">
+        <div id="dev-tools" class="fixed top-4 left-1/2 -translate-x-1/2 bg-red-600/90 text-white p-3 rounded-xl text-sm z-[1000] flex gap-4 shadow-lg backdrop-blur-sm border border-red-400">
+            <span class="font-bold uppercase tracking-wider opacity-80">Dev:</span>
+            <button onclick="showVerificationScreen()" class="hover:underline font-semibold">Skip zu E-Mail Code</button>
+            <div class="w-[2px] bg-white/50"></div>
+            <button onclick="hideVerificationScreen()" class="hover:underline font-semibold">Zurück zum Login</button>
+        </div>
         <div class="w-full max-w-sm bg-[#1C1C1E] p-8 rounded-[32px] shadow-2xl border border-white/10">
             
             <div class="mb-6 text-center">
@@ -177,7 +177,7 @@
                         <input type="password" id="auth-password-confirm" placeholder="Passwort bestätigen" class="w-full bg-black border border-white/10 text-white rounded-xl px-4 py-4 text-[17px] focus:border-white outline-none transition-all mt-2">
                     </div>
 
-                    <button id="auth-main-btn" onclick="handleAuthAction()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-xl active:scale-95 transition-transform mt-4">
+                    <button id="auth-main-btn" onclick="handleLoginWrapper()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-xl active:scale-95 transition-transform mt-4">
                         Anmelden
                     </button>
                     <p id="auth-error" class="text-[#FF3B30] text-sm text-center hidden"></p>

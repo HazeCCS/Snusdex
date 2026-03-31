@@ -77,7 +77,7 @@ async function handleLogin() {
     
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) {
-        errorEl.innerText = "Access Denied";
+        errorEl.innerText = "Falsches Passwort oder E-Mail";
         errorEl.classList.remove('hidden');
         triggerHapticFeedback();
     } else {
@@ -1062,14 +1062,6 @@ let isLoginMode = true;
             mainView.classList.remove('hidden');
             isLoginMode = !isLoginMode; 
             toggleAuthMode(); 
-        }
-
-        function handleAuthAction() {
-            if (isLoginMode) {
-                console.log("Rufe echtes Login auf...");
-            } else {
-                console.log("Rufe echte Registrierung auf...");
-            }
         }
 
         function handleCodeVerification() {
