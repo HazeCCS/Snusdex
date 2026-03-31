@@ -10,6 +10,20 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+
+        /* Fix für den Kamera-Feed im Scanner */
+        #scanner-reader video {
+            object-fit: cover !important;
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 24px;
+        }
+        /* Versteckt das hässliche Default-Branding der Scanner-Library */
+        #scanner-reader img, 
+        #scanner-reader span {
+            display: none !important; 
+        }
+
         /* Apple System Font (SF Pro) erzwingen */
         @supports (font: -apple-system-body) {
             body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -345,7 +359,7 @@
         </div>
     </div>
 
-    <div id="scan-modal" class="fixed inset-0 z-[999] hidden flex flex-col justify-end">
+    <div id="scan-modal" class="hidden fixed inset-0 z-50 flex flex-col justify-end">
         <div id="scan-modal-backdrop" class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-400" onclick="closeScanModal()"></div>
         
         <div id="scan-modal-card" class="relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1000] mt-auto pb-10">
@@ -364,15 +378,18 @@
                 </button>
             </div>
 
-            <div class="flex flex-col items-center">
+            <div class="flex flex-col items-center mt-2">
                 <p class="text-[#8E8E93] text-[15px] mb-6 text-center leading-snug">
-                    Zentriere die Snusdose im Kreis,<br>um sie zu erfassen.
+                    Richte die Kamera auf den Barcode der Dose,<br>um sie zu erfassen.
                 </p>
 
-                <div class="w-full aspect-square max-w-[340px] bg-black rounded-[24px] relative overflow-hidden border border-white/10 flex flex-col items-center justify-center mb-4">
-                    <p class="text-[#3A3A3C] font-medium absolute z-0 uppercase tracking-widest text-sm">Kamera</p>
+                <div class="w-full aspect-square max-w-[340px] bg-black rounded-[24px] relative overflow-hidden border border-white/10 flex flex-col items-center justify-center mb-4 shadow-lg no-drag">
                     
-                    <div class="w-56 h-56 rounded-full border-2 border-white/80 shadow-[0_0_0_999px_rgba(0,0,0,0.5)] z-10 relative box-border pointer-events-none"></div>
+                    <p id="kamera-placeholder" class="text-[#3A3A3C] font-medium absolute z-0 uppercase tracking-widest text-sm">Kamera lädt...</p>
+                    
+                    <div id="scanner-reader" class="absolute inset-0 w-full h-full z-0"></div>
+                    
+                    <div id="scan-target-ring" class="w-56 h-56 rounded-full border-2 border-white/80 shadow-[0_0_0_999px_rgba(0,0,0,0.5)] z-10 relative box-border pointer-events-none transition-colors duration-300"></div>
                 </div>
             </div>
         </div>
@@ -399,6 +416,7 @@
         </div>
     </nav>
     <script src="app.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </body>
 </html>
 <!-- =========================================

@@ -860,4 +860,129 @@ if (snusModalCardElement) {
 }
 
 // ==========================================
+// BARCODE SCANNER & KAMERA LOGIK
+// ==========================================
+let html5QrCode = null;
+let isProcessingScan = false; // Verhindert, dass er 10x pro Sekunde scannt
+
+async function startScanner() {
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("scanner-reader");
+    }
+
+    // iPhone Rückkamera erzwingen
+    const config = { 
+        fps: 10, // 10 Scans pro Sekunde reicht völlig
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+        disableFlip: false
+    };
+
+    try {
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            config,
+            onScanSuccess,
+            (errorMessage) => {
+                // Ignorieren - er wirft diesen Error jeden Frame, wenn er keinen Code findet. Das ist normal.
+            }
+        );
+        document.getElementById('kamera-placeholder').style.display = 'none';
+    } catch (err) {
+        console.error("Fehler beim Kamerastart:", err);
+        document.getElementById('kamera-placeholder').innerText = "Kamera blockiert";
+    }
+}
+
+async function stopScanner() {
+    if (html5QrCode && html5QrCode.isScanning) {
+        try {
+            await html5QrCode.stop();
+        } catch (err) {
+            console.error("Scanner konnte nicht gestoppt werden:", err);
+        }
+    }
+}
+
+// Der Moment, wenn ein Barcode erkannt wird
+async function onScanSuccess(decodedText) {
+    if (isProcessingScan) return;
+    isProcessingScan = true; // Lock einschalten
+
+    // 1. Visuelles Feedback (Ring wird Apple-Grün und Handy vibriert)
+    triggerHapticFeedback();
+    const ring = document.getElementById('scan-target-ring');
+    if (ring) ring.classList.replace('border-white/80', 'border-[#34C759]');
+
+    // 2. Datenbank-Abfrage in Supabase
+    const { data: snusItem, error } = await supabaseClient
+        .from('snus_items')
+        .select('id, name')
+        .eq('barcode', decodedText)
+        .single();
+
+    if (error || !snusItem) {
+        // Nicht gefunden
+        alert(`Dose nicht erkannt! Barcode: ${decodedText}`);
+        
+        // Ring wieder weiß machen und Lock nach 2 Sekunden aufheben
+        setTimeout(() => {
+            if (ring) ring.classList.replace('border-[#34C759]', 'border-white/80');
+            isProcessingScan = false;
+        }, 2000);
+        return;
+    }
+
+    // 3. Gefunden! Scanner stoppen, Modal zu und Detailansicht auf!
+    stopScanner();
+    closeScanModal();
+    
+    // Kurze Pause, damit die Modals nicht kollidieren
+    setTimeout(() => {
+        openSnusDetail(snusItem.id); 
+        
+        // Reset für den nächsten Scan
+        if (ring) ring.classList.replace('border-[#34C759]', 'border-white/80');
+        isProcessingScan = false;
+    }, 450);
+}
+
+// ==========================================
+// MODAL UPDATE
+// ==========================================
+function openScanModal() {
+    triggerHapticFeedback();
+    scanModal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    
+    setTimeout(() => {
+        scanModalBackdrop.classList.remove('opacity-0');
+        scanModalBackdrop.classList.add('opacity-100');
+        scanModalCard.classList.remove('translate-y-full');
+        scanModalCard.classList.add('translate-y-0');
+    }, 10);
+
+    // HIER STARTEN WIR DIE KAMERA
+    startScanner();
+}
+
+function closeScanModal() {
+    // HIER STOPPEN WIR DIE KAMERA
+    stopScanner();
+
+    scanModalCard.classList.remove('translate-y-0');
+    scanModalCard.classList.add('translate-y-full');
+    scanModalBackdrop.classList.remove('opacity-100');
+    scanModalBackdrop.classList.add('opacity-0');
+    
+    scanModalCard.style.transform = ''; 
+    triggerHapticFeedback();
+
+    setTimeout(() => {
+        scanModal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }, 400);
+}
+
+// ==========================================
 //empty commit 13
