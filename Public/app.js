@@ -990,9 +990,7 @@ function closeScanModal() {
 
 let isLoginMode = true;
 
-    function toggleAuthMode() {
-        isLoginMode = !isLoginMode;
-
+        const title = document.getElementById('auth-title');
         const subtitle = document.getElementById('auth-subtitle');
         const googleBtnText = document.getElementById('google-btn-text');
         const appleBtnText = document.getElementById('apple-btn-text');
@@ -1001,36 +999,60 @@ let isLoginMode = true;
         const toggleText = document.getElementById('toggle-text');
         const toggleAction = document.querySelector('#toggle-text + span');
         const errorMsg = document.getElementById('auth-error');
+        const mainView = document.getElementById('auth-main-view');
+        const verifyView = document.getElementById('auth-verify-view');
 
-        errorMsg.classList.add('hidden');
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            errorMsg.classList.add('hidden');
 
-        if (isLoginMode) {
-            subtitle.innerText = "Willkommen zurück";
-            googleBtnText.innerText = "Mit Google anmelden";
-            appleBtnText.innerText = "Mit Apple anmelden";
-            registerFields.classList.add('hidden');
-            mainBtn.innerText = "Anmelden";
-            toggleText.innerText = "Noch kein Account? ";
-            toggleAction.innerText = "Registrieren";
-        } else {
-            subtitle.innerText = "Erstelle deinen Account";
-            googleBtnText.innerText = "Mit Google registrieren";
-            appleBtnText.innerText = "Mit Apple registrieren";
-            registerFields.classList.remove('hidden');
-            mainBtn.innerText = "Registrieren";
-            toggleText.innerText = "Bereits einen Account? ";
-            toggleAction.innerText = "Anmelden";
+            if (isLoginMode) {
+                title.innerText = "Snusdex Elite";
+                subtitle.innerText = "Willkommen zurück";
+                googleBtnText.innerText = "Mit Google anmelden";
+                appleBtnText.innerText = "Mit Apple anmelden";
+                registerFields.classList.add('hidden');
+                mainBtn.innerText = "Anmelden";
+                toggleText.innerText = "Noch kein Account? ";
+                toggleAction.innerText = "Registrieren";
+            } else {
+                title.innerText = "Snusdex Elite";
+                subtitle.innerText = "Erstelle deinen Account";
+                googleBtnText.innerText = "Mit Google registrieren";
+                appleBtnText.innerText = "Mit Apple registrieren";
+                registerFields.classList.remove('hidden');
+                mainBtn.innerText = "Registrieren";
+                toggleText.innerText = "Bereits einen Account? ";
+                toggleAction.innerText = "Anmelden";
+            }
         }
-    }
 
-    function handleAuthAction() {
-        if (isLoginMode) {
-            handleLoginWrapper();
-        } else {
-            handleRegisterWrapper();
+        function showVerificationScreen() {
+            title.innerText = "E-Mail bestätigen";
+            subtitle.innerText = "Fast geschafft!";
+            mainView.classList.add('hidden');
+            verifyView.classList.remove('hidden');
         }
-    }
 
+        function hideVerificationScreen() {
+            verifyView.classList.add('hidden');
+            mainView.classList.remove('hidden');
+            isLoginMode = !isLoginMode; 
+            toggleAuthMode(); 
+        }
+
+        function handleAuthAction() {
+            if (isLoginMode) {
+                console.log("Rufe echtes Login auf...");
+            } else {
+                console.log("Rufe echte Registrierung auf...");
+            }
+        }
+
+        function handleCodeVerification() {
+            const code = document.getElementById('auth-verify-code').value;
+            console.log("Prüfe Code: " + code);
+        }
 
 
 // ==========================================
