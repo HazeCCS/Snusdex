@@ -1009,7 +1009,6 @@ function closeScanModal() {
         document.getElementById('scan-modal').classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
     }, 400);
-<<<<<<< HEAD
 }
 
 let isLoginMode = true;
@@ -1081,6 +1080,3 @@ let isLoginMode = true;
 
 // ==========================================
 //empty commit 13
-=======
-}
->>>>>>> refs/remotes/origin/main
