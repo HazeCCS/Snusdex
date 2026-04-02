@@ -756,15 +756,42 @@ async function openScanModal() {
         scanModalCard.classList.add('translate-y-0');
     }, 10);
 
+    setTimeout(() => {
+        const loadingBar = document.getElementById('loading-bar-fill');
+        
+        if (loadingBar) {
+            loadingBar.style.transition = 'width 750ms cubic-bezier(0.4, 0, 0.2, 1)';
+            loadingBar.style.width = '100%';
+        }
+    }, 300);
+
     setTimeout(async () => {
         try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment", aspectRatio: 1/1 }, 
-                audio: false 
-            });
-            if (cameraVideo) cameraVideo.srcObject = cameraStream;
+            const [stream] = await Promise.all([
+                navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment", aspectRatio: 1/1 }, 
+                    audio: false 
+                }),
+                new Promise(resolve => setTimeout(resolve, 700)) 
+            ]);
+
+            cameraStream = stream;
+            
+            if (cameraVideo) {
+                cameraVideo.srcObject = cameraStream;
+                
+                cameraVideo.onloadedmetadata = () => {
+                    document.getElementById('camera-loading').classList.add('opacity-0', 'pointer-events-none');
+                    cameraVideo.classList.remove('opacity-0');
+                    cameraVideo.classList.add('opacity-100');
+                };
+            }
         } catch (err) {
             console.error("Kamera-Zugriff verweigert:", err);
+            const loadingScreen = document.getElementById('camera-loading');
+            if (loadingScreen) {
+                loadingScreen.innerHTML = '<p class="text-[#FF453A] text-sm font-medium">Kamera nicht verfügbar</p>';
+            }
         }
     }, 300);
 }
@@ -798,9 +825,24 @@ function closeScanModal(isDragging = false) {
             cameraStream = null;
             if (cameraVideo) cameraVideo.srcObject = null;
         }
+
+        const loadingScreen = document.getElementById('camera-loading');
+        const loadingBar = document.getElementById('loading-bar-fill');
+
+        if (loadingScreen) loadingScreen.classList.remove('opacity-0', 'pointer-events-none');
+        
+        if (loadingBar) {
+            loadingBar.style.transition = 'none'; 
+            loadingBar.style.width = '0%';
+        }
+
+        if (cameraVideo) {
+            cameraVideo.classList.remove('opacity-100');
+            cameraVideo.classList.add('opacity-0');
+        }
+        
     }, 400);
 }
-
 
 let scanStartY = 0;
 let scanCurrentY = 0;
