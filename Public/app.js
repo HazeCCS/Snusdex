@@ -717,39 +717,90 @@ function calculateUsageStats(allLogs) {
     if(avgMgEl) avgMgEl.innerText = `${avgMgPerDay} MG`;                     
 }
 
+
+
+
+
+
+
+
+
+let cameraStream = null;
+
 const scanModal = document.getElementById('scan-modal');
 const scanModalCard = document.getElementById('scan-modal-card');
 const scanModalBackdrop = document.getElementById('scan-modal-backdrop');
+const cameraVideo = document.getElementById('camera-stream');
 
-function openScanModal() {
-    triggerHapticFeedback();
+
+if (scanModal) {
+    scanModal.addEventListener('touchmove', (e) => {
+        if (!isScanDragging) {
+            e.preventDefault(); 
+        }
+    }, { passive: false });
+}
+
+
+async function openScanModal() {
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
+    
     scanModal.classList.remove('hidden');
-
     document.body.classList.add('overflow-hidden');
 
     setTimeout(() => {
         scanModalBackdrop.classList.remove('opacity-0');
         scanModalBackdrop.classList.add('opacity-100');
+        
         scanModalCard.classList.remove('translate-y-full');
         scanModalCard.classList.add('translate-y-0');
     }, 10);
+
+    setTimeout(async () => {
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment", aspectRatio: 1/1 }, 
+                audio: false 
+            });
+            if (cameraVideo) cameraVideo.srcObject = cameraStream;
+        } catch (err) {
+            console.error("Kamera-Zugriff verweigert:", err);
+        }
+    }, 300);
 }
 
-function closeScanModal() {
+
+function closeScanModal(isDragging = false) {
     scanModalCard.classList.remove('translate-y-0');
     scanModalCard.classList.add('translate-y-full');
+    
     scanModalBackdrop.classList.remove('opacity-100');
     scanModalBackdrop.classList.add('opacity-0');
 
-    scanModalCard.style.transform = ''; 
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
-    triggerHapticFeedback(),
+    if (!isDragging) {
+        scanModalCard.style.transform = ''; 
+        scanModalCard.style.transition = ''; 
+    }
 
     setTimeout(() => {
         scanModal.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
+        
+        if (isDragging) {
+            scanModalCard.style.transform = '';
+            scanModalCard.style.transition = ''; 
+        }
+        
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraStream = null;
+            if (cameraVideo) cameraVideo.srcObject = null;
+        }
     }, 400);
 }
+
 
 let scanStartY = 0;
 let scanCurrentY = 0;
@@ -777,13 +828,17 @@ if (scanModalCard) {
         isScanDragging = false;
 
         const deltaY = scanCurrentY - scanStartY;
-
         scanModalCard.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
 
         if (deltaY > 100) {
-            closeScanModal();
+            scanModalCard.style.transform = 'translateY(100%)';
+            closeScanModal(true); 
         } else {
-            scanModalCard.style.transform = '';
+            scanModalCard.style.transform = 'translateY(0px)';
+            setTimeout(() => {
+                scanModalCard.style.transform = '';
+                scanModalCard.style.transition = '';
+            }, 400);
         }
     });
 }
@@ -824,7 +879,7 @@ if (snusModalCardElement) {
             snusModalCardElement.style.transform = 'translateY(100%)';
 
             setTimeout(() => {
-                closeSnusDetail(); 
+                if (typeof closeSnusDetail === 'function') closeSnusDetail(); 
 
                 setTimeout(() => {
                     snusModalCardElement.style.transform = '';
@@ -840,6 +895,20 @@ if (snusModalCardElement) {
         }
     });
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 let isLoginMode = true;
 
