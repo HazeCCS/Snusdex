@@ -1070,5 +1070,255 @@ let isLoginMode = true;
         }
 
 
+function toggleSetting(element) {
+    const isActive = element.classList.contains('bg-white');
+    if (isActive) {
+        element.classList.remove('bg-white');
+        element.classList.add('bg-[#3A3A3C]');
+        element.children[0].classList.remove('translate-x-5');
+        element.children[0].classList.remove('bg-black');
+        element.children[0].classList.add('bg-white');
+    } else {
+        element.classList.remove('bg-[#3A3A3C]');
+        element.classList.add('bg-white');
+        element.children[0].classList.add('translate-x-5');
+        element.children[0].classList.remove('bg-white');
+        element.children[0].classList.add('bg-black');
+    }
+}
+
+function openSettingsSubpage(type) {
+    const subpage = document.getElementById('settings-subpage');
+    const titleObj = document.getElementById('subpage-title');
+    const contentObj = document.getElementById('subpage-content');
+    
+    titleObj.innerText = type;
+    let html = '';
+
+    if (type === 'Edit Profile') {
+        html = `
+            <div class="flex flex-col items-center mb-8 mt-2">
+                <div class="relative">
+                    <div class="w-24 h-24 bg-gradient-to-tr from-gray-200 to-white rounded-full flex items-center justify-center shadow-lg">
+                        <span class="text-3xl font-bold text-black">H</span>
+                    </div>
+                    <button class="absolute bottom-0 right-0 w-8 h-8 bg-[#1C1C1E] border border-white/20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-[#1C1C1E] rounded-[24px] p-5 space-y-4 border border-white/10 mb-8 shadow-sm">
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Username</label>
+                    <input type="text" value="Collector1337" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Email</label>
+                    <input type="email" value="user@example.com" disabled class="w-full bg-black/50 text-[#8E8E93] border border-white/5 rounded-[14px] px-4 py-3.5 text-[17px] outline-none cursor-not-allowed">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Date of Birth</label>
+                    <input type="date" value="2000-01-01" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all [color-scheme:dark]">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Location</label>
+                    <input type="text" placeholder="City, Country" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all placeholder:text-[#8E8E93]">
+                </div>
+            </div>
+            
+            <button class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform shadow-[0_4px_14px_rgba(255,255,255,0.1)]">
+                Save Changes
+            </button>
+        `;
+    } 
+    else if (type === 'Notifications') {
+        html = `
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
+                <div class="flex items-center justify-between p-5">
+                    <span class="text-white text-[17px]">Push Notifications</span>
+                    <div onclick="toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
+                </div>
+                <div class="h-[1px] bg-white/5 mx-5"></div>
+                <div class="flex items-center justify-between p-5">
+                    <span class="text-white text-[17px]">New Snus Drops (Dex)</span>
+                    <div onclick="toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
+                </div>
+                <div class="h-[1px] bg-white/5 mx-5"></div>
+                <div class="flex items-center justify-between p-5">
+                    <span class="text-white text-[17px]">Email Summaries</span>
+                    <div onclick="toggleSetting(this)" class="w-12 h-7 bg-[#3A3A3C] rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm"></div></div>
+                </div>
+            </div>
+        `;
+    }
+    else if (type === 'Privacy & Security') {
+        html = `
+            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">Profile Visibility</p>
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 mb-8">
+                <div class="flex items-center justify-between p-5">
+                    <span class="text-white text-[17px]">Private Profile</span>
+                    <div onclick="toggleSetting(this)" class="w-12 h-7 bg-[#3A3A3C] rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm"></div></div>
+                </div>
+            </div>
+            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">Data</p>
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
+                <div class="flex items-center justify-between p-5">
+                    <span class="text-white text-[17px]">Share Analytics</span>
+                    <div onclick="toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
+                </div>
+            </div>
+        `;
+    }
+    else if (type === 'Language') {
+        html = `
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
+                <div class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                    <span class="text-white text-[17px]">English</span>
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <div class="h-[1px] bg-white/5 mx-5"></div>
+                <div class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                    <span class="text-white text-[17px]">Deutsch</span>
+                </div>
+                <div class="h-[1px] bg-white/5 mx-5"></div>
+                <div class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                    <span class="text-white text-[17px]">Svenska</span>
+                </div>
+            </div>
+        `;
+    }
+    else if (type === 'Help Center & FAQ') {
+        html = `
+            <div class="space-y-4">
+                <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
+                    <h3 class="text-white font-medium mb-1">How does the Dex work?</h3>
+                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">Every time you scan a new can, it gets added to your permanent Snusdex collection. You earn XP for rarities.</p>
+                </div>
+                <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
+                    <h3 class="text-white font-medium mb-1">Can I manually add a Snus?</h3>
+                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">Currently, scanning the barcode is required to verify the product and maintain the integrity of the Dex.</p>
+                </div>
+                <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
+                    <h3 class="text-white font-medium mb-1">How do I level up?</h3>
+                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">Your Collector Level increases as you gain XP. Rarer Snus (like Epic or Mythic) yield significantly more XP than Common ones.</p>
+                </div>
+                <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
+                    <h3 class="text-white font-medium mb-1">How is my usage calculated?</h3>
+                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">When you mark a can as 'Active' and later 'Empty', we calculate your daily average pouches and nicotine intake based on the time it took to finish it.</p>
+                </div>
+                
+                <div class="mt-10 flex justify-center pb-8">
+                    <button class="text-[#8E8E93] hover:text-white text-[14px] font-medium underline decoration-white/30 underline-offset-4 active:opacity-50 transition-all">
+                        Contact Support
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    else if (type === 'Delete Account') {
+        html = `
+            <div class="text-center mt-6 mb-8">
+                <div class="w-16 h-16 bg-[#FF3B30]/10 border border-[#FF3B30]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-[#FF3B30]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                </div>
+                <h2 class="text-white text-[22px] font-bold tracking-tight mb-2">Delete Account?</h2>
+                <p class="text-[#8E8E93] text-[15px] px-4 leading-relaxed">This action is permanent and cannot be undone. All your Dex collections and stats will be lost forever.</p>
+            </div>
+            <button class="w-full bg-[#FF3B30] text-white font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform mb-3 shadow-[0_4px_14px_rgba(255,59,48,0.2)]">
+                Yes, delete my account
+            </button>
+            <button onclick="closeSettingsSubpage()" class="w-full bg-[#1C1C1E] border border-white/10 text-white font-medium text-[17px] py-4 rounded-[14px] active:bg-white/5 transition-colors">
+                Cancel
+            </button>
+        `;
+    }
+
+    contentObj.innerHTML = html;
+
+    subpage.classList.remove('hidden');
+    setTimeout(() => {
+        subpage.classList.remove('translate-x-full');
+        subpage.classList.add('translate-x-0');
+    }, 10);
+}
+
+function closeSettingsSubpage() {
+    const subpage = document.getElementById('settings-subpage');
+    if (!subpage) return;
+    
+    subpage.style.transform = '';
+    subpage.style.transition = '';
+    
+    subpage.classList.remove('translate-x-0');
+    subpage.classList.add('translate-x-full');
+    
+    setTimeout(() => {
+        subpage.classList.add('hidden');
+    }, 300);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const settingsSubpage = document.getElementById('settings-subpage');
+    if (!settingsSubpage) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isSwiping = false;
+
+    settingsSubpage.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isSwiping = false;
+    }, { passive: true });
+
+    settingsSubpage.addEventListener('touchmove', (e) => {
+        if (!touchStartX || !touchStartY) return;
+
+        let touchCurrentX = e.touches[0].clientX;
+        let touchCurrentY = e.touches[0].clientY;
+
+        let diffX = touchCurrentX - touchStartX;
+        let diffY = Math.abs(touchCurrentY - touchStartY);
+
+        if (diffY > Math.abs(diffX)) {
+            return; 
+        }
+
+        if (diffX > 0) {
+            isSwiping = true;
+            settingsSubpage.style.transition = 'none';
+            settingsSubpage.style.transform = `translateX(${diffX}px)`;
+        }
+    }, { passive: true });
+
+    settingsSubpage.addEventListener('touchend', (e) => {
+        if (!isSwiping) return;
+
+        let touchEndX = e.changedTouches[0].clientX;
+        let diffX = touchEndX - touchStartX;
+
+        settingsSubpage.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+
+        if (diffX > window.innerWidth / 3 || diffX > 100) {
+            closeSettingsSubpage();
+        } else {
+            settingsSubpage.style.transform = 'translateX(0)';
+        }
+        
+        setTimeout(() => {
+            settingsSubpage.style.transform = '';
+            settingsSubpage.style.transition = '';
+        }, 300);
+
+        touchStartX = 0;
+        touchStartY = 0;
+        isSwiping = false;
+    });
+});
+
 // ==========================================
 //empty commit 13
