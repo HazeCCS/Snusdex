@@ -157,11 +157,21 @@ function renderDexGrid(items) {
     items.forEach(snus => {
         const isUnlocked = !!globalUserCollection[snus.id]; 
         grid.innerHTML += `
-            <div onclick="openSnusDetail(${snus.id})" class="relative flex flex-col items-center p-3 bg-[#1C1C1E] rounded-3xl transition-all active:scale-95 cursor-pointer shadow-sm border border-white/5 ${!isUnlocked ? 'opacity-40 grayscale' : ''}">
-                <div class="w-full aspect-square flex items-center justify-center p-2 mb-2">
-                    <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain drop-shadow-md" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
+            <div onclick="openSnusDetail(${snus.id})" class="relative flex flex-col bg-[#1C1C1E] rounded-[20px] transition-all active:scale-95 cursor-pointer shadow-sm border border-white/5 overflow-hidden ${!isUnlocked ? 'opacity-50 grayscale hover:opacity-75' : ''}">
+                
+                ${!isUnlocked ? `
+                <div class="absolute top-2 right-2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-md z-10">
+                    <svg class="w-3 h-3 text-white/50" fill="currentColor" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/></svg>
                 </div>
-                <h5 class="text-[12px] font-semibold text-center truncate w-full tracking-tight ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
+                ` : ''}
+
+                <div class="w-full aspect-[4/3] flex items-center justify-center p-3 bg-gradient-to-b from-white/5 to-transparent relative">
+                    <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain drop-shadow-xl z-0" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
+                </div>
+                
+                <div class="p-3 pt-1 text-center bg-[#1C1C1E] flex-1 flex items-center justify-center">
+                    <h5 class="text-[13px] font-medium leading-[1.2] line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
+                </div>
             </div>
         `;
     });
@@ -292,7 +302,7 @@ function openSnusDetail(id) {
     initRatingRows();
 
     const isUnlocked = globalUserCollection[id];
-    document.getElementById('start-collect-btn').classList.toggle('hidden', !!isUnlocked);
+    document.getElementById('uncollected-action-group').classList.toggle('hidden', !!isUnlocked);
     document.getElementById('modal-collected-status').classList.toggle('hidden', !isUnlocked);
 
     if (isUnlocked) {
@@ -302,19 +312,76 @@ function openSnusDetail(id) {
 
     document.getElementById('snus-modal').classList.remove('hidden');
     setTimeout(() => {
-        document.getElementById('modal-backdrop').classList.add('active'); 
-        document.getElementById('snus-modal-card').classList.remove('translate-y-full'); 
+        const backdrop = document.getElementById('modal-backdrop');
+        const card = document.getElementById('snus-modal-card');
+        
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100');
+        
+        card.classList.remove('translate-y-full');
+        card.classList.add('translate-y-0');
     }, 10);
+    
     triggerHapticFeedback();
 }
 
 function closeSnusDetail() {
-    document.getElementById('modal-backdrop').classList.remove('active'); 
-    document.getElementById('snus-modal-card').classList.add('translate-y-full'); 
-    document.body.classList.remove('overflow-hidden');
+    const backdrop = document.getElementById('modal-backdrop');
+    const card = document.getElementById('snus-modal-card');
+
+    backdrop.classList.remove('opacity-100');
+    backdrop.classList.add('opacity-0');
+    
+    card.classList.remove('translate-y-0');
+    card.classList.add('translate-y-full');
+    
+    document.body.classList.remove('overflow-hidden');function renderDexGrid(items) {
+    const grid = document.getElementById('dex-grid');
+    if (!grid) return;
+    grid.innerHTML = ''; 
+    
+    items.forEach(snus => {
+        const isUnlocked = !!globalUserCollection[snus.id]; 
+        
+        // ID formatieren (z.B. aus 22 wird #022)
+        const formattedId = '#' + String(snus.id).padStart(3, '0');
+        
+        // Rarity abrufen und formatieren (Fallback ist 'common')
+        const rarity = (snus.rarity || 'common').toLowerCase();
+        
+        grid.innerHTML += `
+            <div onclick="openSnusDetail(${snus.id})" class="relative flex flex-col bg-[#2A2A2E] rounded-[20px] transition-all active:scale-95 cursor-pointer shadow-md border border-white/20 overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale hover:opacity-60' : ''}">
+                
+                <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
+                    <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
+                    <span class="text-[10px] font-bold tracking-wide" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>
+                </div>
+
+                ${!isUnlocked ? `
+                <div class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                    <div class="w-8 h-8 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-md">
+                        <svg class="w-4 h-4 text-white/50" fill="currentColor" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/></svg>
+                    </div>
+                </div>
+                ` : ''}
+
+                <div class="w-full aspect-square flex items-center justify-center relative mt-1">
+                    <div class="absolute w-[75%] aspect-square bg-[#D9D9D9]/20 rounded-full z-0"></div>
+                    <img src="${GITHUB_BASE}${snus.image}" class="w-[80%] h-[80%] object-contain drop-shadow-xl z-10" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
+                </div>
+                
+                <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
+                    <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
+                </div>
+                
+            </div>
+        `;
+    });
+}
     setTimeout(() => {
         document.getElementById('snus-modal').classList.add('hidden');
-        hideAllViews(); document.getElementById('modal-view-info').classList.remove('hidden');
+        hideAllViews(); 
+        document.getElementById('modal-view-info').classList.remove('hidden');
     }, 400);
 }
 

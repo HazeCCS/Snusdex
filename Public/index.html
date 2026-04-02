@@ -87,20 +87,6 @@
             content: ''; position: absolute; bottom: 0; left: 60px; right: 0;
             height: 0.5px; background-color: var(--ios-separator);
         }
-
-        /* Modal Background & Card (Apple Bottom Sheet) */
-        #modal-backdrop {
-            transition: opacity 0.4s ease, backdrop-filter 0.4s ease;
-            opacity: 0; backdrop-filter: blur(0px); pointer-events: none;
-        }
-        #modal-backdrop.active { opacity: 1; backdrop-filter: blur(10px); pointer-events: auto; }
-        
-        #snus-modal-card {
-            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-            background-color: var(--ios-card);
-            max-height: 90vh; overflow-y: auto; z-index: 999;
-        }
-
         /* Rating System (Monochrome White HIG) */
         .rating-row {
             display: flex; justify-content: space-between;
@@ -305,7 +291,7 @@
     </main>
 
     <main id="tab-dex" class="tab-content hidden pt-12">
-        <div class="px-5 py-4">
+        <div class="px-5">
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-[34px] font-bold tracking-tight">Dex</h1>
                 <button onclick="openScanModal()" class="w-10 h-10 bg-[#1C1C1E] rounded-full flex items-center justify-center active:scale-95 transition-transform border border-white/10">
@@ -316,13 +302,15 @@
                 </button>
             </div>
 
-            <div class="relative mb-6">
-                <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                    <svg class="w-5 h-5 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <div class="relative mb-6 group">
+                <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none transition-colors duration-300 text-[#8E8E93] group-focus-within:text-white">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                     </svg>
                 </div>
-                <input type="text" id="dex-search" oninput="filterDex()" placeholder="Search Snus..." class="w-full bg-[#1C1C1E] rounded-[10px] py-2.5 pl-10 pr-4 text-[17px] text-white outline-none placeholder:text-[#8E8E93]">
+                
+                <input type="text" id="dex-search" oninput="filterDex()" placeholder="Search Snus..." 
+                    class="w-full bg-[#1C1C1E] border border-white/10 rounded-[16px] py-3.5 pl-12 pr-4 text-[17px] text-white outline-none placeholder:text-[#8E8E93] focus:border-white/30 focus:bg-[#2C2C2E] transition-all shadow-sm">
             </div>
 
             <div id="dex-grid" class="grid grid-cols-3 gap-3 pb-32"></div>
@@ -467,13 +455,14 @@
         </div>
     </main>
 
-    <div id="snus-modal" class="fixed inset-0 z-[999] hidden">
-        <div id="modal-backdrop" class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-400 backdrop-blur-none" onclick="closeSnusDetail()"></div>
+    <div id="snus-modal" class="fixed inset-0 z-[999] hidden flex flex-col justify-end">
+    <div id="modal-backdrop" class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-400" onclick="closeSnusDetail()"></div>
 
-        <div id="snus-modal-card" class="absolute bottom-0 left-0 right-0 rounded-t-[32px] p-6 pb-12 max-w-md mx-auto translate-y-full">
-            <div class="w-10 h-1.5 bg-[#3A3A3C] rounded-full mx-auto mb-6"></div>
+    <div id="snus-modal-card" class="relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1000] mt-auto p-6 pb-12 max-h-[90vh] overflow-y-auto w-full max-w-md mx-auto">
+        
+        <div class="w-10 h-1.5 bg-[#3A3A3C] rounded-full mx-auto mb-6 flex-shrink-0"></div>
 
-            <div id="modal-views-wrapper" class="w-full">
+        <div id="modal-views-wrapper" class="w-full">
                 <div id="modal-view-info" class="fade-view">
                     <div class="w-full flex justify-center mb-6 h-48 relative">
                         <img id="modal-image" src="" alt="Snus" class="h-full object-contain drop-shadow-2xl z-20">
@@ -484,9 +473,21 @@
                         <p id="modal-nicotine" class="text-[15px] text-[#8E8E93]">0 MG/G • <span id="modal-rarity-text">Common</span></p>
                     </div>
 
-                    <button id="start-collect-btn" onclick="showRatingView()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform">
-                        Add to Collection(for testing)
-                    </button>
+                    <div id="uncollected-action-group" class="w-full">
+    <button onclick="closeSnusDetail(); setTimeout(openScanModal, 400)" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] shadow-[0_4px_14px_rgba(255,255,255,0.1)] flex justify-center items-center gap-2 active:scale-95 transition-transform">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        Dose scannen
+    </button>
+    
+    <div class="mt-5 text-center">
+        <button onclick="showRatingView()" class="text-[12px] text-white/30 hover:text-white/80 transition-colors uppercase tracking-widest font-medium">
+            Dev: Manuell hinzufügen
+        </button>
+    </div>
+</div>
 
                     <div id="modal-collected-status" class="hidden mt-4 text-center">
                         <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#34C759]/20 mb-3">
