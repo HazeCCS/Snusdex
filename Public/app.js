@@ -717,7 +717,6 @@ function calculateUsageStats(allLogs) {
     if(avgMgEl) avgMgEl.innerText = `${avgMgPerDay} MG`;                     
 }
 
-
 const scanModal = document.getElementById('scan-modal');
 const scanModalCard = document.getElementById('scan-modal-card');
 const scanModalBackdrop = document.getElementById('scan-modal-backdrop');
@@ -725,9 +724,9 @@ const scanModalBackdrop = document.getElementById('scan-modal-backdrop');
 function openScanModal() {
     triggerHapticFeedback();
     scanModal.classList.remove('hidden');
-    
+
     document.body.classList.add('overflow-hidden');
-    
+
     setTimeout(() => {
         scanModalBackdrop.classList.remove('opacity-0');
         scanModalBackdrop.classList.add('opacity-100');
@@ -741,7 +740,7 @@ function closeScanModal() {
     scanModalCard.classList.add('translate-y-full');
     scanModalBackdrop.classList.remove('opacity-100');
     scanModalBackdrop.classList.add('opacity-0');
-    
+
     scanModalCard.style.transform = ''; 
 
     triggerHapticFeedback(),
@@ -776,9 +775,9 @@ if (scanModalCard) {
     scanModalCard.addEventListener('touchend', (e) => {
         if (!isScanDragging) return;
         isScanDragging = false;
-        
+
         const deltaY = scanCurrentY - scanStartY;
-        
+
         scanModalCard.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
 
         if (deltaY > 100) {
@@ -790,9 +789,6 @@ if (scanModalCard) {
 }
 
 
-// ==========================================
-// SNUS DETAIL MODAL DRAG LOGIC (FIXED)
-// ==========================================
 const snusModalCardElement = document.getElementById('snus-modal-card');
 let snusStartY = 0;
 let snusCurrentY = 0;
@@ -800,17 +796,7 @@ let isSnusDragging = false;
 
 if (snusModalCardElement) {
     snusModalCardElement.addEventListener('touchstart', (e) => {
-        // --- CEO-FIX START ---
-        // Wir prüfen, ob der Finger ein Element berührt, das NICHT ziehen soll.
-        // Falls du dein Rating in einem Div mit der Klasse "rating-grid" hast, füge sie hier hinzu.
-        if (e.target.closest('button, input, select, textarea, .no-drag, .rating-stars, [role="button"]')) {
-            isSnusDragging = false;
-            return; // Beendet die Funktion hier, das Modal bewegt sich nicht.
-        }
-        // --- CEO-FIX ENDE ---
-
         snusStartY = e.touches[0].clientY;
-        snusCurrentY = snusStartY; // Reset für saubere Berechnung
         isSnusDragging = true;
 
         snusModalCardElement.style.transition = 'none';
@@ -818,11 +804,9 @@ if (snusModalCardElement) {
 
     snusModalCardElement.addEventListener('touchmove', (e) => {
         if (!isSnusDragging) return;
-        
         snusCurrentY = e.touches[0].clientY;
         const deltaY = snusCurrentY - snusStartY;
 
-        // Nur nach unten ziehen erlauben
         if (deltaY > 0) {
             snusModalCardElement.style.transform = `translateY(${deltaY}px)`;
         }
@@ -831,184 +815,30 @@ if (snusModalCardElement) {
     snusModalCardElement.addEventListener('touchend', (e) => {
         if (!isSnusDragging) return;
         isSnusDragging = false;
-        
+
         const deltaY = snusCurrentY - snusStartY;
-        
-        // Sanfte Apple-Animation zurück
+
         snusModalCardElement.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
 
         if (deltaY > 100) {
-            // Modal ganz nach unten aus dem Bild schieben
             snusModalCardElement.style.transform = 'translateY(100%)';
-            
+
             setTimeout(() => {
                 closeSnusDetail(); 
+
                 setTimeout(() => {
                     snusModalCardElement.style.transform = '';
                 }, 50);
             }, 400);
 
         } else {
-            // Modal schnappt zurück auf Ursprung
             snusModalCardElement.style.transform = 'translateY(0px)';
-            
+
             setTimeout(() => {
                 snusModalCardElement.style.transform = '';
             }, 400);
         }
     });
-}
-
-// ==========================================
-// BARCODE SCANNER & KAMERA LOGIK
-// ==========================================
-let html5QrCode = null;
-let isProcessingScan = false;
-
-async function openScanModal() {
-    triggerHapticFeedback();
-    const modal = document.getElementById('scan-modal');
-    const backdrop = document.getElementById('scan-modal-backdrop');
-    const card = document.getElementById('scan-modal-card');
-
-    modal.classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
-    
-    setTimeout(() => {
-        backdrop.classList.add('opacity-100');
-        card.classList.remove('translate-y-full');
-        card.classList.add('translate-y-0');
-    }, 10);
-
-    // Kamera-Start verzögern, bis Modal-Animation fertig ist (iOS Fix)
-    setTimeout(startScanner, 500);
-}
-
-async function startScanner() {
-    if (html5QrCode) {
-        try { await html5QrCode.clear(); } catch(e) {}
-    }
-    
-    html5QrCode = new Html5Qrcode("scanner-reader");
-    
-    const config = { 
-        fps: 25, // Höher für flüssigeres Tracking
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-        // WICHTIG: Das hier sagt dem Browser: "KEIN VOLLBILD"
-        videoConstraints: {
-            facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-        }
-    };
-
-    try {
-        await html5QrCode.start(
-            { facingMode: "environment" }, 
-            config,
-            onScanSuccess
-        );
-        
-        // --- DER IOS-KILLER-CODE ---
-        const video = document.querySelector('#scanner-reader video');
-        if (video) {
-            // Diese Attribute sind für Xcode/iOS Pflicht:
-            video.setAttribute('playsinline', 'true');
-            video.setAttribute('webkit-playsinline', 'true');
-            video.setAttribute('muted', 'true');
-            video.muted = true; // Doppelt hält besser
-            video.setAttribute('autoplay', 'true');
-            
-            // Verhindert das "Pausieren"-Icon aus deinem Screenshot
-            video.play().catch(e => console.log("Autoplay blockiert:", e));
-        }
-        
-        document.getElementById('kamera-placeholder').style.display = 'none';
-    } catch (err) {
-        console.error("Scanner Error:", err);
-    }
-}
-
-async function onScanSuccess(decodedText) {
-    // 1. Sicherheitssperre: Wir wollen nicht 50 Scans gleichzeitig triggern
-    if (isProcessingScan) return;
-    isProcessingScan = true;
-
-    // 2. Feedback: Handy vibriert kurz (Haptic)
-    triggerHapticFeedback();
-    
-    // Visuelles Feedback: Ring wird grün (Signal für den User: "Hab's!")
-    const ring = document.getElementById('scan-target-ring');
-    if (ring) {
-        ring.style.borderColor = "#34C759";
-        ring.style.boxShadow = "0 0 0 999px rgba(52, 199, 89, 0.3)";
-    }
-
-    // 3. Datenbank-Check in Supabase
-    // Wir suchen in der Spalte 'barcode' nach der Nummer (z.B. 5740031410243)
-    const { data: snusItem, error } = await supabaseClient
-        .from('snus_items')
-        .select('id')
-        .eq('barcode', decodedText)
-        .single();
-
-    if (error || !snusItem) {
-        console.log("Barcode nicht gefunden:", decodedText);
-        // Falls nicht gefunden: Ring kurz rot machen und nach 2 Sek. wieder freigeben
-        if (ring) ring.style.borderColor = "#FF3B30"; 
-        setTimeout(() => {
-            if (ring) {
-                ring.style.borderColor = "";
-                ring.style.boxShadow = "";
-            }
-            isProcessingScan = false;
-        }, 2000);
-        return;
-    }
-
-    // 4. DER AUTO-CLOSE & OPEN MOVE
-    // Zuerst Kamera stoppen, damit das System entlastet wird
-    await stopScanner();
-    
-    // Dann das Scan-Modal schließen
-    closeScanModal();
-
-    // Kurze Pause (ca. 400ms), damit die Schließ-Animation vom Scan-Modal 
-    // fertig ist, bevor das Snus-Detail-Modal hochfährt. Sieht sauberer aus!
-    setTimeout(() => {
-        // Hier rufst du deine bestehende Funktion auf, die die Details anzeigt
-        openSnusDetail(snusItem.id); 
-        
-        // Reset für den nächsten Scan (falls man das Modal wieder öffnet)
-        isProcessingScan = false;
-        if (ring) {
-            ring.style.borderColor = "";
-            ring.style.boxShadow = "";
-        }
-    }, 450);
-}
-
-function closeScanModal() {
-    if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-            document.getElementById('scanner-reader').innerHTML = '';
-            html5QrCode = null;
-        }).catch(err => console.log(err));
-    }
-
-    const backdrop = document.getElementById('scan-modal-backdrop');
-    const card = document.getElementById('scan-modal-card');
-
-    card.classList.add('translate-y-full');
-    backdrop.classList.remove('opacity-100');
-    
-    triggerHapticFeedback();
-
-    setTimeout(() => {
-        document.getElementById('scan-modal').classList.add('hidden');
-        document.body.classList.remove('overflow-hidden');
-    }, 400);
 }
 
 let isLoginMode = true;
