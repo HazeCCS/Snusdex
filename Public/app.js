@@ -14,9 +14,8 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // 2. AUTHENTIFIZIERUNG, UI & GREETING
 // ==========================================
 
-let isLoginMode = true; 
+let isLoginMode = true;
 
-// --- GREETING LOGIK (Mit Datenbank-Username) ---
 async function updateGreeting() {
     const greetingElement = document.getElementById('greeting');
     if (!greetingElement) return;
@@ -24,73 +23,52 @@ async function updateGreeting() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     let displayIdent = "Collector";
     
-    if (session && session.user) {
-        // CEO-UPGRADE: Wir holen den echten Username aus der neuen Profil-Tabelle!
-        const { data: profile } = await supabaseClient
-            .from('profiles')
-            .select('username')
-            .eq('id', session.user.id)
-            .single();
-
-        if (profile && profile.username) {
-            displayIdent = profile.username;
-        } else if (session.user.email) {
-            // Fallback auf E-Mail, falls das Profil noch lädt
-            let rawName = session.user.email.split('@')[0];
-            displayIdent = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-        }
+    if (session && session.user && session.user.email) {
+        let rawName = session.user.email.split('@')[0];
+        displayIdent = rawName.charAt(0).toUpperCase() + rawName.slice(1);
     }
 
-    // Zeitbasierte Nachricht ermitteln
     const hour = new Date().getHours();
     let message = "";
 
-    if (hour >= 5 && hour < 12) {
-        message = "Guten Morgen";
-    } else if (hour >= 12 && hour < 18) {
-        message = "Guten Tag";
-    } else if (hour >= 18 && hour < 22) {
-        message = "Guten Abend";
-    } else {
-        message = "Gute Nacht"; // 22:00 bis 04:59
-    }
+    if (hour >= 5 && hour < 12) message = "Guten Morgen";
+    else if (hour >= 12 && hour < 18) message = "Guten Tag";
+    else if (hour >= 18 && hour < 22) message = "Guten Abend";
+    else message = "Gute Nacht"; 
 
-    // Im HTML ausgeben (Nachricht in Grau, Name in Weiß und Fett)
     greetingElement.innerHTML = `${message}, <span class="text-white font-semibold">${displayIdent}</span>`;
 }
 
-// --- SESSION CHECK ---
+// ==========================================
+// DEINE ALTE CHECK USER LOGIK (Unverändert)
+// ==========================================
 async function checkUser() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     const overlay = document.getElementById('auth-overlay');
 
     if (session) {
-        // Overlay smooth ausblenden
         overlay.classList.add('opacity-0');
         setTimeout(() => overlay.classList.add('hidden'), 500);
         
-        if (typeof setupProfile === "function") setupProfile(session.user);
+        setupProfile(session.user);
         
-        // App-Daten laden
-        if (typeof loadDex === "function") loadDex(); 
-        if (typeof loadUsageData === "function") loadUsageData(); 
+        loadDex(); 
+        loadUsageData(); 
         
         updateGreeting();
     } else {
-        // Zeige Login-Screen
-        overlay.classList.remove('hidden');
-        // Kurzer Delay für CSS Transition
-        setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+        overlay.classList.remove('hidden', 'opacity-0');
     }
 }
 
-// --- LOGOUT LOGIK ---
 async function handleLogout() {
     const { error } = await supabaseClient.auth.signOut();
     if (!error) window.location.reload();
 }
 
-// --- UI TOGGLE (Login <-> Register) ---
+// ==========================================
+// NEU: UI TOGGLE (Login <-> Register)
+// ==========================================
 function toggleAuthMode() {
     isLoginMode = !isLoginMode;
     
@@ -100,9 +78,9 @@ function toggleAuthMode() {
     const mainBtn = document.getElementById('auth-main-btn');
     const toggleText = document.getElementById('toggle-text');
     const toggleBtnText = document.querySelector('button[onclick="toggleAuthMode()"] span.font-semibold');
-    const errorMsg = document.getElementById('auth-error');
+    const errorEl = document.getElementById('auth-error');
 
-    errorMsg.classList.add('hidden');
+    errorEl.classList.add('hidden'); // Fehler ausblenden beim Wechsel
 
     if (isLoginMode) {
         registerFields.classList.replace('flex', 'hidden');
@@ -121,98 +99,78 @@ function toggleAuthMode() {
     }
 }
 
-// --- MASTER WEICHENSTELLER (Kugelsicher) ---
+// ==========================================
+// NEU: DER MASTER BUTTON (Login & Register)
+// ==========================================
 async function handleLoginWrapper() {
     const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
-    const errorMsg = document.getElementById('auth-error');
+    const errorEl = document.getElementById('auth-error');
     const mainBtn = document.getElementById('auth-main-btn');
-
-    // Reset Error UI
-    errorMsg.classList.add('hidden');
     
     if (!email || !password) {
-        showAuthError("Bitte fülle E-Mail und Passwort aus.");
+        errorEl.innerText = "Bitte fülle alle Felder aus.";
+        errorEl.classList.remove('hidden');
+        triggerHapticFeedback();
         return;
     }
 
-    // Button Loading State
-    const originalText = mainBtn.innerText;
-    mainBtn.innerText = "Lädt...";
+    // Button deaktivieren während er lädt
     mainBtn.disabled = true;
-    mainBtn.classList.add('opacity-50');
+    mainBtn.innerText = "Lädt...";
 
-    try {
-        if (isLoginMode) {
-            console.log("Starte Login für:", email);
-            
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ 
-                email: email, 
-                password: password 
-            });
-            
-            if (error) throw error; // Wirft den Fehler direkt in den Catch-Block
-            
-            console.log("Login erfolgreich!", data);
-            await checkUser(); 
-            
-        } else {
-            console.log("Starte Registrierung für:", email);
-            
-            const confirmPassword = document.getElementById('auth-password-confirm').value;
-            const username = document.getElementById('auth-username').value.trim();
-
-            // Lokale Sicherheits-Checks
-            if (!username) throw new Error("Bitte wähle einen Benutzernamen.");
-            if (password !== confirmPassword) throw new Error("Die Passwörter stimmen nicht überein.");
-            if (password.length < 6) throw new Error("Das Passwort muss mindestens 6 Zeichen lang sein.");
-
-            // Supabase Registrierung
-            const { data, error } = await supabaseClient.auth.signUp({
-                email: email,
-                password: password,
-                options: { data: { username: username } }
-            });
-
-            if (error) throw error;
-
-            console.log("Registrierung erfolgreich!", data);
+    if (isLoginMode) {
+        // --- DEIN ORIGINALER LOGIN CODE ---
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        
+        if (error) {
+            errorEl.innerText = "Falsches Passwort oder E-Mail";
+            errorEl.classList.remove('hidden');
             triggerHapticFeedback();
-            alert("Account erstellt! Checke deine E-Mails, falls eine Bestätigung nötig ist.");
             
-            // UI zurücksetzen
-            document.getElementById('auth-password').value = '';
-            document.getElementById('auth-password-confirm').value = '';
-            toggleAuthMode();
+            mainBtn.disabled = false;
+            mainBtn.innerText = "Anmelden";
+        } else {
+            errorEl.classList.add('hidden');
+            checkUser(); 
         }
-    } catch (err) {
-        // HIER WIRD JEDER FEHLER ABGEFANGEN UND ANGEZEIGT
-        console.error("Auth Error gefunden:", err);
-        
-        let errorText = err.message;
-        
-        // Supabase-Englisch auf Deutsch übersetzen
-        if (errorText.includes("Invalid login")) errorText = "Falsches Passwort oder E-Mail.";
-        if (errorText.includes("already registered")) errorText = "Diese E-Mail ist bereits vergeben.";
-        if (errorText.includes("Database error")) errorText = "Datenbank-Fehler (Wahrscheinlich der Profil-Trigger).";
-        
-        showAuthError(errorText);
-    } finally {
-        // Dieser Block wird IMMER ausgeführt, egal ob Erfolg oder Crash. 
-        // So friert der Button nie wieder auf "Lädt..." ein.
-        mainBtn.innerText = originalText;
-        mainBtn.disabled = false;
-        mainBtn.classList.remove('opacity-50');
+    } else {
+        // --- REGISTRIERUNGS CODE ---
+        const username = document.getElementById('auth-username').value.trim();
+        const passwordConfirm = document.getElementById('auth-password-confirm').value;
+
+        if (password !== passwordConfirm) {
+            errorEl.innerText = "Die Passwörter stimmen nicht überein.";
+            errorEl.classList.remove('hidden');
+            triggerHapticFeedback();
+            mainBtn.disabled = false;
+            mainBtn.innerText = "Registrieren";
+            return;
+        }
+
+        const { data, error } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password,
+            options: { data: { username: username } }
+        });
+
+        if (error) {
+            // Falls E-Mail schon existiert etc.
+            errorEl.innerText = error.message.includes('already registered') ? "E-Mail wird bereits verwendet." : error.message;
+            errorEl.classList.remove('hidden');
+            triggerHapticFeedback();
+            
+            mainBtn.disabled = false;
+            mainBtn.innerText = "Registrieren";
+        } else {
+            alert("Account erfolgreich erstellt! Bitte melde dich jetzt an.");
+            toggleAuthMode(); // Zurück zur Anmeldung wischen
+            
+            mainBtn.disabled = false;
+            mainBtn.innerText = "Anmelden";
+        }
     }
 }
-
-function showAuthError(msg) {
-    const errorMsg = document.getElementById('auth-error');
-    errorMsg.innerText = msg;
-    errorMsg.classList.remove('hidden');
-    triggerHapticFeedback();
-}
-
 // ==========================================
 // 3. NAVIGATION (TABS)
 // ==========================================
