@@ -185,8 +185,9 @@
 
                     <input type="password" id="auth-password" placeholder="Passwort" class="w-full bg-black border border-white/10 text-white rounded-xl px-4 py-4 text-[17px] focus:border-white outline-none transition-all">
 
-                    <div id="register-fields" class="hidden overflow-hidden transition-all duration-300">
-                        <input type="password" id="auth-password-confirm" placeholder="Passwort bestätigen" class="w-full bg-black border border-white/10 text-white rounded-xl px-4 py-4 text-[17px] focus:border-white outline-none transition-all mt-2">
+                    <div id="register-fields" class="hidden overflow-hidden transition-all duration-300 flex-col gap-4 mt-4">
+                        <input type="text" id="auth-username" placeholder="Benutzername" class="w-full bg-black border border-white/10 text-white rounded-xl px-4 py-4 text-[17px] focus:border-white outline-none transition-all">
+                        <input type="password" id="auth-password-confirm" placeholder="Passwort bestätigen" class="w-full bg-black border border-white/10 text-white rounded-xl px-4 py-4 text-[17px] focus:border-white outline-none transition-all">
                     </div>
 
                     <button id="auth-main-btn" onclick="handleLoginWrapper()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-xl active:scale-95 transition-transform mt-4">

@@ -11,27 +11,37 @@ const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/ma
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==========================================
-// 2. AUTHENTIFIZIERUNG & GREETING
+// 2. AUTHENTIFIZIERUNG, UI & GREETING
 // ==========================================
 
-// ==========================================
-// GREETING LOGIK (Zeit & Name)
-// ==========================================
+let isLoginMode = true; 
+
+// --- GREETING LOGIK (Mit Datenbank-Username) ---
 async function updateGreeting() {
     const greetingElement = document.getElementById('greeting');
     if (!greetingElement) return;
 
-    // 1. Session holen
     const { data: { session } } = await supabaseClient.auth.getSession();
     let displayIdent = "Collector";
     
-    if (session && session.user && session.user.email) {
-        // Alles vor dem @ nehmen und den ersten Buchstaben groß machen
-        let rawName = session.user.email.split('@')[0];
-        displayIdent = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+    if (session && session.user) {
+        // CEO-UPGRADE: Wir holen den echten Username aus der neuen Profil-Tabelle!
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('username')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profile && profile.username) {
+            displayIdent = profile.username;
+        } else if (session.user.email) {
+            // Fallback auf E-Mail, falls das Profil noch lädt
+            let rawName = session.user.email.split('@')[0];
+            displayIdent = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+        }
     }
 
-    // 2. Zeitbasierte Nachricht ermitteln
+    // Zeitbasierte Nachricht ermitteln
     const hour = new Date().getHours();
     let message = "";
 
@@ -45,50 +55,148 @@ async function updateGreeting() {
         message = "Gute Nacht"; // 22:00 bis 04:59
     }
 
-    // 3. Im HTML ausgeben (Nachricht in Grau, Name in Weiß und Fett)
+    // Im HTML ausgeben (Nachricht in Grau, Name in Weiß und Fett)
     greetingElement.innerHTML = `${message}, <span class="text-white font-semibold">${displayIdent}</span>`;
 }
 
+// --- SESSION CHECK ---
 async function checkUser() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     const overlay = document.getElementById('auth-overlay');
 
     if (session) {
+        // Overlay smooth ausblenden
         overlay.classList.add('opacity-0');
         setTimeout(() => overlay.classList.add('hidden'), 500);
         
-        setupProfile(session.user);
+        if (typeof setupProfile === "function") setupProfile(session.user);
         
-        // WICHTIG: await verhindert das Aufhängen! 
-        // Erst Dex laden, DANN Usage laden.
-        loadDex(); 
-        loadUsageData(); 
+        // App-Daten laden
+        if (typeof loadDex === "function") loadDex(); 
+        if (typeof loadUsageData === "function") loadUsageData(); 
         
         updateGreeting();
     } else {
-        overlay.classList.remove('hidden', 'opacity-0');
+        // Zeige Login-Screen
+        overlay.classList.remove('hidden');
+        // Kurzer Delay für CSS Transition
+        setTimeout(() => overlay.classList.remove('opacity-0'), 10);
     }
 }
 
-async function handleLogin() {
-    const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password').value;
-    const errorEl = document.getElementById('auth-error');
-    
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) {
-        errorEl.innerText = "Falsches Passwort oder E-Mail";
-        errorEl.classList.remove('hidden');
-        triggerHapticFeedback();
-    } else {
-        errorEl.classList.add('hidden');
-        checkUser(); 
-    }
-}
-
+// --- LOGOUT LOGIK ---
 async function handleLogout() {
     const { error } = await supabaseClient.auth.signOut();
     if (!error) window.location.reload();
+}
+
+// --- UI TOGGLE (Login <-> Register) ---
+function toggleAuthMode() {
+    isLoginMode = !isLoginMode;
+    
+    const registerFields = document.getElementById('register-fields');
+    const title = document.getElementById('auth-title');
+    const subtitle = document.getElementById('auth-subtitle');
+    const mainBtn = document.getElementById('auth-main-btn');
+    const toggleText = document.getElementById('toggle-text');
+    const toggleBtnText = document.querySelector('button[onclick="toggleAuthMode()"] span.font-semibold');
+    const errorMsg = document.getElementById('auth-error');
+
+    errorMsg.classList.add('hidden');
+
+    if (isLoginMode) {
+        registerFields.classList.replace('flex', 'hidden');
+        title.innerText = "Snusdex Elite";
+        subtitle.innerText = "Willkommen zurück";
+        mainBtn.innerText = "Anmelden";
+        toggleText.innerText = "Noch kein Account? ";
+        toggleBtnText.innerText = "Registrieren";
+    } else {
+        registerFields.classList.replace('hidden', 'flex');
+        title.innerText = "Account erstellen";
+        subtitle.innerText = "Werde Teil der Elite";
+        mainBtn.innerText = "Registrieren";
+        toggleText.innerText = "Bereits einen Account? ";
+        toggleBtnText.innerText = "Anmelden";
+    }
+}
+
+// --- MASTER WEICHENSTELLER (Login & Register) ---
+async function handleLoginWrapper() {
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const errorMsg = document.getElementById('auth-error');
+    const mainBtn = document.getElementById('auth-main-btn');
+
+    errorMsg.classList.add('hidden');
+    
+    if (!email || !password) {
+        showAuthError("Bitte fülle alle Pflichtfelder aus.");
+        return;
+    }
+
+    // Button Loading State
+    const originalText = mainBtn.innerText;
+    mainBtn.innerText = "Lädt...";
+    mainBtn.disabled = true;
+    mainBtn.classList.add('opacity-50');
+
+    if (isLoginMode) {
+        // --- DEIN LOGIN CODE ---
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        
+        if (error) {
+            let errorText = error.message;
+            if (errorText.includes("Invalid login")) errorText = "Falsches Passwort oder E-Mail.";
+            showAuthError(errorText);
+        } else {
+            // Erfolgreich eingeloggt!
+            checkUser(); 
+        }
+    } else {
+        // --- REGISTRIERUNG ---
+        const confirmPassword = document.getElementById('auth-password-confirm').value;
+        const username = document.getElementById('auth-username').value.trim();
+
+        if (!username) { showAuthError("Bitte wähle einen Benutzernamen."); resetBtn(); return; }
+        if (password !== confirmPassword) { showAuthError("Passwörter stimmen nicht überein."); resetBtn(); return; }
+        if (password.length < 6) { showAuthError("Mindestens 6 Zeichen erforderlich."); resetBtn(); return; }
+
+        const { data, error } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password,
+            options: { data: { username: username } }
+        });
+
+        if (error) {
+            let errorText = error.message;
+            if (errorText.includes("already registered")) errorText = "Diese E-Mail ist bereits vergeben.";
+            showAuthError(errorText);
+        } else if (data.user) {
+            triggerHapticFeedback();
+            // Falls E-Mail-Bestätigung in Supabase aktiv ist:
+            alert("Account erstellt! Checke deine E-Mails zur Bestätigung.");
+            
+            // Zurück zum Login wischen
+            document.getElementById('auth-password').value = '';
+            document.getElementById('auth-password-confirm').value = '';
+            toggleAuthMode();
+        }
+    }
+
+    function resetBtn() {
+        mainBtn.innerText = originalText;
+        mainBtn.disabled = false;
+        mainBtn.classList.remove('opacity-50');
+    }
+    resetBtn();
+}
+
+function showAuthError(msg) {
+    const errorMsg = document.getElementById('auth-error');
+    errorMsg.innerText = msg;
+    errorMsg.classList.remove('hidden');
+    triggerHapticFeedback();
 }
 
 // ==========================================
@@ -1004,22 +1112,6 @@ if (snusModalCardElement) {
         }
     });
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-let isLoginMode = true;
 
         const title = document.getElementById('auth-title');
         const subtitle = document.getElementById('auth-subtitle');
