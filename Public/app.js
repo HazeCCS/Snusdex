@@ -121,17 +121,18 @@ function toggleAuthMode() {
     }
 }
 
-// --- MASTER WEICHENSTELLER (Login & Register) ---
+// --- MASTER WEICHENSTELLER (Kugelsicher) ---
 async function handleLoginWrapper() {
     const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
     const errorMsg = document.getElementById('auth-error');
     const mainBtn = document.getElementById('auth-main-btn');
 
+    // Reset Error UI
     errorMsg.classList.add('hidden');
     
     if (!email || !password) {
-        showAuthError("Bitte fülle alle Pflichtfelder aus.");
+        showAuthError("Bitte fülle E-Mail und Passwort aus.");
         return;
     }
 
@@ -141,55 +142,68 @@ async function handleLoginWrapper() {
     mainBtn.disabled = true;
     mainBtn.classList.add('opacity-50');
 
-    if (isLoginMode) {
-        // --- DEIN LOGIN CODE ---
-        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        
-        if (error) {
-            let errorText = error.message;
-            if (errorText.includes("Invalid login")) errorText = "Falsches Passwort oder E-Mail.";
-            showAuthError(errorText);
-        } else {
-            // Erfolgreich eingeloggt!
-            checkUser(); 
-        }
-    } else {
-        // --- REGISTRIERUNG ---
-        const confirmPassword = document.getElementById('auth-password-confirm').value;
-        const username = document.getElementById('auth-username').value.trim();
-
-        if (!username) { showAuthError("Bitte wähle einen Benutzernamen."); resetBtn(); return; }
-        if (password !== confirmPassword) { showAuthError("Passwörter stimmen nicht überein."); resetBtn(); return; }
-        if (password.length < 6) { showAuthError("Mindestens 6 Zeichen erforderlich."); resetBtn(); return; }
-
-        const { data, error } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password,
-            options: { data: { username: username } }
-        });
-
-        if (error) {
-            let errorText = error.message;
-            if (errorText.includes("already registered")) errorText = "Diese E-Mail ist bereits vergeben.";
-            showAuthError(errorText);
-        } else if (data.user) {
-            triggerHapticFeedback();
-            // Falls E-Mail-Bestätigung in Supabase aktiv ist:
-            alert("Account erstellt! Checke deine E-Mails zur Bestätigung.");
+    try {
+        if (isLoginMode) {
+            console.log("Starte Login für:", email);
             
-            // Zurück zum Login wischen
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ 
+                email: email, 
+                password: password 
+            });
+            
+            if (error) throw error; // Wirft den Fehler direkt in den Catch-Block
+            
+            console.log("Login erfolgreich!", data);
+            await checkUser(); 
+            
+        } else {
+            console.log("Starte Registrierung für:", email);
+            
+            const confirmPassword = document.getElementById('auth-password-confirm').value;
+            const username = document.getElementById('auth-username').value.trim();
+
+            // Lokale Sicherheits-Checks
+            if (!username) throw new Error("Bitte wähle einen Benutzernamen.");
+            if (password !== confirmPassword) throw new Error("Die Passwörter stimmen nicht überein.");
+            if (password.length < 6) throw new Error("Das Passwort muss mindestens 6 Zeichen lang sein.");
+
+            // Supabase Registrierung
+            const { data, error } = await supabaseClient.auth.signUp({
+                email: email,
+                password: password,
+                options: { data: { username: username } }
+            });
+
+            if (error) throw error;
+
+            console.log("Registrierung erfolgreich!", data);
+            triggerHapticFeedback();
+            alert("Account erstellt! Checke deine E-Mails, falls eine Bestätigung nötig ist.");
+            
+            // UI zurücksetzen
             document.getElementById('auth-password').value = '';
             document.getElementById('auth-password-confirm').value = '';
             toggleAuthMode();
         }
-    }
-
-    function resetBtn() {
+    } catch (err) {
+        // HIER WIRD JEDER FEHLER ABGEFANGEN UND ANGEZEIGT
+        console.error("Auth Error gefunden:", err);
+        
+        let errorText = err.message;
+        
+        // Supabase-Englisch auf Deutsch übersetzen
+        if (errorText.includes("Invalid login")) errorText = "Falsches Passwort oder E-Mail.";
+        if (errorText.includes("already registered")) errorText = "Diese E-Mail ist bereits vergeben.";
+        if (errorText.includes("Database error")) errorText = "Datenbank-Fehler (Wahrscheinlich der Profil-Trigger).";
+        
+        showAuthError(errorText);
+    } finally {
+        // Dieser Block wird IMMER ausgeführt, egal ob Erfolg oder Crash. 
+        // So friert der Button nie wieder auf "Lädt..." ein.
         mainBtn.innerText = originalText;
         mainBtn.disabled = false;
         mainBtn.classList.remove('opacity-50');
     }
-    resetBtn();
 }
 
 function showAuthError(msg) {
