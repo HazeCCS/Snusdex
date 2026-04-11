@@ -1330,15 +1330,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ==========================================
 
-
 document.addEventListener('DOMContentLoaded', () => {
     const splashScreen = document.getElementById('splash-screen');
     const splashVideo = document.getElementById('splash-video');
+    const splashSound = document.getElementById('splash-sound');
 
     function removeSplashScreen() {
         if (!splashScreen.classList.contains('opacity-0')) {
             splashScreen.classList.remove('opacity-100');
             splashScreen.classList.add('opacity-0');
+            
+            if (splashSound) {
+                const fadeAudio = setInterval(() => {
+                    if (splashSound.volume > 0.1) {
+                        splashSound.volume -= 0.1;
+                    } else {
+                        splashSound.pause();
+                        clearInterval(fadeAudio);
+                    }
+                }, 50);
+            }
             
             setTimeout(() => {
                 splashScreen.classList.add('hidden');
@@ -1347,6 +1358,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (splashScreen && splashVideo) {
+        splashVideo.play().then(() => {
+            if (splashSound) {
+                splashSound.play().catch(e => console.log("Audio-Autoplay blockiert"));
+            }
+        });
+
         splashVideo.addEventListener('ended', removeSplashScreen);
 
         setTimeout(removeSplashScreen, 2500);
