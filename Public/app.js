@@ -1329,4 +1329,26 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-//empty commit 2
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    const splashScreen = document.getElementById('splash-screen');
+    const splashVideo = document.getElementById('splash-video');
+
+    function removeSplashScreen() {
+        if (!splashScreen.classList.contains('opacity-0')) {
+            splashScreen.classList.remove('opacity-100');
+            splashScreen.classList.add('opacity-0');
+            
+            setTimeout(() => {
+                splashScreen.classList.add('hidden');
+            }, 500); 
+        }
+    }
+
+    if (splashScreen && splashVideo) {
+        splashVideo.addEventListener('ended', removeSplashScreen);
+
+        setTimeout(removeSplashScreen, 2500);
+    }
+});
