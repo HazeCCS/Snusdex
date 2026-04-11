@@ -103,6 +103,7 @@ function toggleAuthMode() {
 // NEU: DER MASTER BUTTON (Login & Register)
 // ==========================================
 async function handleLoginWrapper() {
+    triggerHapticFeedback();
     const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
     const errorEl = document.getElementById('auth-error');
@@ -581,7 +582,6 @@ function triggerHapticFeedback() {
     else if (navigator.vibrate) navigator.vibrate(15);
 }
 
-function handleLoginWrapper() { triggerHapticFeedback(); handleLogin(); }
 function switchTabWrapper(tabId) { triggerHapticFeedback(); switchTab(tabId); }
 
 document.addEventListener('DOMContentLoaded', () => checkUser());
@@ -1084,63 +1084,6 @@ if (snusModalCardElement) {
         }
     });
 }
-
-        const title = document.getElementById('auth-title');
-        const subtitle = document.getElementById('auth-subtitle');
-        const googleBtnText = document.getElementById('google-btn-text');
-        const appleBtnText = document.getElementById('apple-btn-text');
-        const registerFields = document.getElementById('register-fields');
-        const mainBtn = document.getElementById('auth-main-btn');
-        const toggleText = document.getElementById('toggle-text');
-        const toggleAction = document.querySelector('#toggle-text + span');
-        const errorMsg = document.getElementById('auth-error');
-        const mainView = document.getElementById('auth-main-view');
-        const verifyView = document.getElementById('auth-verify-view');
-
-        function toggleAuthMode() {
-            isLoginMode = !isLoginMode;
-            errorMsg.classList.add('hidden');
-
-            if (isLoginMode) {
-                title.innerText = "Snusdex Elite";
-                subtitle.innerText = "Willkommen zurück";
-                googleBtnText.innerText = "Mit Google anmelden";
-                appleBtnText.innerText = "Mit Apple anmelden";
-                registerFields.classList.add('hidden');
-                mainBtn.innerText = "Anmelden";
-                toggleText.innerText = "Noch kein Account? ";
-                toggleAction.innerText = "Registrieren";
-            } else {
-                title.innerText = "Snusdex Elite";
-                subtitle.innerText = "Erstelle deinen Account";
-                googleBtnText.innerText = "Mit Google registrieren";
-                appleBtnText.innerText = "Mit Apple registrieren";
-                registerFields.classList.remove('hidden');
-                mainBtn.innerText = "Registrieren";
-                toggleText.innerText = "Bereits einen Account? ";
-                toggleAction.innerText = "Anmelden";
-            }
-        }
-
-        function showVerificationScreen() {
-            title.innerText = "E-Mail bestätigen";
-            subtitle.innerText = "Fast geschafft!";
-            mainView.classList.add('hidden');
-            verifyView.classList.remove('hidden');
-        }
-
-        function hideVerificationScreen() {
-            verifyView.classList.add('hidden');
-            mainView.classList.remove('hidden');
-            isLoginMode = !isLoginMode; 
-            toggleAuthMode(); 
-        }
-
-        function handleCodeVerification() {
-            const code = document.getElementById('auth-verify-code').value;
-            console.log("Prüfe Code: " + code);
-        }
-
 
 function toggleSetting(element) {
     const isActive = element.classList.contains('bg-white');
