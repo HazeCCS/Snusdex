@@ -909,12 +909,11 @@ function calculateUsageStats(allLogs) {
 
 
 
-let cameraStream = null;
+let html5QrCode = null;
 
 const scanModal = document.getElementById('scan-modal');
 const scanModalCard = document.getElementById('scan-modal-card');
 const scanModalBackdrop = document.getElementById('scan-modal-backdrop');
-const cameraVideo = document.getElementById('camera-stream');
 
 
 if (scanModal) {
@@ -951,24 +950,32 @@ async function openScanModal() {
 
     setTimeout(async () => {
         try {
-            const [stream] = await Promise.all([
-                navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment", aspectRatio: 1/1 }, 
-                    audio: false 
-                }),
-                new Promise(resolve => setTimeout(resolve, 700)) 
-            ]);
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("scanner-reader");
+            }
 
-            cameraStream = stream;
+            await html5QrCode.start(
+                { facingMode: "environment" },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 }
+                },
+                (decodedText, decodedResult) => {
+                    console.log("Barcode erfolgreich gescannt:", decodedText);
+                    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
+                    closeScanModal();
+                },
+                (errorMessage) => {
+                    // Ignoriere kontinuierliche Scan-Fehler (passiert bei jedem Frame ohne Barcode)
+                }
+            );
             
-            if (cameraVideo) {
-                cameraVideo.srcObject = cameraStream;
-                
-                cameraVideo.onloadedmetadata = () => {
-                    document.getElementById('camera-loading').classList.add('opacity-0', 'pointer-events-none');
-                    cameraVideo.classList.remove('opacity-0');
-                    cameraVideo.classList.add('opacity-100');
-                };
+            document.getElementById('camera-loading').classList.add('opacity-0', 'pointer-events-none');
+            
+            const scannerReader = document.getElementById('scanner-reader');
+            if (scannerReader) {
+                scannerReader.classList.remove('opacity-0');
+                scannerReader.classList.add('opacity-100');
             }
         } catch (err) {
             console.error("Kamera-Zugriff verweigert:", err);
@@ -995,7 +1002,7 @@ function closeScanModal(isDragging = false) {
         scanModalCard.style.transition = ''; 
     }
 
-    setTimeout(() => {
+    setTimeout(async () => {
         scanModal.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
         
@@ -1004,10 +1011,13 @@ function closeScanModal(isDragging = false) {
             scanModalCard.style.transition = ''; 
         }
         
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(track => track.stop());
-            cameraStream = null;
-            if (cameraVideo) cameraVideo.srcObject = null;
+        if (html5QrCode) {
+            try {
+                await html5QrCode.stop();
+                html5QrCode.clear();
+            } catch (err) {
+                console.log("Scanner war nicht aktiv oder konnte nicht gestoppt werden:", err);
+            }
         }
 
         const loadingScreen = document.getElementById('camera-loading');
@@ -1020,9 +1030,10 @@ function closeScanModal(isDragging = false) {
             loadingBar.style.width = '0%';
         }
 
-        if (cameraVideo) {
-            cameraVideo.classList.remove('opacity-100');
-            cameraVideo.classList.add('opacity-0');
+        const scannerReader = document.getElementById('scanner-reader');
+        if (scannerReader) {
+            scannerReader.classList.remove('opacity-100');
+            scannerReader.classList.add('opacity-0');
         }
         
     }, 400);
