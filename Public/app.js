@@ -1584,4 +1584,4 @@ function animateXp(startValue, endValue, newLevel) {
     requestAnimationFrame(updateCounter);
 }
 
-//
+////
