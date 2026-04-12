@@ -529,7 +529,8 @@ async function collectCurrentSnus() {
     btn.innerText = "Processing..."; btn.disabled = true;
 
     const isUpdate = !!globalUserCollection[currentSelectedSnusId];
-    let error, data;
+    let error;
+    let savedDate = new Date().toISOString();
 
     if (isUpdate) {
         const response = await supabaseClient.from('user_collections')
@@ -541,10 +542,10 @@ async function collectCurrentSnus() {
                 rating_visuals: tempRatings.visuals
             })
             .eq('user_id', user.id)
-            .eq('snus_id', currentSelectedSnusId)
-            .select().single();
+            .eq('snus_id', currentSelectedSnusId);
+            
         error = response.error;
-        data = response.data;
+        savedDate = globalUserCollection[currentSelectedSnusId].date;
     } else {
         const response = await supabaseClient.from('user_collections').insert([{ 
             user_id: user.id, 
@@ -555,12 +556,15 @@ async function collectCurrentSnus() {
             rating_drip: tempRatings.drip,
             rating_visuals: tempRatings.visuals
         }]).select().single();
+        
         error = response.error;
-        data = response.data;
+        if (response.data && response.data.collected_at) {
+            savedDate = response.data.collected_at;
+        }
     }
 
-    if (!error && data) {
-        globalUserCollection[currentSelectedSnusId] = { date: data.collected_at, ratings: { ...tempRatings } };
+    if (!error) {
+        globalUserCollection[currentSelectedSnusId] = { date: savedDate, ratings: { ...tempRatings } };
         
         if (!isUpdate) {
             await startNewCan(currentSelectedSnusId);
@@ -570,7 +574,7 @@ async function collectCurrentSnus() {
         renderDexGrid(globalSnusData);
         closeSnusDetail();
     } else {
-        alert("Fehler beim Speichern: " + (error ? error.message : "Unbekannter Fehler"));
+        alert("Fehler beim Speichern: " + error.message);
     }
     
     setTimeout(() => { btn.innerText = "Confirm"; btn.disabled = false; }, 500);
