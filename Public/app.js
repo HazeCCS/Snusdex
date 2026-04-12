@@ -310,7 +310,7 @@ function updateLivePerformance() {
     
     listEl.innerHTML = '';
     if(collectedItems.length === 0) {
-        listEl.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">No transactions yet.</div>';
+        listEl.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">Keine gefundenden Dosen.</div>';
         return;
     }
 
@@ -845,11 +845,11 @@ function renderActiveCansUI() {
                     </div>
                     <div class="min-w-0">
                         <h4 class="text-white text-[15px] font-semibold truncate">${snusName}</h4>
-                        <p class="text-[11px] text-[#8E8E93] uppercase tracking-wider">Aktiv</p>
+                        <p class="text-[11px] text-[#8E8E93] uppercase tracking-wider">offen seit ${new Date(can.opened_at).toLocaleDateString()}</p>
                     </div>
                 </div>
                 <button onclick="finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-transform">
-                    EMPTY
+                    Leer
                 </button>
             </div>
         `;
