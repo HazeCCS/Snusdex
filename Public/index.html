@@ -122,6 +122,8 @@
 <body class="pb-24">
 
     <div id="splash-screen" class="fixed inset-0 z-[9999] bg-black flex items-center justify-center transition-opacity duration-500 ease-out opacity-100">
+        
+        <!-- Nur das Video für die Animation (ohne Ton) -->
         <video 
             id="splash-video" 
             class="w-64 h-64 object-contain" 
@@ -131,8 +133,13 @@
             loop="false">
             <source src="/SnusDexLoadingSlot.mp4" type="video/mp4">
         </video>
-        
-        <audio id="splash-sound" src="SnusDexSound.wav" preload="auto"></audio>
+
+        <!-- Audio separat und leise -->
+        <audio 
+            id="splash-sound" 
+            src="/SnusDexSound.wav" 
+            preload="auto">
+        </audio>
     </div>
 
     <div id="auth-overlay" class="fixed inset-0 z-[999] bg-black flex items-center justify-center p-6 transition-opacity duration-500">
