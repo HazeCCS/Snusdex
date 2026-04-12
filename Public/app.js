@@ -509,6 +509,7 @@ function hideAllViews() {
     document.getElementById('modal-view-rating').classList.add('hidden');
     document.getElementById('modal-view-rating').classList.remove('flex');
     document.getElementById('modal-view-saved-rating').classList.add('hidden');
+    document.getElementById('modal-view-saved-rating').classList.remove('flex');
 }
 
 function openSnusDetail(id, isFromScan = false) {
