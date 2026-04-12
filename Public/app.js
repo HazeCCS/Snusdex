@@ -245,11 +245,18 @@ async function loadDex() {
                 globalUserCollection[item.snus_id] = {
                     date: item.collected_at,
                     ratings: { 
-                        taste: item.rating_taste || 5, 
-                        smell: item.rating_smell || 5, 
-                        bite: item.rating_bite || 5, 
-                        drip: item.rating_drip || 5, 
-                        visuals: item.rating_visuals || 5 
+                        taste: item.rating_taste || 5,
+                        taste_text: item.rating_taste_text || '',
+                        smell: item.rating_smell || 5,
+                        smell_text: item.rating_smell_text || '',
+                        bite: item.rating_bite || 5,
+                        bite_text: item.rating_bite_text || '',
+                        drip: item.rating_drip || 5,
+                        drip_text: item.rating_drip_text || '',
+                        visuals: item.rating_visuals || 5,
+                        visuals_text: item.rating_visuals_text || '',
+                        strength: item.rating_strength || 5,
+                        strength_text: item.rating_strength_text || ''
                     }
                 };
             });
@@ -344,11 +351,26 @@ function updateLivePerformance() {
 // 5. RATING ENGINE & MODAL LOGIK
 // ==========================================
 
-let tempRatings = { taste: 5, smell: 5, bite: 5, drip: 5, visuals: 5 };
+let tempRatings = { 
+    taste: 5, taste_text: '',
+    smell: 5, smell_text: '',
+    bite: 5, bite_text: '',
+    drip: 5, drip_text: '',
+    visuals: 5, visuals_text: '',
+    strength: 5, strength_text: ''
+};
 let currentSelectedSnusId = null; 
 
-function initRatingRows() {
-    ['taste', 'smell', 'bite', 'drip', 'visuals'].forEach(cat => {
+const RATING_STEPS = ['visuals', 'smell', 'taste', 'bite', 'drip', 'strength'];
+let currentRatingStepIndex = 0;
+
+function initRatingWizard() {
+    currentRatingStepIndex = 0;
+    
+    RATING_STEPS.forEach(cat => {
+        tempRatings[cat] = 5;
+        tempRatings[`${cat}_text`] = '';
+        
         const row = document.getElementById(`row-${cat}`);
         if(!row) return;
         row.innerHTML = `<div class="rating-pill" id="pill-${cat}"></div>`;
@@ -359,8 +381,14 @@ function initRatingRows() {
             btn.onclick = () => setRating(cat, i);
             row.appendChild(btn);
         }
-        updatePill(cat, 5); tempRatings[cat] = 5; 
+        updatePill(cat, 5); 
+        row.parentElement.querySelector('.rating-val').innerText = `5/10`;
+        
+        const textEl = document.getElementById(`text-${cat}`);
+        if(textEl) textEl.value = '';
     });
+
+    updateRatingStepUI();
 }
 
 function setRating(category, value) {
@@ -378,31 +406,108 @@ function updatePill(cat, val) {
     document.getElementById(`pill-${cat}`).style.transform = `translateX(${(val - 1) * 100}%)`; 
 }
 
+function updateRatingStepUI() {
+    const backBtn = document.getElementById('rating-back-btn');
+    const nextBtn = document.getElementById('rating-next-btn');
+    const nextText = document.getElementById('rating-next-text');
+    const nextIcon = document.getElementById('rating-next-icon');
+    const title = document.getElementById('rating-step-title');
+    const indicator = document.getElementById('rating-step-indicator');
+
+    if (!title) return;
+
+    title.innerText = RATING_STEPS[currentRatingStepIndex];
+    indicator.innerText = `${currentRatingStepIndex + 1}/${RATING_STEPS.length}`;
+
+    if (currentRatingStepIndex === 0) {
+        backBtn.classList.add('opacity-0', 'pointer-events-none');
+        backBtn.classList.remove('opacity-100');
+    } else {
+        backBtn.classList.remove('opacity-0', 'pointer-events-none');
+        backBtn.classList.add('opacity-100');
+    }
+
+    if (currentRatingStepIndex === RATING_STEPS.length - 1) {
+        nextText.innerText = "Speichern";
+        nextBtn.classList.remove('bg-white', 'text-black');
+        nextBtn.classList.add('bg-[#34C759]', 'text-white', 'shadow-[0_4px_14px_rgba(52,199,89,0.3)]');
+        nextIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />`;
+    } else {
+        nextText.innerText = "Weiter";
+        nextBtn.classList.remove('bg-[#34C759]', 'text-white', 'shadow-[0_4px_14px_rgba(52,199,89,0.3)]');
+        nextBtn.classList.add('bg-white', 'text-black');
+        nextIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />`;
+    }
+
+    RATING_STEPS.forEach((step, index) => {
+        const panel = document.getElementById(`step-${step}`);
+        if (!panel) return;
+        
+        panel.classList.remove('translate-x-0', 'translate-x-full', '-translate-x-full', 'opacity-0', 'opacity-100', 'z-10', 'z-0');
+
+        if (index === currentRatingStepIndex) {
+            panel.classList.add('translate-x-0', 'opacity-100', 'z-10');
+            panel.classList.remove('pointer-events-none');
+        } else if (index < currentRatingStepIndex) {
+            panel.classList.add('-translate-x-full', 'opacity-0', 'z-0', 'pointer-events-none');
+        } else {
+            panel.classList.add('translate-x-full', 'opacity-0', 'z-0', 'pointer-events-none');
+        }
+    });
+}
+
+function nextRatingStep() {
+    const currentStep = RATING_STEPS[currentRatingStepIndex];
+    const textEl = document.getElementById(`text-${currentStep}`);
+    if (textEl) tempRatings[`${currentStep}_text`] = textEl.value;
+
+    if (currentRatingStepIndex < RATING_STEPS.length - 1) {
+        currentRatingStepIndex++;
+        updateRatingStepUI();
+    } else {
+        collectCurrentSnus();
+    }
+}
+
+function prevRatingStep() {
+    const currentStep = RATING_STEPS[currentRatingStepIndex];
+    const textEl = document.getElementById(`text-${currentStep}`);
+    if (textEl) tempRatings[`${currentStep}_text`] = textEl.value;
+
+    if (currentRatingStepIndex > 0) {
+        currentRatingStepIndex--;
+        updateRatingStepUI();
+    }
+}
+
 function showInfoView() { hideAllViews(); document.getElementById('modal-view-info').classList.remove('hidden'); }
-function showRatingView() { hideAllViews(); document.getElementById('modal-view-rating').classList.remove('hidden'); }
+function showRatingView() { hideAllViews(); document.getElementById('modal-view-rating').classList.remove('hidden'); document.getElementById('modal-view-rating').classList.add('flex'); }
 
 function showSavedRating() {
     hideAllViews();
     document.getElementById('modal-view-saved-rating').classList.remove('hidden');
-    let ratings = globalUserCollection[currentSelectedSnusId]?.ratings || { taste: 5, smell: 5, bite: 5, drip: 5, visuals: 5 };
+    let ratings = globalUserCollection[currentSelectedSnusId]?.ratings || { taste: 5, smell: 5, bite: 5, drip: 5, visuals: 5, strength: 5 };
     
-    const createBar = (label, val) => `
-        <div>
+    const createBar = (label, val, text) => `
+        <div class="mb-4">
             <div class="flex justify-between text-[13px] text-[#8E8E93] mb-1"><span>${label}</span><span class="text-white">${val}/10</span></div>
-            <div class="w-full bg-black rounded-full h-1.5"><div class="bg-white h-1.5 rounded-full" style="width: ${val * 10}%"></div></div>
+            <div class="w-full bg-black rounded-full h-1.5 mb-2"><div class="bg-white h-1.5 rounded-full" style="width: ${val * 10}%"></div></div>
+            ${text ? `<div class="bg-black/50 border border-white/5 rounded-xl p-3 text-[14px] text-white/80 italic">"${text}"</div>` : ''}
         </div>`;
     
     document.getElementById('saved-rating-bars').innerHTML = 
-        createBar("Taste", ratings.taste) + 
-        createBar("Smell", ratings.smell) + 
-        createBar("Bite", ratings.bite) + 
-        createBar("Drip", ratings.drip) + 
-        createBar("Visuals", ratings.visuals);
+        createBar("Visuals", ratings.visuals, ratings.visuals_text) + 
+        createBar("Smell", ratings.smell, ratings.smell_text) + 
+        createBar("Taste", ratings.taste, ratings.taste_text) + 
+        createBar("Bite", ratings.bite, ratings.bite_text) + 
+        createBar("Drip", ratings.drip, ratings.drip_text) +
+        createBar("Strength", ratings.strength, ratings.strength_text);
 }
 
 function hideAllViews() {
     document.getElementById('modal-view-info').classList.add('hidden');
     document.getElementById('modal-view-rating').classList.add('hidden');
+    document.getElementById('modal-view-rating').classList.remove('flex');
     document.getElementById('modal-view-saved-rating').classList.add('hidden');
 }
 
@@ -417,7 +522,7 @@ function openSnusDetail(id, isFromScan = false) {
     document.body.classList.add('overflow-hidden'); 
 
     showInfoView(); 
-    initRatingRows();
+    initRatingWizard();
 
     const isUnlocked = globalUserCollection[id];
     
@@ -525,8 +630,10 @@ async function collectCurrentSnus() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
     
-    const btn = document.getElementById('final-collect-btn');
-    btn.innerText = "Processing..."; btn.disabled = true;
+    const btn = document.getElementById('rating-next-btn');
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = `<span class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>`; 
+    btn.disabled = true;
 
     const isUpdate = !!globalUserCollection[currentSelectedSnusId];
     let error;
@@ -536,10 +643,17 @@ async function collectCurrentSnus() {
         const response = await supabaseClient.from('user_collections')
             .update({
                 rating_taste: tempRatings.taste,
+                rating_taste_text: tempRatings.taste_text,
                 rating_smell: tempRatings.smell,
+                rating_smell_text: tempRatings.smell_text,
                 rating_bite: tempRatings.bite,
+                rating_bite_text: tempRatings.bite_text,
                 rating_drip: tempRatings.drip,
-                rating_visuals: tempRatings.visuals
+                rating_drip_text: tempRatings.drip_text,
+                rating_visuals: tempRatings.visuals,
+                rating_visuals_text: tempRatings.visuals_text,
+                rating_strength: tempRatings.strength,
+                rating_strength_text: tempRatings.strength_text
             })
             .eq('user_id', user.id)
             .eq('snus_id', currentSelectedSnusId);
@@ -551,10 +665,17 @@ async function collectCurrentSnus() {
             user_id: user.id, 
             snus_id: currentSelectedSnusId, 
             rating_taste: tempRatings.taste,
+            rating_taste_text: tempRatings.taste_text,
             rating_smell: tempRatings.smell,
+            rating_smell_text: tempRatings.smell_text,
             rating_bite: tempRatings.bite,
+            rating_bite_text: tempRatings.bite_text,
             rating_drip: tempRatings.drip,
-            rating_visuals: tempRatings.visuals
+            rating_drip_text: tempRatings.drip_text,
+            rating_visuals: tempRatings.visuals,
+            rating_visuals_text: tempRatings.visuals_text,
+            rating_strength: tempRatings.strength,
+            rating_strength_text: tempRatings.strength_text
         }]).select().single();
         
         error = response.error;
@@ -577,18 +698,23 @@ async function collectCurrentSnus() {
         alert("Fehler beim Speichern: " + error.message);
     }
     
-    setTimeout(() => { btn.innerText = "Confirm"; btn.disabled = false; }, 500);
+    setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 500);
 }
 
 function editRating() {
     if (globalUserCollection[currentSelectedSnusId]) {
         const currentRatings = globalUserCollection[currentSelectedSnusId].ratings;
-        setRating('taste', currentRatings.taste || 5);
-        setRating('smell', currentRatings.smell || 5);
-        setRating('bite', currentRatings.bite || 5);
-        setRating('drip', currentRatings.drip || 5);
-        setRating('visuals', currentRatings.visuals || 5);
+        RATING_STEPS.forEach(cat => {
+            setRating(cat, currentRatings[cat] || 5);
+            const textEl = document.getElementById(`text-${cat}`);
+            if (textEl) {
+                textEl.value = currentRatings[`${cat}_text`] || '';
+                tempRatings[`${cat}_text`] = currentRatings[`${cat}_text`] || '';
+            }
+        });
     }
+    currentRatingStepIndex = 0;
+    updateRatingStepUI();
     showRatingView();
 }
 
@@ -1710,6 +1836,58 @@ function animateNumber(elementId, startValue, endValue, duration = 1500, suffix 
 }
 
 
+
+let lastScannedBarcode = "";
+
+function openNotFoundModal(barcode) {
+    lastScannedBarcode = barcode;
+    const modal = document.getElementById('not-found-modal');
+    const backdrop = document.getElementById('not-found-backdrop');
+    const card = document.getElementById('not-found-card');
+
+    modal.classList.remove('hidden');
+    
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100');
+        
+        card.classList.remove('scale-95', 'opacity-0');
+        card.classList.add('scale-100', 'opacity-100');
+    }, 10);
+}
+
+function closeNotFoundModal() {
+    const modal = document.getElementById('not-found-modal');
+    const backdrop = document.getElementById('not-found-backdrop');
+    const card = document.getElementById('not-found-card');
+
+    backdrop.classList.remove('opacity-100');
+    backdrop.classList.add('opacity-0');
+    
+    card.classList.remove('scale-100', 'opacity-100');
+    card.classList.add('scale-95', 'opacity-0');
+
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function retryScan() {
+    closeNotFoundModal();
+    setTimeout(() => {
+        openScanModal();
+    }, 350); 
+}
+
+function reportMissingSnus() {
+    const email = "support@snusdex.com"; 
+    const subject = encodeURIComponent("Fehlender Snus im Dex");
+    const body = encodeURIComponent(`Hallo Snusdex-Team,\n\nfolgender Snus fehlt noch in der Datenbank:\n\nBarcode: ${lastScannedBarcode}\nMarke:\nSorte:\nStärke:\n\nDanke!`);
+    
+    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+    
+    closeNotFoundModal();
+}
 
 
 // commits für norman 3
