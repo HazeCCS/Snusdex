@@ -218,6 +218,14 @@ function switchTab(tabId) {
         btn.classList.toggle('text-[#8E8E93]', !isActive);
     });
     window.scrollTo(0, 0);
+
+    if (tabId === 'home' && displayedXp !== null && actualXp !== null && displayedXp !== actualXp) {
+        // Wir warten 200ms, damit die Fade-In Animation vom Tab fertig ist, bevor die Zahlen hochrollen
+        setTimeout(() => {
+            const level = Math.floor(actualXp / 300) + 1;
+            animateXp(displayedXp, actualXp, level);
+        }, 200);
+    }
 }
 
 // ==========================================
@@ -1143,10 +1151,13 @@ function openSettingsSubpage(type) {
         html = `
             <div class="flex flex-col items-center mb-8 mt-2">
                 <div class="relative">
-                    <div class="w-24 h-24 bg-gradient-to-tr from-gray-200 to-white rounded-full flex items-center justify-center shadow-lg">
-                        <span class="text-3xl font-bold text-black">H</span>
+                    <input type="file" id="profile-image-upload" accept="image/*" class="hidden" onchange="previewProfileImage(event)">
+                    
+                    <div class="w-24 h-24 rounded-full flex-shrink-0 shadow-lg border-2 border-white/5 overflow-hidden bg-zinc-800">
+                        <img id="edit-profile-image-preview" src="https://i.pravatar.cc/150?img=11" alt="Profilbild" class="w-full h-full object-cover">
                     </div>
-                    <button class="absolute bottom-0 right-0 w-8 h-8 bg-[#1C1C1E] border border-white/20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+                    
+                    <button onclick="triggerHapticFeedback(); document.getElementById('profile-image-upload').click()" class="absolute bottom-0 right-0 w-8 h-8 bg-[#1C1C1E] border border-white/20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform z-10">
                         <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1155,27 +1166,30 @@ function openSettingsSubpage(type) {
                 </div>
             </div>
 
-            <div class="bg-[#1C1C1E] rounded-[24px] p-5 space-y-4 border border-white/10 mb-8 shadow-sm">
-                <div class="flex flex-col gap-1.5">
+            <div class="bg-[#1C1C1E] rounded-[24px] p-5 space-y-4 border border-white/10 mb-8 shadow-sm w-full max-w-full">
+                <div class="flex flex-col gap-1.5 w-full">
                     <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Username</label>
-                    <input type="text" value="Collector1337" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all">
+                    <input type="text" id="edit-username" value="Collector1337" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all">
                 </div>
-                <div class="flex flex-col gap-1.5">
+                
+                <div class="flex flex-col gap-1.5 w-full">
                     <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Email</label>
-                    <input type="email" value="user@example.com" disabled class="w-full bg-black/50 text-[#8E8E93] border border-white/5 rounded-[14px] px-4 py-3.5 text-[17px] outline-none cursor-not-allowed">
+                    <input type="email" id="edit-email" value="user@example.com" disabled class="w-full bg-black/50 text-[#8E8E93] border border-white/5 rounded-[14px] px-4 py-3.5 text-[17px] outline-none cursor-not-allowed">
                 </div>
-                <div class="flex flex-col gap-1.5">
+                
+                <div class="flex flex-col gap-1.5 w-full overflow-hidden">
                     <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Date of Birth</label>
-                    <input type="date" value="2000-01-01" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all [color-scheme:dark]">
+                    <input type="date" id="edit-dob" value="2000-01-01" class="w-full box-border min-w-0 bg-black border border-white/10 text-white rounded-[14px] px-3 py-3.5 text-[17px] focus:border-white outline-none transition-all [color-scheme:dark]">
                 </div>
-                <div class="flex flex-col gap-1.5">
+                
+                <div class="flex flex-col gap-1.5 w-full">
                     <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Location</label>
-                    <input type="text" placeholder="City, Country" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all placeholder:text-[#8E8E93]">
+                    <input type="text" id="edit-location" placeholder="City, Country" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all placeholder:text-[#8E8E93]">
                 </div>
             </div>
-            
-            <button class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform shadow-[0_4px_14px_rgba(255,255,255,0.1)]">
-                Save Changes
+
+            <button id="save-profile-btn" onclick="triggerHapticFeedback(); handleProfileSave(this)" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-all duration-300 shadow-[0_4px_14px_rgba(255,255,255,0.1)] flex justify-center items-center gap-2">
+                <span>Save Changes</span>
             </button>
         `;
     } 
@@ -1184,17 +1198,17 @@ function openSettingsSubpage(type) {
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex items-center justify-between p-5">
                     <span class="text-white text-[17px]">Push Notifications</span>
-                    <div onclick="toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
+                    <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
                 <div class="flex items-center justify-between p-5">
                     <span class="text-white text-[17px]">New Snus Drops (Dex)</span>
-                    <div onclick="toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
+                    <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
                 <div class="flex items-center justify-between p-5">
                     <span class="text-white text-[17px]">Email Summaries</span>
-                    <div onclick="toggleSetting(this)" class="w-12 h-7 bg-[#3A3A3C] rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm"></div></div>
+                    <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-[#3A3A3C] rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm"></div></div>
                 </div>
             </div>
         `;
@@ -1205,14 +1219,14 @@ function openSettingsSubpage(type) {
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 mb-8">
                 <div class="flex items-center justify-between p-5">
                     <span class="text-white text-[17px]">Private Profile</span>
-                    <div onclick="toggleSetting(this)" class="w-12 h-7 bg-[#3A3A3C] rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm"></div></div>
+                    <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-[#3A3A3C] rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm"></div></div>
                 </div>
             </div>
             <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">Data</p>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex items-center justify-between p-5">
                     <span class="text-white text-[17px]">Share Analytics</span>
-                    <div onclick="toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
+                    <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
                 </div>
             </div>
         `;
@@ -1220,16 +1234,16 @@ function openSettingsSubpage(type) {
     else if (type === 'Language') {
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
-                <div class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <div onclick="triggerHapticFeedback()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
                     <span class="text-white text-[17px]">English</span>
                     <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
-                <div class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <div onclick="triggerHapticFeedback()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
                     <span class="text-white text-[17px]">Deutsch</span>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
-                <div class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <div onclick="triggerHapticFeedback()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
                     <span class="text-white text-[17px]">Svenska</span>
                 </div>
             </div>
@@ -1256,7 +1270,7 @@ function openSettingsSubpage(type) {
                 </div>
                 
                 <div class="mt-10 flex justify-center pb-8">
-                    <button class="text-[#8E8E93] hover:text-white text-[14px] font-medium underline decoration-white/30 underline-offset-4 active:opacity-50 transition-all">
+                    <button onclick="triggerHapticFeedback()" class="text-[#8E8E93] hover:text-white text-[14px] font-medium underline decoration-white/30 underline-offset-4 active:opacity-50 transition-all">
                         Contact Support
                     </button>
                 </div>
@@ -1272,10 +1286,10 @@ function openSettingsSubpage(type) {
                 <h2 class="text-white text-[22px] font-bold tracking-tight mb-2">Delete Account?</h2>
                 <p class="text-[#8E8E93] text-[15px] px-4 leading-relaxed">This action is permanent and cannot be undone. All your Dex collections and stats will be lost forever.</p>
             </div>
-            <button class="w-full bg-[#FF3B30] text-white font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform mb-3 shadow-[0_4px_14px_rgba(255,59,48,0.2)]">
+            <button onclick="triggerHapticFeedback()" class="w-full bg-[#FF3B30] text-white font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform mb-3 shadow-[0_4px_14px_rgba(255,59,48,0.2)]">
                 Yes, delete my account
             </button>
-            <button onclick="closeSettingsSubpage()" class="w-full bg-[#1C1C1E] border border-white/10 text-white font-medium text-[17px] py-4 rounded-[14px] active:bg-white/5 transition-colors">
+            <button onclick="triggerHapticFeedback(); closeSettingsSubpage()" class="w-full bg-[#1C1C1E] border border-white/10 text-white font-medium text-[17px] py-4 rounded-[14px] active:bg-white/5 transition-colors">
                 Cancel
             </button>
         `;
@@ -1284,6 +1298,9 @@ function openSettingsSubpage(type) {
     contentObj.innerHTML = html;
 
     subpage.classList.remove('hidden');
+    
+    document.body.classList.add('overflow-hidden');
+
     setTimeout(() => {
         subpage.classList.remove('translate-x-full');
         subpage.classList.add('translate-x-0');
@@ -1302,6 +1319,8 @@ function closeSettingsSubpage() {
     
     setTimeout(() => {
         subpage.classList.add('hidden');
+        
+        document.body.classList.remove('overflow-hidden');
     }, 300);
 }
 
@@ -1407,3 +1426,160 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 //
+
+// ==========================================
+// 8. HELPER & INITIALISIERUNG
+// ==========================================
+
+async function loadUserStats(userId) {
+    const { count } = await supabaseClient.from('user_collections').select('*', { count: 'exact', head: true }).eq('user_id', userId);
+    
+    const xp = (count || 0) * 100;
+    const level = Math.floor(xp / 300) + 1; 
+
+    const scoreEl = document.getElementById('score');
+    const homeLevelEl = document.getElementById('home-level');
+    
+    if(scoreEl) {
+        scoreEl.innerHTML = `${xp} <span class="text-[20px] text-white/50 font-medium">XP</span>`;
+    }
+    if(homeLevelEl) {
+        homeLevelEl.innerText = `LVL ${level}`;
+    }
+
+    const profileXpEl = document.getElementById('profile-xp');
+    const profileLevelEl = document.getElementById('profile-level');
+
+    if(profileXpEl) profileXpEl.innerText = `${xp} XP`;
+    if(profileLevelEl) profileLevelEl.innerText = `Lvl ${level}`;
+}
+
+function filterDex() {
+    const term = document.getElementById('dex-search').value.toLowerCase();
+    renderDexGrid(globalSnusData.filter(s => s.name?.toLowerCase().includes(term) || s.flavor?.some(f => f.toLowerCase().includes(term))));
+}
+
+function setupProfile(user) {
+    const emailEl = document.getElementById('profile-email');
+    const idEl = document.getElementById('profile-id');
+    const adminEl = document.getElementById('admin-panel');
+    if(emailEl) emailEl.innerText = user.email; 
+    if(idEl) {
+        const shortId = user.id.split('-')[0].toUpperCase();
+        idEl.innerText = `ID #${shortId}`;
+    }
+
+    if (user.email === 'tarayannorman@gmail.com' && adminEl) {
+        adminEl.classList.remove('hidden');
+    }
+    loadUserStats(user.id);
+}
+
+function previewProfileImage(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('edit-profile-image-preview').src = e.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
+}
+
+function handleProfileSave(btn) {
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
+    
+    btn.disabled = true;
+    btn.innerHTML = `
+        <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Saving...
+    `;
+
+    setTimeout(() => {
+        if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
+        
+        btn.classList.remove('bg-white', 'text-black');
+        btn.classList.add('bg-[#34C759]', 'text-white');
+        btn.innerHTML = `
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            Saved
+        `;
+
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.classList.remove('bg-[#34C759]', 'text-white');
+            btn.classList.add('bg-white', 'text-black');
+            btn.innerHTML = `<span>Save Changes</span>`;
+        }, 2000);
+        
+    }, 500);
+}
+
+let displayedXp = null;
+let actualXp = null; 
+
+async function loadUserStats(userId) {
+    const { count } = await supabaseClient.from('user_collections').select('*', { count: 'exact', head: true }).eq('user_id', userId);
+    
+    const xp = (count || 0) * 100;
+    const level = Math.floor(xp / 300) + 1; 
+
+    actualXp = xp; 
+
+    const profileXpEl = document.getElementById('profile-xp');
+    const profileLevelEl = document.getElementById('profile-level');
+    if(profileXpEl) profileXpEl.innerText = `${xp} XP`;
+    if(profileLevelEl) profileLevelEl.innerText = `Lvl ${level}`;
+
+    if (displayedXp === null) {
+        displayedXp = xp;
+        const scoreEl = document.getElementById('score');
+        const homeLevelEl = document.getElementById('home-level');
+        if(scoreEl) scoreEl.innerHTML = `${xp} <span class="font-medium text-[20px] text-white/50">XP</span>`;
+        if(homeLevelEl) homeLevelEl.innerText = `LVL ${level}`;
+    } else if (displayedXp !== actualXp) {
+        const homeTab = document.getElementById('tab-home');
+        if (!homeTab.classList.contains('hidden')) {
+            animateXp(displayedXp, actualXp, level);
+        }
+    }
+}
+
+function animateXp(startValue, endValue, newLevel) {
+    const scoreEl = document.getElementById('score');
+    const homeLevelEl = document.getElementById('home-level');
+    if (!scoreEl) return;
+
+    const duration = 1500;
+    const startTime = performance.now();
+
+    function updateCounter(currentTime) {
+        const elapsed = currentTime - startTime;
+        let progress = elapsed / duration;
+        if (progress > 1) progress = 1;
+
+        const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+
+        const currentVal = Math.floor(startValue + (endValue - startValue) * easeProgress);
+
+        scoreEl.innerHTML = `${currentVal} <span class="font-medium text-[20px] text-white/50">XP</span>`;
+
+        if (progress < 1) {
+            requestAnimationFrame(updateCounter);
+        } else {
+            displayedXp = endValue; 
+            if (homeLevelEl) homeLevelEl.innerText = `LVL ${newLevel}`;
+            
+            if (typeof triggerHapticFeedback === 'function') {
+                triggerHapticFeedback();
+            }
+        }
+    }
+
+    requestAnimationFrame(updateCounter);
+}
