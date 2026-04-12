@@ -1277,16 +1277,29 @@ if (scanModalCard) {
 
 
 const snusModalCardElement = document.getElementById('snus-modal-card');
+const snusModalDragHandle = document.getElementById('snus-modal-drag-handle');
 let snusStartY = 0;
 let snusCurrentY = 0;
 let isSnusDragging = false;
 
 if (snusModalCardElement) {
     snusModalCardElement.addEventListener('touchstart', (e) => {
-        snusStartY = e.touches[0].clientY;
-        isSnusDragging = true;
-
-        snusModalCardElement.style.transition = 'none';
+        const target = e.target;
+        
+        if (snusModalDragHandle && snusModalDragHandle.contains(target)) {
+            snusStartY = e.touches[0].clientY;
+            isSnusDragging = true;
+            snusModalCardElement.style.transition = 'none';
+            return;
+        }
+        
+        if (snusModalCardElement.scrollTop <= 0) {
+            snusStartY = e.touches[0].clientY;
+            isSnusDragging = true;
+            snusModalCardElement.style.transition = 'none';
+        } else {
+            isSnusDragging = false;
+        }
     }, { passive: true });
 
     snusModalCardElement.addEventListener('touchmove', (e) => {
