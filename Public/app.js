@@ -406,7 +406,7 @@ function hideAllViews() {
     document.getElementById('modal-view-saved-rating').classList.add('hidden');
 }
 
-function openSnusDetail(id) {
+function openSnusDetail(id, isFromScan = false) {
     const snus = globalSnusData.find(s => s.id === id);
     if (!snus) return;
     currentSelectedSnusId = id; 
@@ -420,8 +420,18 @@ function openSnusDetail(id) {
     initRatingRows();
 
     const isUnlocked = globalUserCollection[id];
-    document.getElementById('uncollected-action-group').classList.toggle('hidden', !!isUnlocked);
-    document.getElementById('modal-collected-status').classList.toggle('hidden', !isUnlocked);
+    
+    if (isFromScan) {
+        document.getElementById('uncollected-action-group').classList.add('hidden');
+        document.getElementById('modal-collected-status').classList.add('hidden');
+        const scannedGroup = document.getElementById('scanned-action-group');
+        if (scannedGroup) scannedGroup.classList.remove('hidden');
+    } else {
+        const scannedGroup = document.getElementById('scanned-action-group');
+        if (scannedGroup) scannedGroup.classList.add('hidden');
+        document.getElementById('uncollected-action-group').classList.toggle('hidden', !!isUnlocked);
+        document.getElementById('modal-collected-status').classList.toggle('hidden', !isUnlocked);
+    }
 
     if (isUnlocked) {
         const dateObj = new Date(isUnlocked.date);
@@ -978,7 +988,7 @@ async function openScanModal() {
                     setTimeout(() => {
                         const foundSnus = globalSnusData.find(s => String(s.barcode) === decodedText);
                         if (foundSnus) {
-                            openSnusDetail(foundSnus.id);
+                            openSnusDetail(foundSnus.id, true);
                         } else {
                             console.log(`code ${decodedText} konnte nicht gefunden werden`);
                         }
