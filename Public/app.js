@@ -917,6 +917,7 @@ function calculateUsageStats(allLogs) {
 
 
 let html5QrCode = null;
+let isProcessingScan = false;
 
 const scanModal = document.getElementById('scan-modal');
 const scanModalCard = document.getElementById('scan-modal-card');
@@ -935,6 +936,7 @@ if (scanModal) {
 async function openScanModal() {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
     
+    isProcessingScan = false;
     scanModal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 
@@ -967,9 +969,20 @@ async function openScanModal() {
                     fps: 60,
                 },
                 (decodedText, decodedResult) => {
-                    console.log("Barcode erfolgreich gescannt:", decodedText);
+                    if (isProcessingScan) return;
+                    isProcessingScan = true;
+
                     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
                     closeScanModal();
+
+                    setTimeout(() => {
+                        const foundSnus = globalSnusData.find(s => String(s.barcode) === decodedText);
+                        if (foundSnus) {
+                            openSnusDetail(foundSnus.id);
+                        } else {
+                            console.log(`code ${decodedText} konnte nicht gefunden werden`);
+                        }
+                    }, 400);
                 },
                 (errorMessage) => {
                 }
