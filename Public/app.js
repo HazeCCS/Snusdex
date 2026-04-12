@@ -300,11 +300,11 @@ function updateLivePerformance() {
     
     collectedItems.sort((a, b) => new Date(globalUserCollection[b.id].date) - new Date(globalUserCollection[a.id].date));
 
-    // UPDATE: Nur noch die 'Collection' (Total Pouches) updaten!
-    // stat-flow (Nikotin) lassen wir in Ruhe, das macht die andere Funktion.
-    const countEl = document.getElementById('stat-count');
-    if(countEl) countEl.innerText = collectedItems.length;
-
+    const targetCount = collectedItems.length;
+    if (currentDashboardStats.count !== targetCount) {
+        animateNumber('stat-count', currentDashboardStats.count, targetCount, 1500, "", false);
+        currentDashboardStats.count = targetCount;
+    }
     const listEl = document.getElementById('latest-unlocks-list');
     if(!listEl) return;
     
@@ -859,22 +859,21 @@ function renderActiveCansUI() {
 function calculateUsageStats(allLogs) {
     const finishedCans = allLogs.filter(log => !log.is_active && log.finished_at);
     
-    // Die HTML Elemente greifen
-    const statFlow = document.getElementById('stat-flow');               // Lifetime MG
-    const avgPouchesEl = document.getElementById('stat-avg-pouches');    // Pouches / Day
-    const avgMgEl = document.getElementById('stat-avg-mg');              // MG / Day
-    
+    // Fallback, wenn noch keine Dose leer ist
     if (finishedCans.length === 0) {
-        if(statFlow) statFlow.innerText = `0 MG`;
-        if(avgPouchesEl) avgPouchesEl.innerText = '0';
-        if(avgMgEl) avgMgEl.innerText = '0 MG';
+        if (currentDashboardStats.flow !== 0) animateNumber('stat-flow', currentDashboardStats.flow, 0, 1500, " MG", false);
+        if (currentDashboardStats.avgPouches !== 0) animateNumber('stat-avg-pouches', currentDashboardStats.avgPouches, 0, 1500, "", true);
+        if (currentDashboardStats.avgMg !== 0) animateNumber('stat-avg-mg', currentDashboardStats.avgMg, 0, 1500, " MG", false);
+        
+        currentDashboardStats.flow = 0;
+        currentDashboardStats.avgPouches = 0;
+        currentDashboardStats.avgMg = 0;
         return;
     }
 
     let totalMgHistory = 0;
     let totalPouchesHistory = 0;
 
-    // 1. Alles summieren, was jemals konsumiert wurde (Lifetime)
     finishedCans.forEach(can => {
         const mgPerPouch = (can.mg_per_gram || 0) / 2;
         const mgPerCan = mgPerPouch * (can.pouches_per_can || 20);
@@ -883,22 +882,30 @@ function calculateUsageStats(allLogs) {
         totalPouchesHistory += (can.pouches_per_can || 20);
     });
 
-    // 2. Den Zeitraum berechnen (Erste Dose bis heute)
     const firstEverLog = finishedCans[finishedCans.length - 1]; 
     const startDate = new Date(firstEverLog.opened_at);
     const today = new Date();
     
     let totalDaysSpan = (today - startDate) / (1000 * 60 * 60 * 24);
-    if (totalDaysSpan < 1) totalDaysSpan = 1; // Minimum 1 Tag
+    if (totalDaysSpan < 1) totalDaysSpan = 1;
 
-    // 3. Tagesdurchschnitt berechnen
-    const avgMgPerDay = (totalMgHistory / totalDaysSpan).toFixed(0);
-    const avgPouchesPerDay = (totalPouchesHistory / totalDaysSpan).toFixed(1);
+    // Werte berechnen (als echte Zahlen, nicht .toFixed() Strings)
+    const avgMgPerDay = totalMgHistory / totalDaysSpan;
+    const avgPouchesPerDay = totalPouchesHistory / totalDaysSpan;
 
-    // 4. UI updaten (genau nach deiner Vorgabe)
-    if(statFlow) statFlow.innerText = `${totalMgHistory.toLocaleString()} MG`;
-    if(avgPouchesEl) avgPouchesEl.innerText = avgPouchesPerDay;
-    if(avgMgEl) avgMgEl.innerText = `${avgMgPerDay} MG`;                     
+    // Animationen triggern, falls sich der Wert geändert hat
+    if (currentDashboardStats.flow !== totalMgHistory) {
+        animateNumber('stat-flow', currentDashboardStats.flow, totalMgHistory, 1500, " MG", false);
+        currentDashboardStats.flow = totalMgHistory;
+    }
+    if (currentDashboardStats.avgPouches !== avgPouchesPerDay) {
+        animateNumber('stat-avg-pouches', currentDashboardStats.avgPouches, avgPouchesPerDay, 1500, "", true); // isFloat = true
+        currentDashboardStats.avgPouches = avgPouchesPerDay;
+    }
+    if (currentDashboardStats.avgMg !== avgMgPerDay) {
+        animateNumber('stat-avg-mg', currentDashboardStats.avgMg, avgMgPerDay, 1500, " MG", false);
+        currentDashboardStats.avgMg = avgMgPerDay;
+    }
 }
 
 
@@ -1588,5 +1595,48 @@ function animateXp(startValue, endValue, newLevel) {
 
     requestAnimationFrame(updateCounter);
 }
+
+let currentDashboardStats = {
+    count: 0,
+    flow: 0,
+    avgPouches: 0,
+    avgMg: 0
+};
+
+function animateNumber(elementId, startValue, endValue, duration = 1500, suffix = "", isFloat = false) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    const startTime = performance.now();
+
+    function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        let progress = elapsed / duration;
+        if (progress > 1) progress = 1;
+
+        const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+        const currentVal = startValue + (endValue - startValue) * easeProgress;
+
+        let displayStr = "";
+        if (isFloat) {
+            displayStr = currentVal.toFixed(1).replace('.', ',');
+        } else {
+            displayStr = Math.floor(currentVal).toLocaleString('de-DE');
+        }
+
+        el.innerText = `${displayStr}${suffix}`;
+
+        if (progress < 1) {
+            requestAnimationFrame(update);
+        } else {
+            let finalStr = isFloat ? endValue.toFixed(1).replace('.', ',') : Math.floor(endValue).toLocaleString('de-DE');
+            el.innerText = `${finalStr}${suffix}`;
+        }
+    }
+    requestAnimationFrame(update);
+}
+
+
+
 
 // commits für norman
