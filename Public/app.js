@@ -829,7 +829,7 @@ function renderActiveCansUI() {
     container.innerHTML = '';
 
     if (globalActiveLogs.length === 0) {
-        container.innerHTML = '<div class="flex items-center justify-between px-1 py-2"><p class="text-[13px] text-zinc-500">Keine aktiven Dosen.</p><button onclick="openScanModal()" class="flex items-center gap-1 px-3 py-1.5 bg-white/10 rounded-full text-[13px] font-medium text-white active:bg-white/20 transition-colors tracking-wide">Öffne die nächste<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg></button></div>';
+        container.innerHTML = '<div class="flex items-center justify-between px-1 py-2"><p class="text-[13px] text-zinc-500">Keine aktiven Dosen.</p><button onclick="triggerHapticFeedback(); openScanModal()" class="flex items-center gap-1 px-3 py-1.5 bg-white/10 rounded-full text-[13px] font-medium text-white active:bg-white/20 transition-colors tracking-wide">Öffne die nächste<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg></button></div>';
         return;
     }
 
@@ -845,11 +845,11 @@ function renderActiveCansUI() {
                     </div>
                     <div class="min-w-0">
                         <h4 class="text-white text-[15px] font-semibold truncate">${snusName}</h4>
-                        <p class="text-[11px] text-[#8E8E93] uppercase tracking-wider">offen seit ${new Date(can.opened_at).toLocaleDateString()}</p>
+                        <p class="text-[11px] text-[#8E8E93] tracking-wider">Open since ${new Date(can.opened_at).toLocaleDateString()}</p>
                     </div>
                 </div>
-                <button onclick="finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-transform">
-                    Leer
+                <button onclick="triggerHapticFeedback(); this.innerText='Emptying...'; this.disabled=true; this.classList.add('opacity-50'); finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-all">
+                    Empty
                 </button>
             </div>
         `;
@@ -1169,7 +1169,7 @@ function openSettingsSubpage(type) {
             <div class="bg-[#1C1C1E] rounded-[24px] p-5 space-y-4 border border-white/10 mb-8 shadow-sm w-full max-w-full">
                 <div class="flex flex-col gap-1.5 w-full">
                     <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Username</label>
-                    <input type="text" id="edit-username" value="Collector1337" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all">
+                    <input type="text" id="edit-username" value="Collector69" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all">
                 </div>
                 
                 <div class="flex flex-col gap-1.5 w-full">
@@ -1177,10 +1177,15 @@ function openSettingsSubpage(type) {
                     <input type="email" id="edit-email" value="user@example.com" disabled class="w-full bg-black/50 text-[#8E8E93] border border-white/5 rounded-[14px] px-4 py-3.5 text-[17px] outline-none cursor-not-allowed">
                 </div>
                 
-                <div class="flex flex-col gap-1.5 w-full overflow-hidden">
-                    <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Date of Birth</label>
-                    <input type="date" id="edit-dob" value="2000-01-01" class="w-full box-border min-w-0 bg-black border border-white/10 text-white rounded-[14px] px-3 py-3.5 text-[17px] focus:border-white outline-none transition-all [color-scheme:dark]">
-                </div>
+                <input 
+                    type="date" 
+                    id="edit-dob" 
+                    value="2000-01-01"
+                    min="1900-01-01"
+                    max="2099-12-31"
+                    oninput="limitDateInput(this)"
+                    class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all appearance-none"
+                />
                 
                 <div class="flex flex-col gap-1.5 w-full">
                     <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Location</label>
