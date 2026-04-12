@@ -1648,4 +1648,4 @@ function animateNumber(elementId, startValue, endValue, duration = 1500, suffix 
 
 
 
-// commits für norman
+// commits für norman 1
