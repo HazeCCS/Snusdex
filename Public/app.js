@@ -421,21 +421,25 @@ function openSnusDetail(id, isFromScan = false) {
 
     const isUnlocked = globalUserCollection[id];
     
-    if (isFromScan) {
+    if (isUnlocked) {
         document.getElementById('uncollected-action-group').classList.add('hidden');
-        document.getElementById('modal-collected-status').classList.add('hidden');
-        const scannedGroup = document.getElementById('scanned-action-group');
-        if (scannedGroup) scannedGroup.classList.remove('hidden');
-    } else {
         const scannedGroup = document.getElementById('scanned-action-group');
         if (scannedGroup) scannedGroup.classList.add('hidden');
-        document.getElementById('uncollected-action-group').classList.toggle('hidden', !!isUnlocked);
-        document.getElementById('modal-collected-status').classList.toggle('hidden', !isUnlocked);
-    }
-
-    if (isUnlocked) {
+        document.getElementById('modal-collected-status').classList.remove('hidden');
+        
         const dateObj = new Date(isUnlocked.date);
         document.getElementById('modal-unlocked-date').innerText = `Added on ${dateObj.toLocaleDateString()}`;
+    } else {
+        document.getElementById('modal-collected-status').classList.add('hidden');
+        if (isFromScan) {
+            document.getElementById('uncollected-action-group').classList.add('hidden');
+            const scannedGroup = document.getElementById('scanned-action-group');
+            if (scannedGroup) scannedGroup.classList.remove('hidden');
+        } else {
+            const scannedGroup = document.getElementById('scanned-action-group');
+            if (scannedGroup) scannedGroup.classList.add('hidden');
+            document.getElementById('uncollected-action-group').classList.remove('hidden');
+        }
     }
 
     document.getElementById('snus-modal').classList.remove('hidden');
@@ -549,6 +553,28 @@ async function collectCurrentSnus() {
     }
     
     setTimeout(() => { btn.innerText = "Confirm"; btn.disabled = false; }, 500);
+}
+
+async function deleteRatingAndReRate() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user || !currentSelectedSnusId) return;
+
+    const btn = document.getElementById('change-rating-btn');
+    if (btn) { btn.innerText = "Lädt..."; btn.disabled = true; }
+
+    // Lösche die alte Bewertung in Supabase
+    const { error } = await supabaseClient
+        .from('user_collections')
+        .delete()
+        .match({ user_id: user.id, snus_id: currentSelectedSnusId });
+
+    if (!error) {
+        delete globalUserCollection[currentSelectedSnusId];
+        showRatingView(); // Öffnet die Bewertungsansicht für die neue Eingabe
+    } else {
+        alert("Fehler beim Löschen der alten Bewertung: " + error.message);
+    }
+    if (btn) { btn.innerText = "Bewertung ändern"; btn.disabled = false; }
 }
 
 // ==========================================
