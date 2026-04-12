@@ -528,53 +528,64 @@ async function collectCurrentSnus() {
     const btn = document.getElementById('final-collect-btn');
     btn.innerText = "Processing..."; btn.disabled = true;
 
-    // FIX: Explizite Zuordnung der Tabellen-Spalten zu den JS Variablen
-    const { data, error } = await supabaseClient.from('user_collections').insert([{ 
-        user_id: user.id, 
-        snus_id: currentSelectedSnusId, 
-        rating_taste: tempRatings.taste,
-        rating_smell: tempRatings.smell,
-        rating_bite: tempRatings.bite,
-        rating_drip: tempRatings.drip,
-        rating_visuals: tempRatings.visuals
-    }]).select().single();
+    const isUpdate = !!globalUserCollection[currentSelectedSnusId];
+    let error, data;
 
-    if (!error) {
+    if (isUpdate) {
+        const response = await supabaseClient.from('user_collections')
+            .update({
+                rating_taste: tempRatings.taste,
+                rating_smell: tempRatings.smell,
+                rating_bite: tempRatings.bite,
+                rating_drip: tempRatings.drip,
+                rating_visuals: tempRatings.visuals
+            })
+            .eq('user_id', user.id)
+            .eq('snus_id', currentSelectedSnusId)
+            .select().single();
+        error = response.error;
+        data = response.data;
+    } else {
+        const response = await supabaseClient.from('user_collections').insert([{ 
+            user_id: user.id, 
+            snus_id: currentSelectedSnusId, 
+            rating_taste: tempRatings.taste,
+            rating_smell: tempRatings.smell,
+            rating_bite: tempRatings.bite,
+            rating_drip: tempRatings.drip,
+            rating_visuals: tempRatings.visuals
+        }]).select().single();
+        error = response.error;
+        data = response.data;
+    }
+
+    if (!error && data) {
         globalUserCollection[currentSelectedSnusId] = { date: data.collected_at, ratings: { ...tempRatings } };
         
-        await startNewCan(currentSelectedSnusId);
-
-        await loadUserStats(user.id); 
-        updateLivePerformance(); 
+        if (!isUpdate) {
+            await startNewCan(currentSelectedSnusId);
+            await loadUserStats(user.id); 
+            updateLivePerformance(); 
+        }
         renderDexGrid(globalSnusData);
         closeSnusDetail();
     } else {
-        alert("Fehler beim Speichern: " + error.message);
+        alert("Fehler beim Speichern: " + (error ? error.message : "Unbekannter Fehler"));
     }
     
     setTimeout(() => { btn.innerText = "Confirm"; btn.disabled = false; }, 500);
 }
 
-async function deleteRatingAndReRate() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user || !currentSelectedSnusId) return;
-
-    const btn = document.getElementById('change-rating-btn');
-    if (btn) { btn.innerText = "Lädt..."; btn.disabled = true; }
-
-    // Lösche die alte Bewertung in Supabase
-    const { error } = await supabaseClient
-        .from('user_collections')
-        .delete()
-        .match({ user_id: user.id, snus_id: currentSelectedSnusId });
-
-    if (!error) {
-        delete globalUserCollection[currentSelectedSnusId];
-        showRatingView(); // Öffnet die Bewertungsansicht für die neue Eingabe
-    } else {
-        alert("Fehler beim Löschen der alten Bewertung: " + error.message);
+function editRating() {
+    if (globalUserCollection[currentSelectedSnusId]) {
+        const currentRatings = globalUserCollection[currentSelectedSnusId].ratings;
+        setRating('taste', currentRatings.taste || 5);
+        setRating('smell', currentRatings.smell || 5);
+        setRating('bite', currentRatings.bite || 5);
+        setRating('drip', currentRatings.drip || 5);
+        setRating('visuals', currentRatings.visuals || 5);
     }
-    if (btn) { btn.innerText = "Bewertung ändern"; btn.disabled = false; }
+    showRatingView();
 }
 
 // ==========================================
