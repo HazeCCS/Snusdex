@@ -1589,4 +1589,4 @@ function animateXp(startValue, endValue, newLevel) {
     requestAnimationFrame(updateCounter);
 }
 
-////
+// commits für norman
