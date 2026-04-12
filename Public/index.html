@@ -9,19 +9,29 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        #scanner-reader video::-webkit-media-controls {
-            display: none !important;
+        #scanner-reader {
+            position: absolute !important;
+            inset: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
         }
 
         #scanner-reader video {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
             object-fit: cover !important;
             width: 100% !important;
             height: 100% !important;
             pointer-events: none !important; 
         }
 
+        #scanner-reader video::-webkit-media-controls { display: none !important; }
         #scanner-reader img { display: none !important; }
         #scanner-reader span { display: none !important; }
+        #qr-shaded-region { display: none !important; }
+        #scanner-reader__dashboard_section_csr { display: none !important; }
+        #scanner-reader__dashboard_section_swaplink { display: none !important; }
 
         @supports (font: -apple-system-body) {
             body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -672,20 +682,19 @@
                     <br>um sie zu erfassen.
                 </p>
 
-                <div class="w-full aspect-square max-w-[340px] bg-black rounded-[24px] relative overflow-hidden border border-white/10 flex flex-col items-center justify-center mb-4">
+                <div class="w-full aspect-square max-w-[340px] bg-black rounded-[24px] relative overflow-hidden border border-white/10 mb-4">
 
                     <div id="camera-loading" class="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black transition-opacity duration-500">
-
                         <p class="text-[#8E8E93] text-[11px] font-medium uppercase tracking-widest mb-4">Kamera wird geladen...</p>
-
                         <div class="w-36 h-1.5 bg-[#3A3A3C] rounded-full overflow-hidden relative">
                             <div id="loading-bar-fill" class="absolute top-0 bottom-0 left-0 w-0 bg-white rounded-full"></div>
                         </div>
                     </div>
 
-                    <div id="scanner-reader" class="absolute inset-0 w-full h-full opacity-0 transition-opacity duration-700"></div>
+                    <div id="scanner-reader" class="absolute inset-0 w-full h-full opacity-0 transition-opacity duration-700 z-0"></div>
 
-                    <div class="w-56 h-56 rounded-full border-2 border-white/80 shadow-[0_0_0_999px_rgba(0,0,0,0.5)] z-10 relative box-border pointer-events-none"></div>
+                    <div class="w-56 h-56 rounded-full border-2 border-white/80 shadow-[0_0_0_999px_rgba(0,0,0,0.5)] z-10 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 box-border pointer-events-none"></div>
+
                 </div>
             </div>
         </div>
