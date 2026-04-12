@@ -972,7 +972,6 @@ async function openScanModal() {
                     closeScanModal();
                 },
                 (errorMessage) => {
-                    // Ignoriere kontinuierliche Scan-Fehler (passiert bei jedem Frame ohne Barcode)
                 }
             );
             
