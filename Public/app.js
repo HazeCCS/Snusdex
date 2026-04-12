@@ -11,6 +11,35 @@ const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/ma
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==========================================
+// 1.5. SPLASH SCREEN / LOADING
+// ==========================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    const video = document.getElementById('splash-video');
+    const audio = document.getElementById('splash-sound');
+    const splash = document.getElementById('splash-screen');
+
+    // Video + Sound gleichzeitig starten
+    Promise.all([
+        video.play(),
+        audio.play()
+    ]).catch(err => {
+        console.log("Autoplay blocked:", err);
+    });
+
+    // Wenn das Video zu Ende ist → Splash ausblenden
+    video.addEventListener('ended', () => {
+        splash.style.opacity = '0';
+        
+        setTimeout(() => {
+            splash.style.display = 'none';
+            // Optional: Audio stoppen
+            audio.pause();
+        }, 600);
+    });
+});
+
+// ==========================================
 // 2. AUTHENTIFIZIERUNG, UI & GREETING
 // ==========================================
 
