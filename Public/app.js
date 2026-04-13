@@ -334,8 +334,7 @@ function loadMoreDexItems() {
                     </div>
 
                     <div class="w-full aspect-square flex items-center justify-center relative mt-1">
-                        <div class="absolute w-[75%] aspect-square bg-[#D9D9D9]/10 rounded-full z-0"></div>
-                        <img src="${GITHUB_BASE}${snus.image}" class="w-[80%] h-[80%] object-contain drop-shadow-xl z-10" loading="lazy" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
+                        <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10" loading="lazy" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
                     </div>
                     
                     <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
@@ -473,10 +472,10 @@ function updateRatingStepUI() {
 
     if (currentRatingStepIndex === 0) {
         backBtn.classList.add('opacity-0', 'pointer-events-none');
-        backBtn.classList.remove('opacity-100');
+        backBtn.classList.remove('opacity-100', 'pointer-events-auto');
     } else {
         backBtn.classList.remove('opacity-0', 'pointer-events-none');
-        backBtn.classList.add('opacity-100');
+        backBtn.classList.add('opacity-100', 'pointer-events-auto', 'cursor-pointer');
     }
 
     if (currentRatingStepIndex === RATING_STEPS.length - 1) {

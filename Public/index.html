@@ -650,7 +650,7 @@
 
                 <div id="modal-view-rating" class="hidden fade-view flex-col w-full">
                     <div class="flex justify-between items-center mb-6">
-                        <button id="rating-back-btn" onclick="triggerHapticFeedback(); prevRatingStep()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-opacity opacity-0 pointer-events-none">
+                        <button id="rating-back-btn" onclick="triggerHapticFeedback(); prevRatingStep()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-all opacity-0 pointer-events-none z-50 active:scale-90 active:bg-white/20">
                             <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
                         </button>
                         <h2 id="rating-step-title" class="text-[20px] font-semibold text-white capitalize">Visuals</h2>
@@ -753,20 +753,8 @@
 
             <div class="w-10 h-1.5 bg-[#3A3A3C] rounded-full mx-auto mt-3 mb-2"></div>
 
-            <div class="flex justify-between items-center px-4 py-2 pb-[0px]">
-                <button onclick="triggerHapticFeedback(); closeScanModal()" class="text-[#8E8E93] active:text-white p-2 transition-colors">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-
+            <div class="flex justify-center items-center px-4 py-2 pb-[0px]">
                 <h2 class="text-white text-[24px] font-semibold tracking-tight">Dose Scannen</h2>
-
-                <button onclick="triggerHapticFeedback(); confirmScanUi()" class="text-[#34C759] active:text-[#34C759]/70 p-2 transition-colors">
-                    <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                </button>
             </div>
 
             <div class="flex flex-col items-center">
