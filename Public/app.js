@@ -245,18 +245,11 @@ async function loadDex() {
                 globalUserCollection[item.snus_id] = {
                     date: item.collected_at,
                     ratings: { 
-                        taste: item.rating_taste || 5,
-                        taste_text: item.rating_taste_text || '',
-                        smell: item.rating_smell || 5,
-                        smell_text: item.rating_smell_text || '',
-                        bite: item.rating_bite || 5,
-                        bite_text: item.rating_bite_text || '',
-                        drip: item.rating_drip || 5,
-                        drip_text: item.rating_drip_text || '',
-                        visuals: item.rating_visuals || 5,
-                        visuals_text: item.rating_visuals_text || '',
-                        strength: item.rating_strength || 5,
-                        strength_text: item.rating_strength_text || ''
+                        taste: item.rating_taste || 5, 
+                        smell: item.rating_smell || 5, 
+                        bite: item.rating_bite || 5, 
+                        drip: item.rating_drip || 5, 
+                        visuals: item.rating_visuals || 5 
                     }
                 };
             });
@@ -274,32 +267,76 @@ async function loadDex() {
     }
 }
 
+let currentDexRenderCount = 0;
+let currentDexItems = [];
+const DEX_CHUNK_SIZE = 18; 
+let dexObserver = null;
+
+function initDexObserver() {
+    if (dexObserver) {
+        dexObserver.disconnect();
+    }
+    const sentinel = document.getElementById('dex-sentinel');
+    if (!sentinel) return;
+
+    // Beobachter der auslöst sobald der Bereich ca. 400px vor dem Sichtfeld ist
+    dexObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            loadMoreDexItems();
+        }
+    }, { rootMargin: '400px' }); 
+    
+    dexObserver.observe(sentinel);
+}
+
 function renderDexGrid(items) {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
     grid.innerHTML = ''; 
     
-    items.forEach(snus => {
-        const isUnlocked = !!globalUserCollection[snus.id]; 
-        grid.innerHTML += `
-            <div onclick="openSnusDetail(${snus.id})" class="relative flex flex-col bg-[#1C1C1E] rounded-[20px] transition-all active:scale-95 cursor-pointer shadow-sm border border-white/5 overflow-hidden ${!isUnlocked ? 'opacity-50 grayscale hover:opacity-75' : ''}">
-                
-                ${!isUnlocked ? `
-                <div class="absolute top-2 right-2 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-md z-10">
-                    <svg class="w-3 h-3 text-white/50" fill="currentColor" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/></svg>
-                </div>
-                ` : ''}
+    currentDexItems = items;
+    currentDexRenderCount = 0;
+    
+    loadMoreDexItems();
+    initDexObserver();
+}
 
-                <div class="w-full aspect-[4/3] flex items-center justify-center p-3 bg-gradient-to-b from-white/5 to-transparent relative">
-                    <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain drop-shadow-xl z-0" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
+function loadMoreDexItems() {
+    const grid = document.getElementById('dex-grid');
+    if (!grid || currentDexRenderCount >= currentDexItems.length) return;
+
+    const nextChunk = currentDexItems.slice(currentDexRenderCount, currentDexRenderCount + DEX_CHUNK_SIZE);
+    let htmlChunk = '';
+    
+    nextChunk.forEach(snus => {
+        const isUnlocked = !!globalUserCollection[snus.id]; 
+        
+        const formattedId = '#' + String(snus.id).padStart(3, '0');
+        const rarity = (snus.rarity || 'common').toLowerCase().trim();
+        
+        htmlChunk += `
+            <div onclick="openSnusDetail(${snus.id})" class="relative flex flex-col bg-[#2A2A2E] rounded-[20px] transition-all active:scale-95 cursor-pointer shadow-md overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale hover:opacity-60' : ''}" style="border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 2px 12px -4px var(--${rarity}, var(--common));">
+                
+                <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
+                    <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
+                    <span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>
+                </div>
+
+                <div class="w-full aspect-square flex items-center justify-center relative mt-1">
+                    <div class="absolute w-[75%] aspect-square bg-[#D9D9D9]/10 rounded-full z-0"></div>
+                    <img src="${GITHUB_BASE}${snus.image}" class="w-[80%] h-[80%] object-contain drop-shadow-xl z-10" loading="lazy" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
                 </div>
                 
-                <div class="p-3 pt-1 text-center bg-[#1C1C1E] flex-1 flex items-center justify-center">
-                    <h5 class="text-[13px] font-medium leading-[1.2] line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
+                <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
+                    <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
                 </div>
+                
             </div>
         `;
     });
+    
+    grid.insertAdjacentHTML('beforeend', htmlChunk);
+    currentDexRenderCount += DEX_CHUNK_SIZE;
 }
 
 function updateLivePerformance() {
@@ -382,7 +419,8 @@ function initRatingWizard() {
             row.appendChild(btn);
         }
         updatePill(cat, 5); 
-        row.parentElement.querySelector('.rating-val').innerText = `5/10`;
+        const valIndicator = row.parentElement.querySelector('.rating-val');
+        if (valIndicator) valIndicator.innerText = `5/10`;
         
         const textEl = document.getElementById(`text-${cat}`);
         if(textEl) textEl.value = '';
@@ -398,12 +436,14 @@ function setRating(category, value) {
     row.querySelectorAll('.rating-btn').forEach((btn, idx) => {
         btn.className = `rating-btn ${idx + 1 === value ? 'active' : 'inactive'}`;
     });
-    row.parentElement.querySelector('.rating-val').innerText = `${value}/10`;
+    const valIndicator = row.parentElement.querySelector('.rating-val');
+    if (valIndicator) valIndicator.innerText = `${value}/10`;
     triggerHapticFeedback();
 }
 
 function updatePill(cat, val) { 
-    document.getElementById(`pill-${cat}`).style.transform = `translateX(${(val - 1) * 100}%)`; 
+    const pill = document.getElementById(`pill-${cat}`);
+    if(pill) pill.style.transform = `translateX(${(val - 1) * 100}%)`; 
 }
 
 function updateRatingStepUI() {
@@ -443,11 +483,10 @@ function updateRatingStepUI() {
         const panel = document.getElementById(`step-${step}`);
         if (!panel) return;
         
-        panel.classList.remove('translate-x-0', 'translate-x-full', '-translate-x-full', 'opacity-0', 'opacity-100', 'z-10', 'z-0');
+        panel.classList.remove('translate-x-0', 'translate-x-full', '-translate-x-full', 'opacity-0', 'opacity-100', 'z-10', 'z-0', 'pointer-events-none');
 
         if (index === currentRatingStepIndex) {
             panel.classList.add('translate-x-0', 'opacity-100', 'z-10');
-            panel.classList.remove('pointer-events-none');
         } else if (index < currentRatingStepIndex) {
             panel.classList.add('-translate-x-full', 'opacity-0', 'z-0', 'pointer-events-none');
         } else {
@@ -486,14 +525,20 @@ function showRatingView() { hideAllViews(); document.getElementById('modal-view-
 function showSavedRating() {
     hideAllViews();
     document.getElementById('modal-view-saved-rating').classList.remove('hidden');
+    document.getElementById('modal-view-saved-rating').classList.add('flex');
     let ratings = globalUserCollection[currentSelectedSnusId]?.ratings || { taste: 5, smell: 5, bite: 5, drip: 5, visuals: 5, strength: 5 };
     
-    const createBar = (label, val, text) => `
-        <div class="mb-4">
-            <div class="flex justify-between text-[13px] text-[#8E8E93] mb-1"><span>${label}</span><span class="text-white">${val}/10</span></div>
-            <div class="w-full bg-black rounded-full h-1.5 mb-2"><div class="bg-white h-1.5 rounded-full" style="width: ${val * 10}%"></div></div>
-            ${text ? `<div class="bg-black/50 border border-white/5 rounded-xl p-3 text-[14px] text-white/80 italic">"${text}"</div>` : ''}
-        </div>`;
+    const escapeHTML = (str) => str ? String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])) : '';
+    
+    const createBar = (label, val, text) => {
+        const hasText = text && String(text).trim() !== '';
+        return `
+            <div class="mb-4">
+                <div class="flex justify-between text-[13px] text-[#8E8E93] mb-1"><span>${label}</span><span class="text-white">${val}/10</span></div>
+                <div class="w-full bg-black rounded-full h-1.5 mb-2"><div class="bg-white h-1.5 rounded-full" style="width: ${val * 10}%"></div></div>
+                ${hasText ? `<div class="bg-black/40 border border-white/10 rounded-xl p-3 text-[14px] text-white/90 italic shadow-sm mt-2 leading-relaxed">"${escapeHTML(text)}"</div>` : ''}
+            </div>`;
+    };
     
     document.getElementById('saved-rating-bars').innerHTML = 
         createBar("Visuals", ratings.visuals, ratings.visuals_text) + 
@@ -517,8 +562,13 @@ function openSnusDetail(id, isFromScan = false) {
     if (!snus) return;
     currentSelectedSnusId = id; 
 
+    const rarityLower = (snus.rarity || 'common').toLowerCase().trim();
+    const formattedId = '#' + String(snus.id).padStart(3, '0');
+    
+    const idEl = document.getElementById('modal-id');
+    if (idEl) idEl.innerText = formattedId;
     document.getElementById('modal-name').innerText = snus.name;
-    document.getElementById('modal-nicotine').innerText = `${snus.nicotine} MG/G • ${snus.rarity || 'Common'}`;
+    document.getElementById('modal-nicotine').innerHTML = `${snus.nicotine} MG/G • <span class="font-bold uppercase tracking-wide" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${snus.rarity || 'Common'}</span>`;
     document.getElementById('modal-image').src = `${GITHUB_BASE}${snus.image}`;
     document.body.classList.add('overflow-hidden'); 
 
@@ -567,55 +617,18 @@ function closeSnusDetail() {
     const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
 
-    backdrop.classList.remove('opacity-100');
-    backdrop.classList.add('opacity-0');
+    if (backdrop) {
+        backdrop.classList.remove('opacity-100');
+        backdrop.classList.add('opacity-0');
+    }
     
-    card.classList.remove('translate-y-0');
-    card.classList.add('translate-y-full');
+    if (card) {
+        card.classList.remove('translate-y-0');
+        card.classList.add('translate-y-full');
+    }
     
-    document.body.classList.remove('overflow-hidden');function renderDexGrid(items) {
-    const grid = document.getElementById('dex-grid');
-    if (!grid) return;
-    grid.innerHTML = ''; 
+    document.body.classList.remove('overflow-hidden');
     
-    items.forEach(snus => {
-        const isUnlocked = !!globalUserCollection[snus.id]; 
-        
-        // ID formatieren (z.B. aus 22 wird #022)
-        const formattedId = '#' + String(snus.id).padStart(3, '0');
-        
-        // Rarity abrufen und formatieren (Fallback ist 'common')
-        const rarity = (snus.rarity || 'common').toLowerCase();
-        
-        grid.innerHTML += `
-            <div onclick="openSnusDetail(${snus.id})" class="relative flex flex-col bg-[#2A2A2E] rounded-[20px] transition-all active:scale-95 cursor-pointer shadow-md border border-white/20 overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale hover:opacity-60' : ''}">
-                
-                <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
-                    <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
-                    <span class="text-[10px] font-bold tracking-wide" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>
-                </div>
-
-                ${!isUnlocked ? `
-                <div class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                    <div class="w-8 h-8 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-md">
-                        <svg class="w-4 h-4 text-white/50" fill="currentColor" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/></svg>
-                    </div>
-                </div>
-                ` : ''}
-
-                <div class="w-full aspect-square flex items-center justify-center relative mt-1">
-                    <div class="absolute w-[75%] aspect-square bg-[#D9D9D9]/20 rounded-full z-0"></div>
-                    <img src="${GITHUB_BASE}${snus.image}" class="w-[80%] h-[80%] object-contain drop-shadow-xl z-10" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
-                </div>
-                
-                <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
-                    <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
-                </div>
-                
-            </div>
-        `;
-    });
-}
     setTimeout(() => {
         document.getElementById('snus-modal').classList.add('hidden');
         hideAllViews(); 
@@ -640,22 +653,24 @@ async function collectCurrentSnus() {
     let error;
     let savedDate = new Date().toISOString();
 
+    const payload = {
+        rating_taste: tempRatings.taste,
+        rating_taste_text: tempRatings.taste_text,
+        rating_smell: tempRatings.smell,
+        rating_smell_text: tempRatings.smell_text,
+        rating_bite: tempRatings.bite,
+        rating_bite_text: tempRatings.bite_text,
+        rating_drip: tempRatings.drip,
+        rating_drip_text: tempRatings.drip_text,
+        rating_visuals: tempRatings.visuals,
+        rating_visuals_text: tempRatings.visuals_text,
+        rating_strength: tempRatings.strength,
+        rating_strength_text: tempRatings.strength_text
+    };
+
     if (isUpdate) {
         const response = await supabaseClient.from('user_collections')
-            .update({
-                rating_taste: tempRatings.taste,
-                rating_taste_text: tempRatings.taste_text,
-                rating_smell: tempRatings.smell,
-                rating_smell_text: tempRatings.smell_text,
-                rating_bite: tempRatings.bite,
-                rating_bite_text: tempRatings.bite_text,
-                rating_drip: tempRatings.drip,
-                rating_drip_text: tempRatings.drip_text,
-                rating_visuals: tempRatings.visuals,
-                rating_visuals_text: tempRatings.visuals_text,
-                rating_strength: tempRatings.strength,
-                rating_strength_text: tempRatings.strength_text
-            })
+            .update(payload)
             .eq('user_id', user.id)
             .eq('snus_id', currentSelectedSnusId);
             
@@ -665,18 +680,7 @@ async function collectCurrentSnus() {
         const response = await supabaseClient.from('user_collections').insert([{ 
             user_id: user.id, 
             snus_id: currentSelectedSnusId, 
-            rating_taste: tempRatings.taste,
-            rating_taste_text: tempRatings.taste_text,
-            rating_smell: tempRatings.smell,
-            rating_smell_text: tempRatings.smell_text,
-            rating_bite: tempRatings.bite,
-            rating_bite_text: tempRatings.bite_text,
-            rating_drip: tempRatings.drip,
-            rating_drip_text: tempRatings.drip_text,
-            rating_visuals: tempRatings.visuals,
-            rating_visuals_text: tempRatings.visuals_text,
-            rating_strength: tempRatings.strength,
-            rating_strength_text: tempRatings.strength_text
+            ...payload
         }]).select().single();
         
         error = response.error;
@@ -1278,29 +1282,16 @@ if (scanModalCard) {
 
 
 const snusModalCardElement = document.getElementById('snus-modal-card');
-const snusModalDragHandle = document.getElementById('snus-modal-drag-handle');
 let snusStartY = 0;
 let snusCurrentY = 0;
 let isSnusDragging = false;
 
 if (snusModalCardElement) {
     snusModalCardElement.addEventListener('touchstart', (e) => {
-        const target = e.target;
-        
-        if (snusModalDragHandle && snusModalDragHandle.contains(target)) {
-            snusStartY = e.touches[0].clientY;
-            isSnusDragging = true;
-            snusModalCardElement.style.transition = 'none';
-            return;
-        }
-        
-        if (snusModalCardElement.scrollTop <= 0) {
-            snusStartY = e.touches[0].clientY;
-            isSnusDragging = true;
-            snusModalCardElement.style.transition = 'none';
-        } else {
-            isSnusDragging = false;
-        }
+        snusStartY = e.touches[0].clientY;
+        isSnusDragging = true;
+
+        snusModalCardElement.style.transition = 'none';
     }, { passive: true });
 
     snusModalCardElement.addEventListener('touchmove', (e) => {
@@ -1849,59 +1840,21 @@ function animateNumber(elementId, startValue, endValue, duration = 1500, suffix 
     requestAnimationFrame(update);
 }
 
+// ==========================================
+// 11. DEBUGGING & DEV COMMANDS
+// ==========================================
+window.unlock = function(id) {
+    const foundSnus = globalSnusData.find(s => s.id === id);
+    if (foundSnus) {
+        console.log(`[Dev] Unlocking Snus #${id}: ${foundSnus.name} for rating...`);
+        openSnusDetail(foundSnus.id, true);
+    } else {
+        console.error(`[Dev] Snus mit ID ${id} nicht gefunden!`);
+    }
+    return "Dev command executed.";
+};
 
 
-let lastScannedBarcode = "";
-
-function openNotFoundModal(barcode) {
-    lastScannedBarcode = barcode;
-    const modal = document.getElementById('not-found-modal');
-    const backdrop = document.getElementById('not-found-backdrop');
-    const card = document.getElementById('not-found-card');
-
-    modal.classList.remove('hidden');
-    
-    setTimeout(() => {
-        backdrop.classList.remove('opacity-0');
-        backdrop.classList.add('opacity-100');
-        
-        card.classList.remove('scale-95', 'opacity-0');
-        card.classList.add('scale-100', 'opacity-100');
-    }, 10);
-}
-
-function closeNotFoundModal() {
-    const modal = document.getElementById('not-found-modal');
-    const backdrop = document.getElementById('not-found-backdrop');
-    const card = document.getElementById('not-found-card');
-
-    backdrop.classList.remove('opacity-100');
-    backdrop.classList.add('opacity-0');
-    
-    card.classList.remove('scale-100', 'opacity-100');
-    card.classList.add('scale-95', 'opacity-0');
-
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 300);
-}
-
-function retryScan() {
-    closeNotFoundModal();
-    setTimeout(() => {
-        openScanModal();
-    }, 350); 
-}
-
-function reportMissingSnus() {
-    const email = "support@snusdex.com"; 
-    const subject = encodeURIComponent("Fehlender Snus im Dex");
-    const body = encodeURIComponent(`Hallo Snusdex-Team,\n\nfolgender Snus fehlt noch in der Datenbank:\n\nBarcode: ${lastScannedBarcode}\nMarke:\nSorte:\nStärke:\n\nDanke!`);
-    
-    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
-    
-    closeNotFoundModal();
-}
 
 
 // commits für norman 3
