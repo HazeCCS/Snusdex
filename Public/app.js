@@ -318,7 +318,7 @@ function loadMoreDexItems() {
         const formattedId = '#' + String(snus.id).padStart(3, '0');
         const rarity = (snus.rarity || 'common').toLowerCase().trim();
         
-        const boxShadow = glowActive ? `box-shadow: 0 8px 24px -8px var(--${rarity}, var(--common));` : '';
+        const boxShadow = glowActive ? `box-shadow: 0 0px 20px -8px var(--${rarity}, var(--common));` : '';
         
         const rarityIndicator = is2Cols 
             ? `<span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>`
