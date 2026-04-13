@@ -308,18 +308,28 @@ function loadMoreDexItems() {
     const nextChunk = currentDexItems.slice(currentDexRenderCount, currentDexRenderCount + DEX_CHUNK_SIZE);
     let htmlChunk = '';
     
+    const cols = localStorage.getItem('dexColumns') || '3';
+    const is2Cols = cols === '2';
+    const glowActive = localStorage.getItem('dexGlow') === 'true';
+    
     nextChunk.forEach(snus => {
         const isUnlocked = !!globalUserCollection[snus.id]; 
         
         const formattedId = '#' + String(snus.id).padStart(3, '0');
         const rarity = (snus.rarity || 'common').toLowerCase().trim();
         
+        const boxShadow = glowActive ? `box-shadow: 0 8px 24px -8px var(--${rarity}, var(--common));` : '';
+        
+        const rarityIndicator = is2Cols 
+            ? `<span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>`
+            : `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
+        
         htmlChunk += `
-            <div onclick="openSnusDetail(${snus.id})" class="relative flex flex-col bg-[#2A2A2E] rounded-[20px] transition-all active:scale-95 cursor-pointer shadow-md overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale hover:opacity-60' : ''}" style="border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 2px 12px -4px var(--${rarity}, var(--common));">
+            <div onclick="openSnusDetail(${snus.id})" class="relative flex flex-col bg-[#2A2A2E] rounded-[20px] transition-all active:scale-95 cursor-pointer shadow-md overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale hover:opacity-60' : ''}" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
                 
                 <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
                     <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
-                    <span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>
+                    ${rarityIndicator}
                 </div>
 
                 <div class="w-full aspect-square flex items-center justify-center relative mt-1">
@@ -803,7 +813,15 @@ function triggerHapticFeedback() {
 
 function switchTabWrapper(tabId) { triggerHapticFeedback(); switchTab(tabId); }
 
-document.addEventListener('DOMContentLoaded', () => checkUser());
+document.addEventListener('DOMContentLoaded', () => {
+    const cols = localStorage.getItem('dexColumns') || '3';
+    const grid = document.getElementById('dex-grid');
+    if (grid) {
+        grid.classList.remove('grid-cols-2', 'grid-cols-3');
+        grid.classList.add(cols === '2' ? 'grid-cols-2' : 'grid-cols-3');
+    }
+    checkUser();
+});
 
 // ==========================================
 // 9. TOP SNUS OF THE WEEK & SOCIAL
@@ -1350,6 +1368,31 @@ function toggleSetting(element) {
     }
 }
 
+function toggleGridColumns(element) {
+    toggleSetting(element);
+    const is2Cols = element.classList.contains('bg-white');
+    const grid = document.getElementById('dex-grid');
+    if (grid) {
+        if (is2Cols) {
+            grid.classList.remove('grid-cols-3');
+            grid.classList.add('grid-cols-2');
+            localStorage.setItem('dexColumns', '2');
+        } else {
+            grid.classList.remove('grid-cols-2');
+            grid.classList.add('grid-cols-3');
+            localStorage.setItem('dexColumns', '3');
+        }
+        if (globalSnusData.length > 0) filterDex();
+    }
+}
+
+function toggleGridGlow(element) {
+    toggleSetting(element);
+    const isActive = element.classList.contains('bg-white');
+    localStorage.setItem('dexGlow', isActive ? 'true' : 'false');
+    if (globalSnusData.length > 0) filterDex();
+}
+
 function openSettingsSubpage(type) {
     const subpage = document.getElementById('settings-subpage');
     const titleObj = document.getElementById('subpage-title');
@@ -1461,6 +1504,39 @@ function openSettingsSubpage(type) {
                 <div class="h-[1px] bg-white/5 mx-5"></div>
                 <div onclick="triggerHapticFeedback()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
                     <span class="text-white text-[17px]">Svenska</span>
+                </div>
+            </div>
+        `;
+    }
+    else if (type === 'Darstellung') {
+        const cols = localStorage.getItem('dexColumns') || '3';
+        const is2Cols = cols === '2';
+        
+        const toggleBg = is2Cols ? 'bg-white' : 'bg-[#3A3A3C]';
+        const handleTransform = is2Cols ? 'translate-x-5' : '';
+        const handleBg = is2Cols ? 'bg-black' : 'bg-white';
+        
+        const glow = localStorage.getItem('dexGlow') === 'true';
+        const glowToggleBg = glow ? 'bg-white' : 'bg-[#3A3A3C]';
+        const glowHandleTransform = glow ? 'translate-x-5' : '';
+        const glowHandleBg = glow ? 'bg-black' : 'bg-white';
+        
+        html = `
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
+                <div class="flex items-center justify-between p-5">
+                        <div class="flex flex-col pr-4">
+                        <span class="text-white text-[17px]">Große Kacheln</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">Zeigt 2 statt 3 Spalten im Dex an</span>
+                    </div>
+                        <div onclick="triggerHapticFeedback(); toggleGridColumns(this)" class="w-12 h-7 ${toggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${handleBg} rounded-full transition-transform duration-300 ${handleTransform} shadow-sm"></div></div>
+                </div>
+                <div class="h-[1px] bg-white/5 mx-5"></div>
+                <div class="flex items-center justify-between p-5">
+                        <div class="flex flex-col pr-4">
+                        <span class="text-white text-[17px]">Kachel Glow</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">Farbiger Hintergrund-Glow der Seltenheit</span>
+                    </div>
+                        <div onclick="triggerHapticFeedback(); toggleGridGlow(this)" class="w-12 h-7 ${glowToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${glowHandleBg} rounded-full transition-transform duration-300 ${glowHandleTransform} shadow-sm"></div></div>
                 </div>
             </div>
         `;
