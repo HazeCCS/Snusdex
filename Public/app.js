@@ -459,6 +459,7 @@ function updatePill(cat, val) {
 
 function updateRatingStepUI() {
     const backBtn = document.getElementById('rating-back-btn');
+    const cancelBtn = document.getElementById('rating-cancel-btn');
     const nextBtn = document.getElementById('rating-next-btn');
     const nextText = document.getElementById('rating-next-text');
     const nextIcon = document.getElementById('rating-next-icon');
@@ -469,6 +470,14 @@ function updateRatingStepUI() {
 
     title.innerText = RATING_STEPS[currentRatingStepIndex];
     indicator.innerText = `${currentRatingStepIndex + 1}/${RATING_STEPS.length}`;
+
+    if (currentRatingStepIndex === 0) {
+        if (backBtn) backBtn.classList.add('hidden');
+        if (cancelBtn) cancelBtn.classList.remove('hidden');
+    } else {
+        if (backBtn) backBtn.classList.remove('hidden');
+        if (cancelBtn) cancelBtn.classList.add('hidden');
+    }
 
     if (currentRatingStepIndex === 0) {
         backBtn.classList.add('opacity-0', 'pointer-events-none');
@@ -579,7 +588,9 @@ function openSnusDetail(id, isFromScan = false) {
     const idEl = document.getElementById('modal-id');
     if (idEl) idEl.innerText = formattedId;
     document.getElementById('modal-name').innerText = snus.name;
-    document.getElementById('modal-nicotine').innerHTML = `${snus.nicotine} MG/G • <span class="font-bold uppercase tracking-wide" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${snus.rarity || 'Common'}</span>`;
+    document.getElementById('modal-nicotine').innerHTML = `
+    <span class="px-3 py-1.5 bg-white/10 border border-white/5 rounded-full text-[13px] font-semibold text-white tracking-wide shadow-sm">${snus.nicotine} MG/G</span>
+    <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${snus.rarity || 'Common'}</span>`;
     document.getElementById('modal-image').src = `${GITHUB_BASE}${snus.image}`;
     document.body.classList.add('overflow-hidden'); 
 
@@ -595,7 +606,7 @@ function openSnusDetail(id, isFromScan = false) {
         document.getElementById('modal-collected-status').classList.remove('hidden');
         
         const dateObj = new Date(isUnlocked.date);
-        document.getElementById('modal-unlocked-date').innerText = `Added on ${dateObj.toLocaleDateString()}`;
+        document.getElementById('modal-unlocked-date').innerText = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
     } else {
         document.getElementById('modal-collected-status').classList.add('hidden');
         if (isFromScan) {

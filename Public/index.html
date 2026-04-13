@@ -595,14 +595,15 @@
 
         <div id="modal-views-wrapper" class="w-full pt-2 px-6">
                 <div id="modal-view-info" class="fade-view">
-                    <div class="w-full flex justify-center mb-6 h-48 relative">
-                        <img id="modal-image" src="" alt="Snus" class="h-full object-contain drop-shadow-2xl z-20">
+                    <div class="w-full flex justify-center mb-4 h-60 relative">
+                        <img id="modal-image" src="" alt="Snus" class="h-full w-full object-contain scale-110 drop-shadow-2xl z-20">
                     </div>
 
-                    <div class="text-center mb-8 w-full overflow-hidden px-2">
-                        <span id="modal-id" class="text-[14px] font-semibold text-[#8E8E93] tracking-wider mb-1 block">#000</span>
-                        <h2 id="modal-name" class="text-[26px] font-bold tracking-tight text-white mb-1 truncate leading-tight">Name</h2>
-                        <p id="modal-nicotine" class="text-[15px] text-[#8E8E93]">0 MG/G • <span id="modal-rarity-text">Common</span></p>
+                    <div class="text-center mb-6 w-full overflow-hidden px-2">
+                        <span id="modal-id" class="text-[13px] font-semibold text-[#8E8E93] tracking-wider mb-1 block">#000</span>
+                        <h2 id="modal-name" class="text-[28px] font-bold tracking-tight text-white mb-4 truncate leading-tight">Name</h2>
+                        
+                        <div id="modal-nicotine" class="flex items-center justify-center gap-2"></div>
                     </div>
 
                     <div id="uncollected-action-group" class="w-full">
@@ -613,7 +614,6 @@
                             </svg>
                             Dose scannen
                         </button>
-                        
                     </div>
 
                     <div id="scanned-action-group" class="hidden w-full">
@@ -625,22 +625,30 @@
                         </button>
                     </div>
 
-                    <div id="modal-collected-status" class="hidden mt-4 text-center">
-                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#34C759]/20 mb-3">
-                            <svg class="w-6 h-6 text-[#34C759]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
+                    <div id="modal-collected-status" class="hidden mt-2 text-center w-full">
+                        
+                        <div class="grid grid-cols-3 gap-2 mb-6">
+                            <div class="bg-black/30 border border-white/5 rounded-[16px] p-3 flex flex-col justify-center">
+                                <span class="text-[#8E8E93] text-[10px] uppercase tracking-wider font-semibold block mb-0.5">Geöffnet</span>
+                                <span class="text-white text-[17px] font-bold">12x</span>
+                            </div>
+                            <div class="bg-black/30 border border-white/5 rounded-[16px] p-3 flex flex-col justify-center">
+                                <span class="text-[#8E8E93] text-[10px] uppercase tracking-wider font-semibold block mb-0.5">Diesen Monat</span>
+                                <span class="text-white text-[17px] font-bold">3x</span>
+                            </div>
+                            <div class="bg-black/30 border border-white/5 rounded-[16px] p-3 flex flex-col justify-center">
+                                <span class="text-[#8E8E93] text-[10px] uppercase tracking-wider font-semibold block mb-0.5">Unlocked at</span>
+                                <span id="modal-unlocked-date" class="text-white text-[13px] font-bold">Jan '24</span>
+                            </div>
                         </div>
-                        <p class="text-white font-semibold text-[17px]">Saved in Library</p>
-                        <span id="modal-unlocked-date" class="text-[13px] text-[#8E8E93] block mb-6"></span>
 
-                        <button onclick="triggerHapticFeedback(); showSavedRating()" class="w-full bg-[#2C2C2E] text-white font-medium text-[17px] py-3.5 rounded-[14px] active:scale-95 transition-transform mb-3">
-                            View Rating
-                        </button>
-
-                        <button id="change-rating-btn" onclick="triggerHapticFeedback(); editRating()" class="w-full bg-[#FF9F0A]/20 text-[#FF9F0A] border border-[#FF9F0A]/30 font-semibold text-[17px] py-3.5 rounded-[14px] active:scale-95 transition-transform mb-3">
-                            Bewertung ändern
-                        </button>
+                        <div class="flex gap-3 mb-3"> <button onclick="triggerHapticFeedback(); showSavedRating()" class="flex-1 bg-white/10 border border-white/5 text-white font-medium text-[15px] py-3.5 rounded-[14px] active:scale-95 transition-transform shadow-sm">
+                                Rating ansehen
+                            </button>
+                            <button id="change-rating-btn" onclick="triggerHapticFeedback(); editRating()" class="flex-1 bg-white/10 border border-white/5 text-white font-medium text-[15px] py-3.5 rounded-[14px] active:scale-95 transition-transform shadow-sm">
+                                Rating ändern
+                            </button>
+                        </div>
 
                         <button id="open-can-btn" onclick="triggerHapticFeedback(); startNewCanFromModal()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform shadow-[0_4px_14px_rgba(255,255,255,0.1)]">
                             Neue Dose öffnen
@@ -649,12 +657,20 @@
                 </div>
 
                 <div id="modal-view-rating" class="hidden fade-view flex-col w-full">
-                    <div class="flex justify-between items-center mb-6">
-                        <button id="rating-back-btn" onclick="triggerHapticFeedback(); prevRatingStep()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-all opacity-0 pointer-events-none z-50 active:scale-90 active:bg-white/20">
-                            <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
-                        </button>
-                        <h2 id="rating-step-title" class="text-[20px] font-semibold text-white capitalize">Visuals</h2>
-                        <div id="rating-step-indicator" class="w-8 text-right text-[13px] font-medium text-[#8E8E93]">1/6</div>
+                    
+                    <div class="flex justify-between items-center mb-6 relative">
+                        <div class="w-24 flex justify-start">
+                            <button id="rating-back-btn" onclick="triggerHapticFeedback(); prevRatingStep()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-all z-50 active:scale-90 active:bg-white/20">
+                                <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                            <button id="rating-cancel-btn" onclick="triggerHapticFeedback(); showInfoView()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-all z-50 active:scale-90 active:bg-white/20">
+                                <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                        </div>
+                        
+                        <h2 id="rating-step-title" class="text-[20px] font-semibold text-white capitalize absolute left-1/2 -translate-x-1/2">Visuals</h2>
+                        
+                        <div id="rating-step-indicator" class="w-24 text-right text-[13px] font-medium text-[#8E8E93]">1/6</div>
                     </div>
 
                     <div class="relative w-full overflow-hidden mb-6 min-h-[240px]">
