@@ -325,22 +325,24 @@ function loadMoreDexItems() {
             : `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
         
         htmlChunk += `
-            <div onclick="openSnusDetail(${snus.id})" class="relative flex flex-col bg-[#2A2A2E] rounded-[20px] transition-all active:scale-95 cursor-pointer shadow-md overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale hover:opacity-60' : ''}" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
-                
-                <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
-                    <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
-                    ${rarityIndicator}
-                </div>
+            <div onclick="openSnusDetail(${snus.id})" class="cursor-pointer group h-full">
+                <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] transition-all group-active:scale-95 shadow-md overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale' : ''}" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
+                    
+                    <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
+                        <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
+                        ${rarityIndicator}
+                    </div>
 
-                <div class="w-full aspect-square flex items-center justify-center relative mt-1">
-                    <div class="absolute w-[75%] aspect-square bg-[#D9D9D9]/10 rounded-full z-0"></div>
-                    <img src="${GITHUB_BASE}${snus.image}" class="w-[80%] h-[80%] object-contain drop-shadow-xl z-10" loading="lazy" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
+                    <div class="w-full aspect-square flex items-center justify-center relative mt-1">
+                        <div class="absolute w-[75%] aspect-square bg-[#D9D9D9]/10 rounded-full z-0"></div>
+                        <img src="${GITHUB_BASE}${snus.image}" class="w-[80%] h-[80%] object-contain drop-shadow-xl z-10" loading="lazy" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
+                    </div>
+                    
+                    <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
+                        <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
+                    </div>
+                    
                 </div>
-                
-                <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
-                    <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
-                </div>
-                
             </div>
         `;
     });
@@ -828,103 +830,166 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 
 async function loadTopSnusOfWeek() {
-    // 1. Daten holen (Hier könntest du später noch ein .gte('collected_at', ...) für die letzte Woche einbauen)
     const { data: collections, error } = await supabaseClient
         .from('user_collections')
-        .select('snus_id, rating_taste, rating_smell, rating_bite, rating_drip, rating_visuals, rating_strength'); // rating_strength falls vorhanden
+        .select('snus_id, collected_at, rating_taste, rating_smell, rating_bite, rating_drip, rating_visuals, rating_strength'); 
 
     if (error || !collections || collections.length === 0) return;
 
     const stats = {};
+    const today = new Date().toISOString().split('T')[0];
 
-    // 2. Summen bilden
     collections.forEach(item => {
         if (!stats[item.snus_id]) {
-            stats[item.snus_id] = { count: 0, taste: 0, smell: 0, bite: 0, drip: 0, visuals: 0, strength: 0 };
+            stats[item.snus_id] = { count: 0, todayCount: 0, taste: 0, smell: 0, bite: 0, drip: 0, visuals: 0, strength: 0 };
         }
         const s = stats[item.snus_id];
         s.count++;
+        
+        if (item.collected_at && item.collected_at.startsWith(today)) {
+            s.todayCount++;
+        }
+        
         s.taste += item.rating_taste || 5;
         s.smell += item.rating_smell || 5;
         s.bite += item.rating_bite || 5;
         s.drip += item.rating_drip || 5;
         s.visuals += item.rating_visuals || 5;
-        s.strength += item.rating_strength || 5; // Falls du Stärke auch trackst
+        s.strength += item.rating_strength || 5; 
     });
 
-    // 3. Den Snus mit dem höchsten Gesamtdurchschnitt finden
     let topSnusId = null;
     let highestAverage = 0;
+    
+    let popularSnusId = null;
+    let highestTodayCount = 0;
 
     for (const [id, s] of Object.entries(stats)) {
-        // Durchschnitt aller 6 Kategorien für diesen speziellen Snus berechnen
-        // Wir teilen die Summe aller Ratings durch (Anzahl der Scans * 6 Kategorien)
         const totalPoints = s.taste + s.smell + s.bite + s.drip + s.visuals + s.strength;
         const currentAvg = totalPoints / (s.count * 6); 
 
-        // Nur Snus berücksichtigen, die z.B. mindestens 2-3 mal bewertet wurden (Vermeidet 10/10 Glückstreffer)
         if (currentAvg > highestAverage) {
             highestAverage = currentAvg;
             topSnusId = id;
+        }
+        
+        if (s.todayCount > highestTodayCount) {
+            highestTodayCount = s.todayCount;
+            popularSnusId = id;
+        }
+    }
+    
+    if (!popularSnusId) {
+        let maxCount = 0;
+        for (const [id, s] of Object.entries(stats)) {
+            if (s.count > maxCount) {
+                maxCount = s.count;
+                popularSnusId = id;
+            }
         }
     }
 
     if (!topSnusId) return;
 
+    const container = document.getElementById('top-snus-container');
+    if (!container) return;
+    container.innerHTML = '';
+
     const topStat = stats[topSnusId];
-    const maxCount = topStat.count;
-
-    // 4. Finale Werte für das UI vorbereiten
-    const avgRatings = {
-        taste: (topStat.taste / maxCount).toFixed(1),
-        smell: (topStat.smell / maxCount).toFixed(1),
-        bite: (topStat.bite / maxCount).toFixed(1),
-        drip: (topStat.drip / maxCount).toFixed(1),
-        visuals: (topStat.visuals / maxCount).toFixed(1),
-        strength: (topStat.strength / maxCount).toFixed(1)
+    const topAvgRatings = {
+        taste: (topStat.taste / topStat.count).toFixed(1),
+        smell: (topStat.smell / topStat.count).toFixed(1),
+        bite: (topStat.bite / topStat.count).toFixed(1),
+        drip: (topStat.drip / topStat.count).toFixed(1),
+        visuals: (topStat.visuals / topStat.count).toFixed(1),
+        strength: (topStat.strength / topStat.count).toFixed(1)
     };
-    
-    // Gesamtscore (0-10)
-    const overallAvg = (highestAverage).toFixed(1);
+    const topOverallAvg = highestAverage.toFixed(1);
 
-    const snusInfo = globalSnusData.find(s => s.id == topSnusId);
-    if (snusInfo) {
-        renderTopSnus(snusInfo, avgRatings, maxCount, overallAvg);
+    const topSnusInfo = globalSnusData.find(s => s.id == topSnusId);
+    if (topSnusInfo) {
+        container.innerHTML += renderSocialCard("Top Snus of the Week", topSnusInfo, topAvgRatings, topOverallAvg, topStat.count);
+    }
+    
+    if (popularSnusId && popularSnusId !== topSnusId) {
+        const popStat = stats[popularSnusId];
+        const popAvgRatings = {
+            taste: (popStat.taste / popStat.count).toFixed(1),
+            smell: (popStat.smell / popStat.count).toFixed(1),
+            bite: (popStat.bite / popStat.count).toFixed(1),
+            drip: (popStat.drip / popStat.count).toFixed(1),
+            visuals: (popStat.visuals / popStat.count).toFixed(1),
+            strength: (popStat.strength / popStat.count).toFixed(1)
+        };
+        const popTotal = popStat.taste + popStat.smell + popStat.bite + popStat.drip + popStat.visuals + popStat.strength;
+        const popOverall = (popTotal / (popStat.count * 6)).toFixed(1);
+        
+        const popSnusInfo = globalSnusData.find(s => s.id == popularSnusId);
+        if (popSnusInfo) {
+            container.innerHTML += renderSocialCard("Most Popular Today", popSnusInfo, popAvgRatings, popOverall, popStat.count);
+        }
     }
 }
 
-function renderTopSnus(snus, ratings, count, overall) {
-    const container = document.getElementById('top-snus-container');
-    if (!container) return;
+function getScoreColor(score) {
+    const val = parseFloat(score);
+    if (val <= 3.9) return 'text-[#FF3B30]'; 
+    if (val <= 6.9) return 'text-[#FFCC00]'; 
+    if (val <= 8.9) return 'text-[#34C759]'; 
+    return 'text-[#32ADE6]'; 
+}
 
-    container.innerHTML = `
-        <div class="bg-[#1C1C1E] rounded-3xl p-6 shadow-lg relative overflow-hidden flex flex-col items-center border border-white/10" onclick="openSnusDetail(${snus.id})">
-            <div class="absolute top-4 left-4 bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-md">
-                <span class="text-[12px] font-semibold text-white tracking-wide">🏆 TOP OF THE WEEK</span>
+function getScoreRingColor(score) {
+    const val = parseFloat(score);
+    if (val <= 3.9) return 'border-[#FF3B30]/40'; 
+    if (val <= 6.9) return 'border-[#FFCC00]/40'; 
+    if (val <= 8.9) return 'border-[#34C759]/40'; 
+    return 'border-[#32ADE6]/40'; 
+}
+
+function renderSocialCard(title, snus, ratings, overall, count) {
+    const rarity = (snus.rarity || 'common').toLowerCase().trim();
+    
+    const createCircle = (label, val) => `
+        <div class="flex flex-col items-center">
+            <div class="w-10 h-10 rounded-full border-2 ${getScoreRingColor(val)} flex items-center justify-center bg-black/20 mb-1">
+                <span class="text-[13px] font-bold ${getScoreColor(val)}">${val}</span>
             </div>
-            <div class="absolute top-4 right-4">
-                <span class="text-[12px] font-medium text-[#8E8E93] bg-black/30 px-2 py-1 rounded-lg">${count} Scans</span>
+            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-medium">${label}</span>
+        </div>
+    `;
+
+    return `
+        <div class="bg-[#1C1C1E] rounded-[24px] p-5 shadow-lg border border-white/10 mb-5 relative active:scale-[0.98] transition-transform cursor-pointer" onclick="openSnusDetail(${snus.id})">
+            <div class="mb-4 flex justify-between items-center">
+                <span class="text-[11px] font-bold text-white tracking-widest uppercase bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-md">${title}</span>
+                <span class="text-[11px] text-[#8E8E93] font-medium bg-black/30 px-2 py-1 rounded-md">${count} Scans</span>
             </div>
             
-            <div class="w-32 h-32 mt-12 mb-4 rounded-full overflow-hidden bg-[#2C2C2E] border-4 border-white/5 shadow-2xl flex-shrink-0">
-                <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
-            </div>
-            
-            <h3 class="text-[22px] font-bold text-white tracking-tight">${snus.name}</h3>
-            <p class="text-[15px] text-[#8E8E93] mt-1 font-medium">${snus.nicotine} MG/G • ${snus.rarity || 'Common'}</p>
-            
-            <div class="w-full bg-black/40 rounded-2xl p-5 mt-6 border border-white/5">
-                <div class="flex justify-between items-end mb-4">
-                    <span class="text-[14px] font-semibold text-white">Community Rating</span>
-                    <span class="text-2xl font-bold text-white">${overall}<span class="text-[14px] text-[#8E8E93] font-medium">/10</span></span>
+            <div class="flex items-center gap-4 mb-5">
+                <div class="w-24 h-24 flex-shrink-0 flex items-center justify-center relative">
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] aspect-square rounded-full z-0" style="box-shadow: 0 0 20px 2px var(--${rarity}, var(--common)); opacity: 0.4;"></div>
+                    <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain drop-shadow-xl z-10 relative" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
                 </div>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-3">
-                    ${createAvgBar('Taste', ratings.taste)}
-                    ${createAvgBar('Smell', ratings.smell)}
-                    ${createAvgBar('Bite', ratings.bite)}
-                    ${createAvgBar('Drip', ratings.drip)}
-                    <div class="col-span-2 mt-1">${createAvgBar('Visuals', ratings.visuals)}</div>
+                
+                <div class="flex-1 flex flex-col justify-center">
+                    <h3 class="text-[18px] font-bold text-white tracking-tight leading-tight line-clamp-2 mb-1">${snus.name}</h3>
+                    <p class="text-[12px] text-[#8E8E93] font-medium mb-2">${snus.nicotine} MG/G • <span style="color: var(--${rarity}, var(--common)); text-shadow: 0 0 8px var(--${rarity}, var(--common));" class="uppercase">${snus.rarity || 'Common'}</span></p>
+                    
+                    <div class="flex items-end gap-1.5">
+                        <span class="text-[26px] font-bold ${getScoreColor(overall)} leading-none">${overall}</span>
+                        <span class="text-[12px] text-[#8E8E93] font-medium pb-0.5">/ 10 Overall</span>
+                    </div>
                 </div>
+            </div>
+            
+            <div class="pt-4 border-t border-white/5 grid grid-cols-6 gap-1">
+                ${createCircle('Vis.', ratings.visuals)}
+                ${createCircle('Smell', ratings.smell)}
+                ${createCircle('Taste', ratings.taste)}
+                ${createCircle('Bite', ratings.bite)}
+                ${createCircle('Drip', ratings.drip)}
+                ${createCircle('Str.', ratings.strength)}
             </div>
         </div>
     `;
