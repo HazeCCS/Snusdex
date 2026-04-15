@@ -884,7 +884,7 @@ async function loadTopSnusOfWeek() {
             };
             const overall = (top_rated.avg_score || 0).toFixed(1);
             const count = top_rated.rating_count || 0;
-            container.innerHTML += renderSocialCard("Top Rated Snus", snusInfo, ratings, overall, count, 'Ratings');
+            container.innerHTML += renderSocialCard("Top Rated Snus 🏆", snusInfo, ratings, overall, count, 'Ratings');
         }
     }
     
@@ -908,7 +908,7 @@ async function loadTopSnusOfWeek() {
                 popOverall = (most_popular_today.avg_score || 0).toFixed(1);
             }
             
-            container.innerHTML += renderSocialCard("Most Popular Today", snusInfo, popAvgRatings, popOverall, most_popular_today.scan_count, 'Scans');
+            container.innerHTML += renderSocialCard("Most Popular Today 🔍", snusInfo, popAvgRatings, popOverall, most_popular_today.scan_count, 'Scans');
         }
     }
 
