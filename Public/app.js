@@ -849,129 +849,70 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 
 async function loadTopSnusOfWeek() {
-    const { data: collections, error: collectionsError } = await supabaseClient
-        .from('user_collections')
-        .select('snus_id, rating_taste, rating_smell, rating_bite, rating_drip, rating_visuals, rating_strength');
-
-    if (collectionsError) {
-        console.error("Error fetching collections:", collectionsError);
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const { data: usageLogs, error: usageError } = await supabaseClient
-        .from('usage_logs')
-        .select('snus_id')
-        .gte('opened_at', today.toISOString())
-        .lt('opened_at', tomorrow.toISOString());
-
-    if (usageError) {
-        console.error("Error fetching usage logs:", usageError);
-    }
+    const { data, error } = await supabaseClient.rpc('get_social_stats');
 
     const container = document.getElementById('top-snus-container');
     if (!container) return;
 
-    if ((!collections || collections.length === 0) && (!usageLogs || usageLogs.length === 0)) {
+    if (error) {
+        console.error("Error fetching social stats:", error);
+        container.innerHTML = '<div class="p-6 text-center text-[#FF3B30] text-[15px]">Could not load social stats.</div>';
+        return;
+    }
+
+    // Start with empty container
+    container.innerHTML = '';
+
+    if (!data || (!data.top_rated && !data.most_popular_today)) {
         container.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">No social stats available yet.</div>';
         return;
     }
 
-    const stats = {};
+    const { top_rated, most_popular_today } = data;
 
-    if (collections) {
-        collections.forEach(item => {
-            if (!stats[item.snus_id]) {
-                stats[item.snus_id] = { ratingCount: 0, todayScans: 0, taste: 0, smell: 0, bite: 0, drip: 0, visuals: 0, strength: 0 };
-            }
-            const s = stats[item.snus_id];
-            s.ratingCount++;
-            s.taste += item.rating_taste || 5;
-            s.smell += item.rating_smell || 5;
-            s.bite += item.rating_bite || 5;
-            s.drip += item.rating_drip || 5;
-            s.visuals += item.rating_visuals || 5;
-            s.strength += item.rating_strength || 5;
-        });
-    }
-
-    if (usageLogs) {
-        usageLogs.forEach(log => {
-            if (!stats[log.snus_id]) {
-                stats[log.snus_id] = { ratingCount: 0, todayScans: 0, taste: 0, smell: 0, bite: 0, drip: 0, visuals: 0, strength: 0 };
-            }
-            stats[log.snus_id].todayScans++;
-        });
-    }
-
-    let topSnusId = null;
-    let highestAverage = 0;
-    
-    let popularSnusId = null;
-    let highestTodayCount = 0;
-
-    for (const [id, s] of Object.entries(stats)) {
-        if (s.ratingCount > 0) {
-            const totalPoints = s.taste + s.smell + s.bite + s.drip + s.visuals + s.strength;
-            const currentAvg = totalPoints / (s.ratingCount * 6);
-            if (currentAvg > highestAverage) {
-                highestAverage = currentAvg;
-                topSnusId = id;
-            }
-        }
-        
-        if (s.todayScans > highestTodayCount) {
-            highestTodayCount = s.todayScans;
-            popularSnusId = id;
-        }
-    }
-
-    container.innerHTML = '';
-
-    if (topSnusId) {
-        const topStat = stats[topSnusId];
-        const topAvgRatings = {
-            taste: (topStat.taste / topStat.ratingCount).toFixed(1),
-            smell: (topStat.smell / topStat.ratingCount).toFixed(1),
-            bite: (topStat.bite / topStat.ratingCount).toFixed(1),
-            drip: (topStat.drip / topStat.ratingCount).toFixed(1),
-            visuals: (topStat.visuals / topStat.ratingCount).toFixed(1),
-            strength: (topStat.strength / topStat.ratingCount).toFixed(1)
-        };
-        const topOverallAvg = highestAverage.toFixed(1);
-        const topSnusInfo = globalSnusData.find(s => s.id == topSnusId);
-        if (topSnusInfo) {
-            container.innerHTML += renderSocialCard("Top Rated Snus", topSnusInfo, topAvgRatings, topOverallAvg, topStat.ratingCount, 'Ratings');
+    // Render Top Rated card
+    if (top_rated && top_rated.snus_id) {
+        const snusInfo = globalSnusData.find(s => s.id == top_rated.snus_id);
+        if (snusInfo) {
+            const ratings = {
+                visuals:  (top_rated.avg_ratings.visuals || 0).toFixed(1),
+                smell:    (top_rated.avg_ratings.smell || 0).toFixed(1),
+                taste:    (top_rated.avg_ratings.taste || 0).toFixed(1),
+                bite:     (top_rated.avg_ratings.bite || 0).toFixed(1),
+                drip:     (top_rated.avg_ratings.drip || 0).toFixed(1),
+                strength: (top_rated.avg_ratings.strength || 0).toFixed(1),
+            };
+            const overall = (top_rated.avg_score || 0).toFixed(1);
+            const count = top_rated.rating_count || 0;
+            container.innerHTML += renderSocialCard("Top Rated Snus", snusInfo, ratings, overall, count, 'Ratings');
         }
     }
     
-    if (popularSnusId) {
-        const popStat = stats[popularSnusId];
-        const popSnusInfo = globalSnusData.find(s => s.id == popularSnusId);
-        if (popSnusInfo) {
+    // Render Most Popular Today card
+    if (most_popular_today && most_popular_today.snus_id) {
+        const snusInfo = globalSnusData.find(s => s.id == most_popular_today.snus_id);
+        if (snusInfo) {
             let popOverall = 'N/A';
             let popAvgRatings = { taste: 'N/A', smell: 'N/A', bite: 'N/A', drip: 'N/A', visuals: 'N/A', strength: 'N/A' };
             
-            if (popStat.ratingCount > 0) {
+            // Check if there are any ratings for the most popular snus
+            if (most_popular_today.rating_count && most_popular_today.rating_count > 0) {
                 popAvgRatings = {
-                    taste: (popStat.taste / popStat.ratingCount).toFixed(1),
-                    smell: (popStat.smell / popStat.ratingCount).toFixed(1),
-                    bite: (popStat.bite / popStat.ratingCount).toFixed(1),
-                    drip: (popStat.drip / popStat.ratingCount).toFixed(1),
-                    visuals: (popStat.visuals / popStat.ratingCount).toFixed(1),
-                    strength: (popStat.strength / popStat.ratingCount).toFixed(1)
+                    visuals:  (most_popular_today.avg_ratings.visuals || 0).toFixed(1),
+                    smell:    (most_popular_today.avg_ratings.smell || 0).toFixed(1),
+                    taste:    (most_popular_today.avg_ratings.taste || 0).toFixed(1),
+                    bite:     (most_popular_today.avg_ratings.bite || 0).toFixed(1),
+                    drip:     (most_popular_today.avg_ratings.drip || 0).toFixed(1),
+                    strength: (most_popular_today.avg_ratings.strength || 0).toFixed(1),
                 };
-                const popTotal = popStat.taste + popStat.smell + popStat.bite + popStat.drip + popStat.visuals + popStat.strength;
-                popOverall = (popTotal / (popStat.ratingCount * 6)).toFixed(1);
+                popOverall = (most_popular_today.avg_score || 0).toFixed(1);
             }
             
-            container.innerHTML += renderSocialCard("Most Popular Today", popSnusInfo, popAvgRatings, popOverall, popStat.todayScans, 'Scans');
+            container.innerHTML += renderSocialCard("Most Popular Today", snusInfo, popAvgRatings, popOverall, most_popular_today.scan_count, 'Scans');
         }
     }
 
+    // Final check if anything was rendered
     if (container.innerHTML.trim() === '') {
         container.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">No social stats available yet.</div>';
     }
