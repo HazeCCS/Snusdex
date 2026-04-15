@@ -845,33 +845,63 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 
 async function loadTopSnusOfWeek() {
-    const { data: collections, error } = await supabaseClient
+    const { data: collections, error: collectionsError } = await supabaseClient
         .from('user_collections')
-        .select('snus_id, collected_at, rating_taste, rating_smell, rating_bite, rating_drip, rating_visuals, rating_strength'); 
+        .select('snus_id, rating_taste, rating_smell, rating_bite, rating_drip, rating_visuals, rating_strength');
 
-    if (error || !collections || collections.length === 0) return;
+    if (collectionsError) {
+        console.error("Error fetching collections:", collectionsError);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const { data: usageLogs, error: usageError } = await supabaseClient
+        .from('usage_logs')
+        .select('snus_id')
+        .gte('opened_at', today.toISOString())
+        .lt('opened_at', tomorrow.toISOString());
+
+    if (usageError) {
+        console.error("Error fetching usage logs:", usageError);
+    }
+
+    const container = document.getElementById('top-snus-container');
+    if (!container) return;
+
+    if ((!collections || collections.length === 0) && (!usageLogs || usageLogs.length === 0)) {
+        container.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">No social stats available yet.</div>';
+        return;
+    }
 
     const stats = {};
-    const today = new Date().toISOString().split('T')[0];
 
-    collections.forEach(item => {
-        if (!stats[item.snus_id]) {
-            stats[item.snus_id] = { count: 0, todayCount: 0, taste: 0, smell: 0, bite: 0, drip: 0, visuals: 0, strength: 0 };
-        }
-        const s = stats[item.snus_id];
-        s.count++;
-        
-        if (item.collected_at && item.collected_at.startsWith(today)) {
-            s.todayCount++;
-        }
-        
-        s.taste += item.rating_taste || 5;
-        s.smell += item.rating_smell || 5;
-        s.bite += item.rating_bite || 5;
-        s.drip += item.rating_drip || 5;
-        s.visuals += item.rating_visuals || 5;
-        s.strength += item.rating_strength || 5; 
-    });
+    if (collections) {
+        collections.forEach(item => {
+            if (!stats[item.snus_id]) {
+                stats[item.snus_id] = { ratingCount: 0, todayScans: 0, taste: 0, smell: 0, bite: 0, drip: 0, visuals: 0, strength: 0 };
+            }
+            const s = stats[item.snus_id];
+            s.ratingCount++;
+            s.taste += item.rating_taste || 5;
+            s.smell += item.rating_smell || 5;
+            s.bite += item.rating_bite || 5;
+            s.drip += item.rating_drip || 5;
+            s.visuals += item.rating_visuals || 5;
+            s.strength += item.rating_strength || 5;
+        });
+    }
+
+    if (usageLogs) {
+        usageLogs.forEach(log => {
+            if (!stats[log.snus_id]) {
+                stats[log.snus_id] = { ratingCount: 0, todayScans: 0, taste: 0, smell: 0, bite: 0, drip: 0, visuals: 0, strength: 0 };
+            }
+            stats[log.snus_id].todayScans++;
+        });
+    }
 
     let topSnusId = null;
     let highestAverage = 0;
@@ -880,69 +910,66 @@ async function loadTopSnusOfWeek() {
     let highestTodayCount = 0;
 
     for (const [id, s] of Object.entries(stats)) {
-        const totalPoints = s.taste + s.smell + s.bite + s.drip + s.visuals + s.strength;
-        const currentAvg = totalPoints / (s.count * 6); 
-
-        if (currentAvg > highestAverage) {
-            highestAverage = currentAvg;
-            topSnusId = id;
+        if (s.ratingCount > 0) {
+            const totalPoints = s.taste + s.smell + s.bite + s.drip + s.visuals + s.strength;
+            const currentAvg = totalPoints / (s.ratingCount * 6);
+            if (currentAvg > highestAverage) {
+                highestAverage = currentAvg;
+                topSnusId = id;
+            }
         }
         
-        if (s.todayCount > highestTodayCount) {
-            highestTodayCount = s.todayCount;
+        if (s.todayScans > highestTodayCount) {
+            highestTodayCount = s.todayScans;
             popularSnusId = id;
         }
     }
-    
-    if (!popularSnusId) {
-        let maxCount = 0;
-        for (const [id, s] of Object.entries(stats)) {
-            if (s.count > maxCount) {
-                maxCount = s.count;
-                popularSnusId = id;
-            }
-        }
-    }
 
-    if (!topSnusId) return;
-
-    const container = document.getElementById('top-snus-container');
-    if (!container) return;
     container.innerHTML = '';
 
-    const topStat = stats[topSnusId];
-    const topAvgRatings = {
-        taste: (topStat.taste / topStat.count).toFixed(1),
-        smell: (topStat.smell / topStat.count).toFixed(1),
-        bite: (topStat.bite / topStat.count).toFixed(1),
-        drip: (topStat.drip / topStat.count).toFixed(1),
-        visuals: (topStat.visuals / topStat.count).toFixed(1),
-        strength: (topStat.strength / topStat.count).toFixed(1)
-    };
-    const topOverallAvg = highestAverage.toFixed(1);
-
-    const topSnusInfo = globalSnusData.find(s => s.id == topSnusId);
-    if (topSnusInfo) {
-        container.innerHTML += renderSocialCard("Top Snus of the Week", topSnusInfo, topAvgRatings, topOverallAvg, topStat.count);
+    if (topSnusId) {
+        const topStat = stats[topSnusId];
+        const topAvgRatings = {
+            taste: (topStat.taste / topStat.ratingCount).toFixed(1),
+            smell: (topStat.smell / topStat.ratingCount).toFixed(1),
+            bite: (topStat.bite / topStat.ratingCount).toFixed(1),
+            drip: (topStat.drip / topStat.ratingCount).toFixed(1),
+            visuals: (topStat.visuals / topStat.ratingCount).toFixed(1),
+            strength: (topStat.strength / topStat.ratingCount).toFixed(1)
+        };
+        const topOverallAvg = highestAverage.toFixed(1);
+        const topSnusInfo = globalSnusData.find(s => s.id == topSnusId);
+        if (topSnusInfo) {
+            container.innerHTML += renderSocialCard("Top Rated Snus", topSnusInfo, topAvgRatings, topOverallAvg, topStat.ratingCount, 'Ratings');
+        }
     }
     
     if (popularSnusId && popularSnusId !== topSnusId) {
         const popStat = stats[popularSnusId];
-        const popAvgRatings = {
-            taste: (popStat.taste / popStat.count).toFixed(1),
-            smell: (popStat.smell / popStat.count).toFixed(1),
-            bite: (popStat.bite / popStat.count).toFixed(1),
-            drip: (popStat.drip / popStat.count).toFixed(1),
-            visuals: (popStat.visuals / popStat.count).toFixed(1),
-            strength: (popStat.strength / popStat.count).toFixed(1)
-        };
-        const popTotal = popStat.taste + popStat.smell + popStat.bite + popStat.drip + popStat.visuals + popStat.strength;
-        const popOverall = (popTotal / (popStat.count * 6)).toFixed(1);
-        
         const popSnusInfo = globalSnusData.find(s => s.id == popularSnusId);
         if (popSnusInfo) {
-            container.innerHTML += renderSocialCard("Most Popular Today", popSnusInfo, popAvgRatings, popOverall, popStat.count);
+            let popOverall = 'N/A';
+            let popAvgRatings = { taste: 'N/A', smell: 'N/A', bite: 'N/A', drip: 'N/A', visuals: 'N/A', strength: 'N/A' };
+            
+            if (popStat.ratingCount > 0) {
+                popAvgRatings = {
+                    taste: (popStat.taste / popStat.ratingCount).toFixed(1),
+                    smell: (popStat.smell / popStat.ratingCount).toFixed(1),
+                    bite: (popStat.bite / popStat.ratingCount).toFixed(1),
+                    drip: (popStat.drip / popStat.ratingCount).toFixed(1),
+                    visuals: (popStat.visuals / popStat.ratingCount).toFixed(1),
+                    strength: (popStat.strength / popStat.ratingCount).toFixed(1)
+                };
+                const popTotal = popStat.taste + popStat.smell + popStat.bite + popStat.drip + popStat.visuals + popStat.strength;
+                popOverall = (popTotal / (popStat.ratingCount * 6)).toFixed(1);
+            }
+            
+            container.innerHTML += renderSocialCard("Most Popular Today", popSnusInfo, popAvgRatings, popOverall, popStat.todayScans, 'Scans');
         }
+    }
+
+    if (container.innerHTML.trim() === '') {
+        container.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">No social stats available yet.</div>';
     }
 }
 
@@ -962,7 +989,7 @@ function getScoreRingColor(score) {
     return 'border-[#32ADE6]/40'; 
 }
 
-function renderSocialCard(title, snus, ratings, overall, count) {
+function renderSocialCard(title, snus, ratings, overall, count, countLabel = 'Scans') {
     const rarity = (snus.rarity || 'common').toLowerCase().trim();
     
     const createCircle = (label, val) => `
@@ -978,7 +1005,7 @@ function renderSocialCard(title, snus, ratings, overall, count) {
         <div class="bg-[#1C1C1E] rounded-[24px] p-5 shadow-lg border border-white/10 mb-5 relative active:scale-[0.98] transition-transform cursor-pointer" onclick="openSnusDetail(${snus.id})">
             <div class="mb-4 flex justify-between items-center">
                 <span class="text-[11px] font-bold text-white tracking-widest uppercase bg-white/10 px-3 py-1.5 rounded-full backdrop-blur-md">${title}</span>
-                <span class="text-[11px] text-[#8E8E93] font-medium bg-black/30 px-2 py-1 rounded-md">${count} Scans</span>
+                <span class="text-[11px] text-[#8E8E93] font-medium bg-black/30 px-2 py-1 rounded-md">${count} ${countLabel}</span>
             </div>
             
             <div class="flex items-center gap-4 mb-5">
