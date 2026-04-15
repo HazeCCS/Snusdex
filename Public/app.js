@@ -229,6 +229,7 @@ function switchTab(tabId) {
 
     if (tabId === 'social') {
         loadTopSnusOfWeek();
+        loadFriends();
     }
 }
 
@@ -980,6 +981,192 @@ function renderSocialCard(title, snus, ratings, overall, count, countLabel = 'Sc
             </div>
         </div>
     `;
+}
+
+// ==========================================
+// 9.5. SOCIAL FEATURES (FRIENDS & SEARCH)
+// ==========================================
+
+async function loadFriends() {
+    const container = document.getElementById('friends-container');
+    if (!container) return;
+    
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+    
+    const { data, error } = await supabaseClient
+        .from('connections')
+        .select(`
+            following_id,
+            profiles:following_id (
+                id, username, avatar_url, xp
+            )
+        `)
+        .eq('follower_id', user.id);
+        
+    if (error || !data || data.length === 0) {
+        container.innerHTML = '<div class="text-[#8E8E93] text-[14px] italic px-1 w-full text-center py-2">Du folgst noch niemandem.</div>';
+        return;
+    }
+    
+    let html = '';
+    data.forEach(row => {
+        const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles; 
+        if (!profile) return;
+        
+        const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=random`;
+        
+        html += `
+            <div class="flex flex-col items-center flex-shrink-0 snap-center w-16">
+                <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-[#32ADE6] to-[#BF5AF2] p-[2px] mb-1.5 shadow-md">
+                    <div class="w-full h-full bg-black rounded-full overflow-hidden border-[1.5px] border-black">
+                        <img src="${avatar}" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
+                    </div>
+                </div>
+                <span class="text-[10px] font-medium text-white w-full text-center truncate">${profile.username}</span>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function openUserSearchModal() {
+    const modal = document.getElementById('user-search-modal');
+    const backdrop = document.getElementById('user-search-backdrop');
+    const card = document.getElementById('user-search-card');
+    
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100');
+        card.classList.remove('translate-y-full');
+        card.classList.add('translate-y-0');
+    }, 10);
+    
+    document.getElementById('user-search-input').value = '';
+    document.getElementById('user-search-results').innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">Gib einen Namen ein...</div>';
+}
+
+function closeUserSearchModal() {
+    const modal = document.getElementById('user-search-modal');
+    const backdrop = document.getElementById('user-search-backdrop');
+    const card = document.getElementById('user-search-card');
+    
+    backdrop.classList.remove('opacity-100');
+    backdrop.classList.add('opacity-0');
+    card.classList.remove('translate-y-0');
+    card.classList.add('translate-y-full');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }, 400);
+}
+
+let userSearchTimeout;
+async function searchUsers() {
+    clearTimeout(userSearchTimeout);
+    const query = document.getElementById('user-search-input').value.trim();
+    const resultsContainer = document.getElementById('user-search-results');
+    
+    if (query.length < 2) {
+        resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">Gib einen Namen ein...</div>';
+        return;
+    }
+    
+    resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">Lädt...</div>';
+    
+    userSearchTimeout = setTimeout(async () => {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+        
+        const { data: profiles, error: pError } = await supabaseClient
+            .from('profiles')
+            .select('id, username, avatar_url, xp')
+            .ilike('username', `%${query}%`)
+            .neq('id', user.id)
+            .limit(20);
+        
+        if (pError || !profiles || profiles.length === 0) {
+            resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">Keine Collector gefunden.</div>';
+            return;
+        }
+        
+        const { data: follows } = await supabaseClient
+            .from('connections')
+            .select('following_id')
+            .eq('follower_id', user.id)
+            .in('following_id', profiles.map(p => p.id));
+        
+        const followingSet = new Set(follows?.map(f => f.following_id) || []);
+        
+        resultsContainer.innerHTML = '';
+        profiles.forEach(profile => {
+            const isFollowing = followingSet.has(profile.id);
+            const btnIcon = isFollowing 
+                ? `<svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>` 
+                : `<svg class="w-5 h-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>`;
+            const btnClass = isFollowing
+                ? `bg-black border border-white/20 active:bg-white/10`
+                : `bg-white active:bg-zinc-200`;
+            
+            const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=random`;
+            const xp = profile.xp || 0;
+            
+            resultsContainer.innerHTML += `
+                <div class="flex items-center justify-between p-3 bg-[#2C2C2E] rounded-[16px] border border-white/5 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <img src="${avatar}" class="w-12 h-12 rounded-full object-cover border border-white/10" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
+                        <div>
+                            <h4 class="text-white text-[16px] font-bold tracking-tight">${profile.username || 'Unknown'}</h4>
+                            <p class="text-[12px] text-[#8E8E93] font-medium">${xp} XP</p>
+                        </div>
+                    </div>
+                    <button onclick="triggerHapticFeedback(); toggleFollow('${profile.id}', this)" class="w-10 h-10 rounded-full flex items-center justify-center transition-all ${btnClass}" data-following="${isFollowing}">
+                        ${btnIcon}
+                    </button>
+                </div>
+            `;
+        });
+    }, 300);
+}
+
+async function toggleFollow(targetId, btnElement) {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+    
+    const isFollowing = btnElement.getAttribute('data-following') === 'true';
+    btnElement.disabled = true;
+    
+    if (isFollowing) {
+        const { error } = await supabaseClient
+            .from('connections')
+            .delete()
+            .eq('follower_id', user.id)
+            .eq('following_id', targetId);
+        
+        if (!error) {
+            btnElement.setAttribute('data-following', 'false');
+            btnElement.className = "w-10 h-10 rounded-full flex items-center justify-center transition-all bg-white active:bg-zinc-200";
+            btnElement.innerHTML = `<svg class="w-5 h-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>`;
+        }
+    } else {
+        const { error } = await supabaseClient
+            .from('connections')
+            .insert([{ follower_id: user.id, following_id: targetId }]);
+        
+        if (!error) {
+            btnElement.setAttribute('data-following', 'true');
+            btnElement.className = "w-10 h-10 rounded-full flex items-center justify-center transition-all bg-black border border-white/20 active:bg-white/10";
+            btnElement.innerHTML = `<svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>`;
+        }
+    }
+    
+    btnElement.disabled = false;
+    loadFriends(); // Updated die Liste im Tab asynchron
 }
 
 // ==========================================
