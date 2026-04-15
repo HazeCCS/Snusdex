@@ -226,6 +226,10 @@ function switchTab(tabId) {
             animateXp(displayedXp, actualXp, level);
         }, 200);
     }
+
+    if (tabId === 'social') {
+        loadTopSnusOfWeek();
+    }
 }
 
 // ==========================================
@@ -944,7 +948,7 @@ async function loadTopSnusOfWeek() {
         }
     }
     
-    if (popularSnusId && popularSnusId !== topSnusId) {
+    if (popularSnusId) {
         const popStat = stats[popularSnusId];
         const popSnusInfo = globalSnusData.find(s => s.id == popularSnusId);
         if (popSnusInfo) {
