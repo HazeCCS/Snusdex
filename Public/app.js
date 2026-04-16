@@ -2633,4 +2633,4 @@ function initSuggestionsScrollAnimation() {
     });
 }
 
-// commits für norman 4
+// commits für norman 5
