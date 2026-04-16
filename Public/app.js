@@ -229,7 +229,6 @@ function switchTab(tabId) {
 
     if (tabId === 'social') {
         loadTopSnusOfWeek();
-        loadFriends();
     }
 }
 
@@ -987,114 +986,38 @@ function renderSocialCard(title, snus, ratings, overall, count, countLabel = 'Sc
 // 9.5. SOCIAL FEATURES (FRIENDS & SEARCH)
 // ==========================================
 
-async function loadFriends() {
-    const container = document.getElementById('friends-container');
-    if (!container) return;
-    
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return;
-    
-    const { data, error } = await supabaseClient
-        .from('connections')
-        .select(`
-            following_id,
-            profiles:following_id (
-                id, username, avatar_url, xp
-            )
-        `)
-        .eq('follower_id', user.id);
-        
-    if (error || !data || data.length === 0) {
-        container.innerHTML = '<div class="text-[#8E8E93] text-[14px] italic px-1 w-full text-center py-2">Du folgst noch niemandem.</div>';
-        return;
-    }
-    
-    let html = '';
-    data.forEach(row => {
-        const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles; 
-        if (!profile) return;
-        
-        const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=random`;
-        
-        html += `
-            <div class="flex flex-col items-center flex-shrink-0 snap-center w-16">
-                <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-[#32ADE6] to-[#BF5AF2] p-[2px] mb-1.5 shadow-md">
-                    <div class="w-full h-full bg-black rounded-full overflow-hidden border-[1.5px] border-black">
-                        <img src="${avatar}" class="w-full h-full object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
-                    </div>
-                </div>
-                <span class="text-[10px] font-medium text-white w-full text-center truncate">${profile.username}</span>
-            </div>
-        `;
-    });
-    
-    container.innerHTML = html;
-}
-
-function openUserSearchModal() {
-    const modal = document.getElementById('user-search-modal');
-    const backdrop = document.getElementById('user-search-backdrop');
-    const card = document.getElementById('user-search-card');
-    
-    modal.classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
-    
-    setTimeout(() => {
-        backdrop.classList.remove('opacity-0');
-        backdrop.classList.add('opacity-100');
-        card.classList.remove('translate-y-full');
-        card.classList.add('translate-y-0');
-    }, 10);
-    
-    document.getElementById('user-search-input').value = '';
-    document.getElementById('user-search-results').innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">Gib einen Namen ein...</div>';
-}
-
-function closeUserSearchModal() {
-    const modal = document.getElementById('user-search-modal');
-    const backdrop = document.getElementById('user-search-backdrop');
-    const card = document.getElementById('user-search-card');
-    
-    backdrop.classList.remove('opacity-100');
-    backdrop.classList.add('opacity-0');
-    card.classList.remove('translate-y-0');
-    card.classList.add('translate-y-full');
-    
-    setTimeout(() => {
-        modal.classList.add('hidden');
-        document.body.classList.remove('overflow-hidden');
-    }, 400);
-}
-
 let userSearchTimeout;
-async function searchUsers() {
+async function searchUsersConnections() {
     clearTimeout(userSearchTimeout);
-    const query = document.getElementById('user-search-input').value.trim();
-    const resultsContainer = document.getElementById('user-search-results');
-    
+    const query = document.getElementById('connections-search-input').value.trim();
+    const resultsContainer = document.getElementById('connections-search-results');
+    const listsContainer = document.getElementById('connections-lists');
+
     if (query.length < 2) {
-        resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">Gib einen Namen ein...</div>';
+        resultsContainer.innerHTML = '';
+        listsContainer.style.display = 'block';
         return;
     }
-    
-    resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">Lädt...</div>';
-    
+
+    listsContainer.style.display = 'none';
+    resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">Searching...</div>';
+
     userSearchTimeout = setTimeout(async () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
-        
+
         const { data: profiles, error: pError } = await supabaseClient
             .from('profiles')
             .select('id, username, avatar_url, xp')
             .ilike('username', `%${query}%`)
             .neq('id', user.id)
             .limit(20);
-        
+
         if (pError || !profiles || profiles.length === 0) {
-            resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">Keine Collector gefunden.</div>';
+            resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">No Collectors found.</div>';
             return;
         }
-        
+
         const { data: follows } = await supabaseClient
             .from('connections')
             .select('following_id')
@@ -1115,6 +1038,7 @@ async function searchUsers() {
             
             const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=random`;
             const xp = profile.xp || 0;
+            const level = Math.floor(xp / 300) + 1;
             
             resultsContainer.innerHTML += `
                 <div class="flex items-center justify-between p-3 bg-[#2C2C2E] rounded-[16px] border border-white/5 shadow-sm">
@@ -1122,7 +1046,7 @@ async function searchUsers() {
                         <img src="${avatar}" class="w-12 h-12 rounded-full object-cover border border-white/10" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
                         <div>
                             <h4 class="text-white text-[16px] font-bold tracking-tight">${profile.username || 'Unknown'}</h4>
-                            <p class="text-[12px] text-[#8E8E93] font-medium">${xp} XP</p>
+                            <p class="text-[12px] text-[#8E8E93] font-medium">Lvl ${level} • ${xp} XP</p>
                         </div>
                     </div>
                     <button onclick="triggerHapticFeedback(); toggleFollow('${profile.id}', this)" class="w-10 h-10 rounded-full flex items-center justify-center transition-all ${btnClass}" data-following="${isFollowing}">
@@ -1166,10 +1090,159 @@ async function toggleFollow(targetId, btnElement) {
     }
     
     btnElement.disabled = false;
-    loadFriends(); // Updated die Liste im Tab asynchron
+    
+    // Refresh the main lists in the background so they are correct
+    // when the user clears the search.
+    const connectionsPage = document.getElementById('connections-page');
+    if (connectionsPage && !connectionsPage.classList.contains('hidden')) {
+        loadConnectionsData();
+    }
 }
 
 // ==========================================
+// 9.6. CONNECTIONS PAGE (New)
+// ==========================================
+
+function openConnectionsPage() {
+    const page = document.getElementById('connections-page');
+    if (!page) return;
+
+    page.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+
+    setTimeout(() => {
+        page.classList.remove('translate-x-full');
+        page.classList.add('translate-x-0');
+    }, 10);
+
+    // Reset search and load data
+    document.getElementById('connections-search-input').value = '';
+    document.getElementById('connections-search-results').innerHTML = '';
+    document.getElementById('connections-lists').style.display = 'block';
+
+    loadConnectionsData();
+}
+
+function closeConnectionsPage() {
+    const page = document.getElementById('connections-page');
+    if (!page) return;
+
+    page.classList.remove('translate-x-0');
+    page.classList.add('translate-x-full');
+
+    setTimeout(() => {
+        page.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }, 300);
+}
+
+async function loadConnectionsData() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+
+    const followersList = document.getElementById('followers-list');
+    const followingList = document.getElementById('following-list');
+
+    followersList.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] py-2">Loading...</div>';
+    followingList.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] py-2">Loading...</div>';
+
+    // Load Followers
+    const { data: followers, error: followersError } = await supabaseClient
+        .from('connections')
+        .select('profiles:profiles!follower_id(id, username, avatar_url, xp)')
+        .eq('following_id', user.id);
+
+    if (followersError || !followers || followers.length === 0) {
+        followersList.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] py-2 px-4">No one is following you yet.</div>';
+    } else {
+        followersList.innerHTML = '';
+        followers.forEach(conn => {
+            const profile = Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles;
+            if (profile) followersList.innerHTML += renderConnectionItem(profile);
+        });
+    }
+
+    // Load Following
+    const { data: following, error: followingError } = await supabaseClient
+        .from('connections')
+        .select('profiles:profiles!following_id(id, username, avatar_url, xp)')
+        .eq('follower_id', user.id);
+
+    if (followingError || !following || following.length === 0) {
+        followingList.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] py-2 px-4">You are not following anyone yet.</div>';
+    } else {
+        followingList.innerHTML = '';
+        following.forEach(conn => {
+            const profile = Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles;
+            if (profile) followingList.innerHTML += renderConnectionItem(profile);
+        });
+    }
+}
+
+function renderConnectionItem(profile) {
+    const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=random`;
+    const xp = profile.xp || 0;
+    const level = Math.floor(xp / 300) + 1;
+
+    return `
+        <div class="flex items-center justify-between p-3 bg-[#1C1C1E] rounded-[16px] border border-white/5 shadow-sm">
+            <div class="flex items-center gap-3 min-w-0">
+                <img src="${avatar}" class="w-11 h-11 rounded-full object-cover border-2 border-black flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
+                <div class="min-w-0">
+                    <h4 class="text-white text-[16px] font-bold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                    <p class="text-[12px] text-[#8E8E93] font-medium">${xp} XP</p>
+                </div>
+            </div>
+            <div class="inline-flex items-center justify-center px-2.5 py-1 bg-white/10 border border-white/5 rounded-md flex-shrink-0">
+                <span class="text-[11px] font-bold text-white uppercase tracking-wider">Lvl ${level}</span>
+            </div>
+        </div>
+    `;
+}
+
+// Swipe to close for connections page
+document.addEventListener('DOMContentLoaded', () => {
+    const connectionsPage = document.getElementById('connections-page');
+    if (!connectionsPage) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isSwiping = false;
+
+    connectionsPage.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isSwiping = false;
+    }, { passive: true });
+
+    connectionsPage.addEventListener('touchmove', (e) => {
+        if (!touchStartX || !touchStartY) return;
+
+        let touchCurrentX = e.touches[0].clientX;
+        let touchCurrentY = e.touches[0].clientY;
+
+        let diffX = touchCurrentX - touchStartX;
+        let diffY = Math.abs(touchCurrentY - touchStartY);
+
+        if (diffY > Math.abs(diffX)) { return; }
+
+        if (diffX > 0) {
+            isSwiping = true;
+            connectionsPage.style.transition = 'none';
+            connectionsPage.style.transform = `translateX(${diffX}px)`;
+        }
+    }, { passive: true });
+
+    connectionsPage.addEventListener('touchend', (e) => {
+        if (!isSwiping) return;
+        let diffX = e.changedTouches[0].clientX - touchStartX;
+        connectionsPage.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+        if (diffX > window.innerWidth / 3 || diffX > 100) { closeConnectionsPage(); } else { connectionsPage.style.transform = 'translateX(0)'; }
+        setTimeout(() => { connectionsPage.style.transform = ''; connectionsPage.style.transition = ''; }, 300);
+        touchStartX = 0; touchStartY = 0; isSwiping = false;
+    });
+});
+
 // 10. USAGE LOGS & CONCURRENT CAN TRACKING
 // ==========================================
 
@@ -1532,59 +1605,6 @@ if (scanModalCard) {
             setTimeout(() => {
                 scanModalCard.style.transform = '';
                 scanModalCard.style.transition = '';
-            }, 400);
-        }
-    });
-}
-
-
-const snusModalCardElement = document.getElementById('snus-modal-card');
-let snusStartY = 0;
-let snusCurrentY = 0;
-let isSnusDragging = false;
-
-if (snusModalCardElement) {
-    snusModalCardElement.addEventListener('touchstart', (e) => {
-        snusStartY = e.touches[0].clientY;
-        isSnusDragging = true;
-
-        snusModalCardElement.style.transition = 'none';
-    }, { passive: true });
-
-    snusModalCardElement.addEventListener('touchmove', (e) => {
-        if (!isSnusDragging) return;
-        snusCurrentY = e.touches[0].clientY;
-        const deltaY = snusCurrentY - snusStartY;
-
-        if (deltaY > 0) {
-            snusModalCardElement.style.transform = `translateY(${deltaY}px)`;
-        }
-    }, { passive: true });
-
-    snusModalCardElement.addEventListener('touchend', (e) => {
-        if (!isSnusDragging) return;
-        isSnusDragging = false;
-
-        const deltaY = snusCurrentY - snusStartY;
-
-        snusModalCardElement.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
-
-        if (deltaY > 100) {
-            snusModalCardElement.style.transform = 'translateY(100%)';
-
-            setTimeout(() => {
-                if (typeof closeSnusDetail === 'function') closeSnusDetail(); 
-
-                setTimeout(() => {
-                    snusModalCardElement.style.transform = '';
-                }, 50);
-            }, 400);
-
-        } else {
-            snusModalCardElement.style.transform = 'translateY(0px)';
-
-            setTimeout(() => {
-                snusModalCardElement.style.transform = '';
             }, 400);
         }
     });
