@@ -691,44 +691,108 @@ function hideAllViews() {
 }
 
 function openSnusDetail(id, isFromScan = false) {
-    const snus = globalSnusData.find(s => s.id === id);
-    if (!snus) return;
-    currentSelectedSnusId = id; 
-
-    // --- Daten laden ---
-    const rarityLower = (snus.rarity || 'common').toLowerCase().trim();
-    document.getElementById('modal-name').innerText = snus.name;
-    document.getElementById('modal-image').src = `${GITHUB_BASE}${snus.image}`;
+    // 1. DATEN-CHECK
+    // Sicherstellen, dass die ID eine Zahl ist, falls sie als String kommt
+    const snusId = parseInt(id);
+    const snus = globalSnusData.find(s => parseInt(s.id) === snusId);
     
-    // ... (hier dein restlicher Code für XP, Datum, Nicotine etc.) ...
+    if (!snus) {
+        console.error("Snus mit ID " + id + " nicht gefunden!");
+        return;
+    }
+    
+    currentSelectedSnusId = snusId; 
 
+    // 2. ELEMENTE SICHER BEFÜLLEN (mit Fallbacks)
+    const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = text;
+    };
+
+    const setHTML = (id, html) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+    };
+
+    // ID Formatieren (z.B. #001)
+    setText('modal-id', '#' + String(snus.id).padStart(3, '0'));
+    setText('modal-name', snus.name || 'Unbekannter Snus');
+
+    // Rarity & Nicotine
+    const rarity = (snus.rarity || 'Common').trim();
+    const rarityLower = rarity.toLowerCase();
+    const nicotine = snus.nicotine || '??';
+
+    setHTML('modal-nicotine', `
+        <span class="px-3 py-1.5 bg-white/10 border border-white/5 rounded-full text-[13px] font-semibold text-white tracking-wide shadow-sm">${nicotine} MG/G</span>
+        <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${rarity}</span>
+    `);
+
+    // Bild laden
+    const modalImg = document.getElementById('modal-image');
+    if (modalImg) {
+        modalImg.src = snus.image ? `${GITHUB_BASE}${snus.image}` : 'placeholder.png';
+    }
+
+    // 3. COLLECTION STATUS (Freigeschaltet oder nicht)
+    const isUnlocked = globalUserCollection[snusId];
+    const uncollectedGroup = document.getElementById('uncollected-action-group');
+    const scannedGroup = document.getElementById('scanned-action-group');
+    const statusGroup = document.getElementById('modal-collected-status');
+    const dateEl = document.getElementById('modal-unlocked-date');
+
+    // Erstmal alles verstecken
+    if (uncollectedGroup) uncollectedGroup.classList.add('hidden');
+    if (scannedGroup) scannedGroup.classList.add('hidden');
+    if (statusGroup) statusGroup.classList.add('hidden');
+
+    if (isUnlocked) {
+        // Fall: Bereits gesammelt
+        if (statusGroup) statusGroup.classList.remove('hidden');
+        if (dateEl && isUnlocked.date) {
+            const dateObj = new Date(isUnlocked.date);
+            dateEl.innerText = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        }
+    } else {
+        // Fall: Noch nicht gesammelt
+        if (isFromScan) {
+            if (scannedGroup) scannedGroup.classList.remove('hidden');
+        } else {
+            if (uncollectedGroup) uncollectedGroup.classList.remove('hidden');
+        }
+    }
+
+    // 4. VIEWS AKTIVIEREN
+    if (typeof showInfoView === "function") showInfoView(); 
+    if (typeof initRatingWizard === "function") initRatingWizard();
+
+    // 5. MODAL ANZEIGEN & ANIMIEREN
     const modal = document.getElementById('snus-modal');
     const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
 
-    // --- Animation vorbereiten ---
-    modal.classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
+    if (modal && backdrop && card) {
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
 
-    // Reset Styles für sauberen Start
-    backdrop.style.transition = 'none';
-    card.style.transition = 'none';
-    backdrop.style.opacity = '0';
-    card.style.transform = 'translateY(100%)';
+        // Animation vorbereiten
+        backdrop.style.transition = 'none';
+        card.style.transition = 'none';
+        backdrop.style.opacity = '0';
+        card.style.transform = 'translateY(100%)';
 
-    // Kurzer Flush
-    modal.offsetHeight; 
+        // Kleiner Force-Reflow
+        modal.offsetHeight; 
 
-    // Go!
-    backdrop.style.transition = 'opacity 0.3s ease-out';
-    card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
-    
-    setTimeout(() => {
+        // Animation starten
+        backdrop.style.transition = 'opacity 0.3s ease-out';
+        card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
+        
         backdrop.style.opacity = '1';
         card.style.transform = 'translateY(0)';
-    }, 10);
+    }
     
-    triggerHapticFeedback();
+    if (typeof triggerHapticFeedback === "function") triggerHapticFeedback();
 }
 
 function closeSnusDetail() {
