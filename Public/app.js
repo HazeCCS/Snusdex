@@ -580,77 +580,90 @@ function hideAllViews() {
     document.getElementById('modal-view-saved-rating').classList.add('hidden');
     document.getElementById('modal-view-saved-rating').classList.remove('flex');
 }
+// --- Globale Variablen für das Detail-Modal-Tracking ---
+let detailStartY = 0;
+let detailCurrentY = 0;
+let isDetailDragging = false;
 
 function openSnusDetail(id, isFromScan = false) {
     const snus = globalSnusData.find(s => s.id === id);
     if (!snus) return;
     currentSelectedSnusId = id; 
 
+    // UI Daten füllen
     const rarityLower = (snus.rarity || 'common').toLowerCase().trim();
     const formattedId = '#' + String(snus.id).padStart(3, '0');
     
     const idEl = document.getElementById('modal-id');
     if (idEl) idEl.innerText = formattedId;
     document.getElementById('modal-name').innerText = snus.name;
+    
+    // HTML für Nicotine & Rarity
     document.getElementById('modal-nicotine').innerHTML = `
-    <span class="px-3 py-1.5 bg-white/10 border border-white/5 rounded-full text-[13px] font-semibold text-white tracking-wide shadow-sm">${snus.nicotine} MG/G</span>
-    <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${snus.rarity || 'Common'}</span>`;
+        <span class="px-3 py-1.5 bg-white/10 border border-white/5 rounded-full text-[13px] font-semibold text-white tracking-wide shadow-sm">${snus.nicotine} MG/G</span>
+        <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${snus.rarity || 'Common'}</span>
+    `;
+    
     document.getElementById('modal-image').src = `${GITHUB_BASE}${snus.image}`;
     document.body.classList.add('overflow-hidden'); 
 
     showInfoView(); 
     initRatingWizard();
 
+    // Collection Status prüfen
     const isUnlocked = globalUserCollection[id];
-    
+    const uncollectedGroup = document.getElementById('uncollected-action-group');
+    const scannedGroup = document.getElementById('scanned-action-group');
+    const statusGroup = document.getElementById('modal-collected-status');
+
     if (isUnlocked) {
-        document.getElementById('uncollected-action-group').classList.add('hidden');
-        const scannedGroup = document.getElementById('scanned-action-group');
+        uncollectedGroup.classList.add('hidden');
         if (scannedGroup) scannedGroup.classList.add('hidden');
-        document.getElementById('modal-collected-status').classList.remove('hidden');
+        statusGroup.classList.remove('hidden');
         
         const dateObj = new Date(isUnlocked.date);
         document.getElementById('modal-unlocked-date').innerText = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
     } else {
-        document.getElementById('modal-collected-status').classList.add('hidden');
+        statusGroup.classList.add('hidden');
         if (isFromScan) {
-            document.getElementById('uncollected-action-group').classList.add('hidden');
-            const scannedGroup = document.getElementById('scanned-action-group');
+            uncollectedGroup.classList.add('hidden');
             if (scannedGroup) scannedGroup.classList.remove('hidden');
         } else {
-            const scannedGroup = document.getElementById('scanned-action-group');
             if (scannedGroup) scannedGroup.classList.add('hidden');
-            document.getElementById('uncollected-action-group').classList.remove('hidden');
+            uncollectedGroup.classList.remove('hidden');
         }
     }
 
-    document.getElementById('snus-modal').classList.remove('hidden');
+    // Modal anzeigen
+    const modal = document.getElementById('snus-modal');
+    const backdrop = document.getElementById('modal-backdrop');
+    const card = document.getElementById('snus-modal-card');
+
+    modal.classList.remove('hidden');
+    
+    // Kleiner Delay für die Animation
     setTimeout(() => {
-        const backdrop = document.getElementById('modal-backdrop');
-        const card = document.getElementById('snus-modal-card');
-        
-        backdrop.classList.remove('opacity-0');
-        backdrop.classList.add('opacity-100');
-        
-        card.classList.remove('translate-y-full');
-        card.classList.add('translate-y-0');
+        backdrop.classList.replace('opacity-0', 'opacity-100');
+        card.style.transform = 'translateY(0)';
     }, 10);
     
     triggerHapticFeedback();
+    
+    // Swipe-Logic initialisieren (Einmalig oder Reset)
+    initDetailSwipe();
 }
 
 function closeSnusDetail() {
     const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
 
-    if (backdrop) {
-        backdrop.classList.remove('opacity-100');
-        backdrop.classList.add('opacity-0');
+    if (card) {
+        card.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
+        card.style.transform = 'translateY(100%)';
     }
     
-    if (card) {
-        card.classList.remove('translate-y-0');
-        card.classList.add('translate-y-full');
+    if (backdrop) {
+        backdrop.style.opacity = '0';
     }
     
     document.body.classList.remove('overflow-hidden');
@@ -659,9 +672,71 @@ function closeSnusDetail() {
         document.getElementById('snus-modal').classList.add('hidden');
         hideAllViews(); 
         document.getElementById('modal-view-info').classList.remove('hidden');
+        
+        // Reset Styles
+        if (card) {
+            card.style.transform = '';
+            card.style.transition = '';
+        }
     }, 400);
 }
 
+function initDetailSwipe() {
+    const card = document.getElementById('snus-modal-card');
+    const backdrop = document.getElementById('modal-backdrop');
+    // WICHTIG: Hier die ID deines scrollbaren Bereichs im Modal nutzen
+    const scrollContent = document.getElementById('modal-view-info'); 
+
+    if (!card) return;
+
+    card.addEventListener('touchstart', (e) => {
+        // Swipe nur starten, wenn wir ganz oben gescrollt sind
+        if (scrollContent && scrollContent.scrollTop > 0) {
+            isDetailDragging = false;
+            return;
+        }
+
+        detailStartY = e.touches[0].clientY;
+        isDetailDragging = true;
+        card.style.transition = 'none';
+    }, { passive: true });
+
+    card.addEventListener('touchmove', (e) => {
+        if (!isDetailDragging) return;
+        
+        detailCurrentY = e.touches[0].clientY;
+        const deltaY = detailCurrentY - detailStartY;
+
+        if (deltaY > 0) {
+            // Verhindert Scrollen während des Drags
+            if (e.cancelable) e.preventDefault(); 
+            card.style.transform = `translateY(${deltaY}px)`;
+            
+            // Backdrop Opacity dynamisch anpassen
+            const opacity = Math.max(0, 1 - (deltaY / 400));
+            backdrop.style.opacity = opacity;
+        } else {
+            // Falls User nach oben wischt, Drag abbrechen und normales Scrollen zulassen
+            isDetailDragging = false;
+            card.style.transform = 'translateY(0px)';
+        }
+    }, { passive: false });
+
+    card.addEventListener('touchend', () => {
+        if (!isDetailDragging) return;
+        isDetailDragging = false;
+
+        const deltaY = detailCurrentY - detailStartY;
+        card.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1), opacity 0.4s ease';
+
+        if (deltaY > 120) {
+            closeSnusDetail();
+        } else {
+            card.style.transform = 'translateY(0px)';
+            backdrop.style.opacity = '1';
+        }
+    });
+}
 // ==========================================
 // 6. DB INSERT (BUG GEFIXT)
 // ==========================================
