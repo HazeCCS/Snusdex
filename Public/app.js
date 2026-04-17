@@ -1246,37 +1246,122 @@ async function toggleFollow(targetId, btnElement) {
 // 9.6. CONNECTIONS PAGE (New)
 // ==========================================
 
+
+// Swipe-Logik für die Connections-Seite
+let connStartX = 0;
+let connStartY = 0;
+let connCurrentX = 0;
+let isConnDragging = false;
+let isHorizontalIntent = null; // Prüft, ob der User scrollt oder wischt
+
+function setupConnectionsSwipe() {
+    const page = document.getElementById('connections-page');
+    if (!page) return;
+
+    page.addEventListener('touchstart', (e) => {
+        connStartX = e.touches[0].clientX;
+        connStartY = e.touches[0].clientY;
+        connCurrentX = connStartX;
+        isConnDragging = true;
+        isHorizontalIntent = null; // Intent bei jedem neuen Touch zurücksetzen
+        
+        page.style.transition = 'none'; // Sofortiges Tracking
+    }, { passive: true });
+
+    page.addEventListener('touchmove', (e) => {
+        if (!isConnDragging) return;
+        
+        connCurrentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        
+        const deltaX = connCurrentX - connStartX;
+        const deltaY = currentY - connStartY;
+
+        // 1. Finde heraus, ob der User vertikal oder horizontal wischt (nur beim ersten Bewegen)
+        if (isHorizontalIntent === null) {
+            // Wenn die Bewegung nach oben/unten größer ist als nach links/rechts -> abbrechen
+            if (Math.abs(deltaY) > Math.abs(deltaX)) {
+                isHorizontalIntent = false;
+                isConnDragging = false; 
+                return;
+            } else {
+                isHorizontalIntent = true;
+            }
+        }
+
+        // 2. Wenn es ein horizontaler Swipe ist, folge dem Finger (nur nach rechts)
+        if (isHorizontalIntent && deltaX > 0) {
+            if (e.cancelable) e.preventDefault(); // Verhindert Browser-Back-Swipe Konflikte
+            page.style.transform = `translateX(${deltaX}px)`;
+        }
+    }, { passive: false }); // false, damit wir preventDefault nutzen können
+
+    page.addEventListener('touchend', () => {
+        if (!isConnDragging) return;
+        isConnDragging = false;
+
+        const deltaX = connCurrentX - connStartX;
+        
+        // Die Apple-Bezier-Kurve für das Zurückschnappen
+        page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+
+        if (deltaX > 100) { // Schwellenwert: Wenn mehr als 100px gezogen, dann schließen
+            closeConnectionsPage();
+        } else {
+            // Zurück in die Ausgangsposition
+            page.style.transform = 'translateX(0px)';
+            setTimeout(() => {
+                page.style.transition = '';
+            }, 350);
+        }
+    });
+}
+
+// Einmal initialisieren
+setupConnectionsSwipe();
+
 function openConnectionsPage() {
     const page = document.getElementById('connections-page');
     if (!page) return;
 
-    page.classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
-
-    setTimeout(() => {
-        page.classList.remove('translate-x-full');
-        page.classList.add('translate-x-0');
-    }, 10);
-
-    // Reset search and load data
+    // 1. Reset & Lade Daten
     document.getElementById('connections-search-input').value = '';
     document.getElementById('connections-search-results').innerHTML = '';
     document.getElementById('connections-lists').style.display = 'block';
-
     loadConnectionsData();
+
+    // 2. Setup (Unsichtbar nach rechts schieben)
+    page.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    
+    page.style.transition = 'none';
+    page.style.transform = 'translateX(100%)';
+
+    // 3. Force Reflow (zwingt den Browser, die Startposition zu übernehmen)
+    page.offsetHeight; 
+
+    // 4. Animation abspielen
+    page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+    page.style.transform = 'translateX(0)';
 }
 
 function closeConnectionsPage() {
     const page = document.getElementById('connections-page');
     if (!page) return;
 
-    page.classList.remove('translate-x-0');
-    page.classList.add('translate-x-full');
+    // 1. Animation nach rechts weg
+    page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+    page.style.transform = 'translateX(100%)';
 
+    // 2. Aufräumen nach der Animation
     setTimeout(() => {
         page.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
-    }, 300);
+        
+        // Reset Styles für den nächsten Start
+        page.style.transform = '';
+        page.style.transition = '';
+    }, 350);
 }
 
 async function loadConnectionsData() {
