@@ -428,6 +428,63 @@ function renderActiveCansUI() {
 // 5. RATING ENGINE & MODAL LOGIK
 // ==========================================
 
+let detailStartY = 0;
+let detailCurrentY = 0;
+let isDetailDragging = false;
+
+// Diese Funktion wird nur EINMAL aufgerufen, wenn die Seite lädt
+function setupGlobalSwipe() {
+    const card = document.getElementById('snus-modal-card');
+    const backdrop = document.getElementById('modal-backdrop');
+    const scrollContent = document.getElementById('modal-view-info'); 
+
+    if (!card) return;
+
+    card.addEventListener('touchstart', (e) => {
+        // Swipe nur starten, wenn wir am oberen Rand des Inhalts sind
+        if (scrollContent && scrollContent.scrollTop > 0) {
+            isDetailDragging = false;
+            return;
+        }
+
+        detailStartY = e.touches[0].clientY;
+        detailCurrentY = detailStartY; // Reset CurrentY
+        isDetailDragging = true;
+        card.style.transition = 'none';
+    }, { passive: true });
+
+    card.addEventListener('touchmove', (e) => {
+        if (!isDetailDragging) return;
+        
+        detailCurrentY = e.touches[0].clientY;
+        const deltaY = detailCurrentY - detailStartY;
+
+        if (deltaY > 0) {
+            card.style.transform = `translateY(${deltaY}px)`;
+            const opacity = Math.max(0, 1 - (deltaY / 400));
+            backdrop.style.opacity = opacity;
+        }
+    }, { passive: true });
+
+    card.addEventListener('touchend', () => {
+        if (!isDetailDragging) return;
+        isDetailDragging = false;
+
+        const deltaY = detailCurrentY - detailStartY;
+        card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s ease';
+
+        if (deltaY > 120) {
+            closeSnusDetail();
+        } else {
+            card.style.transform = 'translateY(0px)';
+            backdrop.style.opacity = '1';
+        }
+    });
+}
+
+// Sofort ausführen
+setupGlobalSwipe();
+
 let tempRatings = {
     taste: 5,
     taste_text: '',
@@ -633,162 +690,61 @@ function hideAllViews() {
     document.getElementById('modal-view-saved-rating').classList.remove('flex');
 }
 
-// --- Globale Variablen für das Detail-Modal-Tracking ---
-let detailStartY = 0;
-let detailCurrentY = 0;
-let isDetailDragging = false;
-
 function openSnusDetail(id, isFromScan = false) {
     const snus = globalSnusData.find(s => s.id === id);
     if (!snus) return;
     currentSelectedSnusId = id; 
 
-    // UI Daten füllen
+    // --- Daten laden ---
     const rarityLower = (snus.rarity || 'common').toLowerCase().trim();
-    const formattedId = '#' + String(snus.id).padStart(3, '0');
-    
-    const idEl = document.getElementById('modal-id');
-    if (idEl) idEl.innerText = formattedId;
     document.getElementById('modal-name').innerText = snus.name;
-    
-    // HTML für Nicotine & Rarity
-    document.getElementById('modal-nicotine').innerHTML = `
-        <span class="px-3 py-1.5 bg-white/10 border border-white/5 rounded-full text-[13px] font-semibold text-white tracking-wide shadow-sm">${snus.nicotine} MG/G</span>
-        <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${snus.rarity || 'Common'}</span>
-    `;
-    
     document.getElementById('modal-image').src = `${GITHUB_BASE}${snus.image}`;
-    document.body.classList.add('overflow-hidden'); 
+    
+    // ... (hier dein restlicher Code für XP, Datum, Nicotine etc.) ...
 
-    showInfoView(); 
-    initRatingWizard();
-
-    // Collection Status prüfen
-    const isUnlocked = globalUserCollection[id];
-    const uncollectedGroup = document.getElementById('uncollected-action-group');
-    const scannedGroup = document.getElementById('scanned-action-group');
-    const statusGroup = document.getElementById('modal-collected-status');
-
-    if (isUnlocked) {
-        uncollectedGroup.classList.add('hidden');
-        if (scannedGroup) scannedGroup.classList.add('hidden');
-        statusGroup.classList.remove('hidden');
-        
-        const dateObj = new Date(isUnlocked.date);
-        document.getElementById('modal-unlocked-date').innerText = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
-    } else {
-        statusGroup.classList.add('hidden');
-        if (isFromScan) {
-            uncollectedGroup.classList.add('hidden');
-            if (scannedGroup) scannedGroup.classList.remove('hidden');
-        } else {
-            if (scannedGroup) scannedGroup.classList.add('hidden');
-            uncollectedGroup.classList.remove('hidden');
-        }
-    }
-
-    // Modal anzeigen
     const modal = document.getElementById('snus-modal');
     const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
 
+    // --- Animation vorbereiten ---
     modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+
+    // Reset Styles für sauberen Start
+    backdrop.style.transition = 'none';
+    card.style.transition = 'none';
+    backdrop.style.opacity = '0';
+    card.style.transform = 'translateY(100%)';
+
+    // Kurzer Flush
+    modal.offsetHeight; 
+
+    // Go!
+    backdrop.style.transition = 'opacity 0.3s ease-out';
+    card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
     
-    // Kleiner Delay für die Animation
     setTimeout(() => {
-        backdrop.classList.replace('opacity-0', 'opacity-100');
+        backdrop.style.opacity = '1';
         card.style.transform = 'translateY(0)';
     }, 10);
     
     triggerHapticFeedback();
-    
-    // Swipe-Logic initialisieren (Einmalig oder Reset)
-    initDetailSwipe();
 }
 
 function closeSnusDetail() {
     const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
 
-    if (card) {
-        card.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
-        card.style.transform = 'translateY(100%)';
-    }
-    
-    if (backdrop) {
-        backdrop.style.opacity = '0';
-    }
+    card.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+    card.style.transform = 'translateY(100%)';
+    backdrop.style.transition = 'opacity 0.3s ease-in';
+    backdrop.style.opacity = '0';
     
     document.body.classList.remove('overflow-hidden');
     
     setTimeout(() => {
         document.getElementById('snus-modal').classList.add('hidden');
-        hideAllViews(); 
-        document.getElementById('modal-view-info').classList.remove('hidden');
-        
-        // Reset Styles
-        if (card) {
-            card.style.transform = '';
-            card.style.transition = '';
-        }
-    }, 400);
-}
-
-function initDetailSwipe() {
-    const card = document.getElementById('snus-modal-card');
-    const backdrop = document.getElementById('modal-backdrop');
-    // WICHTIG: Hier die ID deines scrollbaren Bereichs im Modal nutzen
-    const scrollContent = document.getElementById('modal-view-info'); 
-
-    if (!card) return;
-
-    card.addEventListener('touchstart', (e) => {
-        // Swipe nur starten, wenn wir ganz oben gescrollt sind
-        if (scrollContent && scrollContent.scrollTop > 0) {
-            isDetailDragging = false;
-            return;
-        }
-
-        detailStartY = e.touches[0].clientY;
-        isDetailDragging = true;
-        card.style.transition = 'none';
-    }, { passive: true });
-
-    card.addEventListener('touchmove', (e) => {
-        if (!isDetailDragging) return;
-        
-        detailCurrentY = e.touches[0].clientY;
-        const deltaY = detailCurrentY - detailStartY;
-
-        if (deltaY > 0) {
-            // Verhindert Scrollen während des Drags
-            if (e.cancelable) e.preventDefault(); 
-            card.style.transform = `translateY(${deltaY}px)`;
-            
-            // Backdrop Opacity dynamisch anpassen
-            const opacity = Math.max(0, 1 - (deltaY / 400));
-            backdrop.style.opacity = opacity;
-        } else {
-            // Falls User nach oben wischt, Drag abbrechen und normales Scrollen zulassen
-            isDetailDragging = false;
-            card.style.transform = 'translateY(0px)';
-        }
-    }, { passive: false });
-
-    card.addEventListener('touchend', () => {
-        if (!isDetailDragging) return;
-        isDetailDragging = false;
-
-        const deltaY = detailCurrentY - detailStartY;
-        card.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1), opacity 0.4s ease';
-
-        if (deltaY > 120) {
-            closeSnusDetail();
-        } else {
-            card.style.transform = 'translateY(0px)';
-            backdrop.style.opacity = '1';
-        }
-    });
+    }, 350);
 }
 
 // ==========================================
