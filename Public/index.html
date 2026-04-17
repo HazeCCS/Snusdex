@@ -228,12 +228,12 @@
     </div>
 
     <div id="auth-overlay" class="fixed inset-0 z-[999] bg-black flex items-center justify-center p-6 transition-opacity duration-500">
-        <div id="dev-tools" class="fixed top-4 left-1/2 -translate-x-1/2 bg-red-600/90 text-white p-3 rounded-xl text-sm z-[1000] flex gap-4 shadow-lg backdrop-blur-sm border border-red-400">
+        <!-- <div id="dev-tools" class="fixed top-4 left-1/2 -translate-x-1/2 bg-red-600/90 text-white p-3 rounded-xl text-sm z-[1000] flex gap-4 shadow-lg backdrop-blur-sm border border-red-400">
             <span class="font-bold uppercase tracking-wider opacity-80">Dev:</span>
             <button onclick="triggerHapticFeedback(); showVerificationScreen()" class="hover:underline font-semibold">Skip zu E-Mail Code</button>
             <div class="w-[2px] bg-white/50"></div>
             <button onclick="triggerHapticFeedback(); hideVerificationScreen()" class="hover:underline font-semibold">Zurück zum Login</button>
-        </div>
+        </div> -->
         <div class="w-full max-w-sm bg-[#1C1C1E] p-8 rounded-[32px] shadow-2xl border border-white/10">
 
             <div class="mb-6 text-center">
@@ -368,6 +368,15 @@
             </div>
         </div>
 
+        <div class="mt-8 mb-8 overflow-hidden">
+            <div class="flex items-end justify-between mb-4 px-[6vw]">
+                <h2 class="text-[20px] font-semibold text-white tracking-tight">Neu entdecken</h2>
+            </div>
+            <div id="suggestions-container" class="flex gap-[2vw] overflow-x-auto px-[6vw] pb-6 pt-2 snap-x snap-mandatory scroll-smooth">
+                <div class="text-[13px] text-[#8E8E93]">Lade Vorschläge...</div>
+            </div>
+        </div>
+
         <div id="can-empty-container" class="px-5 mb-8 hidden transition-all duration-300">
             <h2 class="text-[20px] font-semibold text-white mb-3">Active Can</h2>
             <div class="bg-[#1C1C1E] rounded-[24px] p-5 flex flex-col items-center justify-center border border-white/10 relative overflow-hidden">
@@ -388,7 +397,13 @@
         </div>
 
         <div class="px-5">
-            <h2 class="text-[20px] font-semibold text-white mb-3">Recent Scans</h2>
+            <div class="flex items-end justify-between mb-4 pl-1">
+                <h2 class="text-[20px] font-semibold text-white tracking-tight">Closed cans</h2>
+                <button id="show-more-scans-btn" onclick="triggerHapticFeedback(); openAllScansModal()" class="hidden group flex items-center gap-1 text-[13px] font-medium text-[#8E8E93] hover:text-white active:opacity-50 transition-all">
+                    Alle zeigen
+                    <svg class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </button>
+            </div>
             <div id="latest-unlocks-list" class="bg-[#1C1C1E] border border-white/5 rounded-2xl shadow-sm overflow-hidden mb-3">
                 <div class="p-6 text-center text-[#8E8E93] text-sm">Noch keine Scans vorhanden.</div>
             </div>
@@ -739,6 +754,29 @@
                         Back to Info
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="all-scans-modal" class="fixed inset-0 z-[999] hidden flex flex-col justify-end">
+        <div id="all-scans-backdrop" class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-400" onclick="triggerHapticFeedback(); closeAllScansModal()"></div>
+
+        <div id="all-scans-card" class="relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1000] mt-auto pb-10 max-h-[90vh] h-[85vh]">
+            
+            <div id="all-scans-drag-handle" class="sticky top-0 bg-[#1C1C1E] z-50 pt-4 pb-2 flex flex-col items-center flex-shrink-0 w-full rounded-t-[32px]">
+                <div class="w-10 h-1.5 bg-[#3A3A3C] rounded-full mb-3"></div>
+                
+                <div class="flex justify-between items-center w-full px-6">
+                    <h2 class="text-[26px] font-semibold text-white tracking-tight">All closed cans</h2>
+                    <button onclick="triggerHapticFeedback(); closeAllScansModal()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center active:scale-95 transition-transform">
+                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="all-scans-scroll-area" class="w-full flex-1 overflow-y-auto overscroll-contain px-5 pt-4">
+                <div id="all-scans-list-container" class="bg-[#1C1C1E] border border-white/5 rounded-2xl shadow-sm overflow-hidden mb-8">
+                    </div>
             </div>
         </div>
     </div>

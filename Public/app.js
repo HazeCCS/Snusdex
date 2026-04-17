@@ -6,7 +6,7 @@
 // ==========================================
 const SUPABASE_URL = 'https://aqyjrvukfuyuhlidpoxr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_4gIcuQhw528DH6GrmhF16g_V8im-UMU';
-const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/main/assets/'; 
+const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/main/assets/';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Wenn das Video zu Ende ist → Splash ausblenden
     video.addEventListener('ended', () => {
         splash.style.opacity = '0';
-        
+
         setTimeout(() => {
             splash.style.display = 'none';
             // Optional: Audio stoppen
@@ -49,9 +49,13 @@ async function updateGreeting() {
     const greetingElement = document.getElementById('greeting');
     if (!greetingElement) return;
 
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const {
+        data: {
+            session
+        }
+    } = await supabaseClient.auth.getSession();
     let displayIdent = "Collector";
-    
+
     if (session && session.user && session.user.email) {
         let rawName = session.user.email.split('@')[0];
         displayIdent = rawName.charAt(0).toUpperCase() + rawName.slice(1);
@@ -63,7 +67,7 @@ async function updateGreeting() {
     if (hour >= 5 && hour < 12) message = "Guten Morgen";
     else if (hour >= 12 && hour < 18) message = "Guten Tag";
     else if (hour >= 18 && hour < 22) message = "Guten Abend";
-    else message = "Gute Nacht"; 
+    else message = "Gute Nacht";
 
     greetingElement.innerHTML = `${message}, <span class="text-white font-semibold">${displayIdent}</span>`;
 }
@@ -72,18 +76,22 @@ async function updateGreeting() {
 // DEINE ALTE CHECK USER LOGIK (Unverändert)
 // ==========================================
 async function checkUser() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const {
+        data: {
+            session
+        }
+    } = await supabaseClient.auth.getSession();
     const overlay = document.getElementById('auth-overlay');
 
     if (session) {
         overlay.classList.add('opacity-0');
         setTimeout(() => overlay.classList.add('hidden'), 500);
-        
+
         setupProfile(session.user);
-        
-        loadDex(); 
-        loadUsageData(); 
-        
+
+        loadDex();
+        loadUsageData();
+
         updateGreeting();
     } else {
         overlay.classList.remove('hidden', 'opacity-0');
@@ -91,7 +99,9 @@ async function checkUser() {
 }
 
 async function handleLogout() {
-    const { error } = await supabaseClient.auth.signOut();
+    const {
+        error
+    } = await supabaseClient.auth.signOut();
     if (!error) window.location.reload();
 }
 
@@ -100,7 +110,7 @@ async function handleLogout() {
 // ==========================================
 function toggleAuthMode() {
     isLoginMode = !isLoginMode;
-    
+
     const registerFields = document.getElementById('register-fields');
     const title = document.getElementById('auth-title');
     const subtitle = document.getElementById('auth-subtitle');
@@ -137,7 +147,7 @@ async function handleLoginWrapper() {
     const password = document.getElementById('auth-password').value;
     const errorEl = document.getElementById('auth-error');
     const mainBtn = document.getElementById('auth-main-btn');
-    
+
     if (!email || !password) {
         errorEl.innerText = "Bitte fülle alle Felder aus.";
         errorEl.classList.remove('hidden');
@@ -151,18 +161,23 @@ async function handleLoginWrapper() {
 
     if (isLoginMode) {
         // --- DEIN ORIGINALER LOGIN CODE ---
-        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        
+        const {
+            error
+        } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+        });
+
         if (error) {
             errorEl.innerText = "Falsches Passwort oder E-Mail";
             errorEl.classList.remove('hidden');
             triggerHapticFeedback();
-            
+
             mainBtn.disabled = false;
             mainBtn.innerText = "Anmelden";
         } else {
             errorEl.classList.add('hidden');
-            checkUser(); 
+            checkUser();
         }
     } else {
         // --- REGISTRIERUNGS CODE ---
@@ -178,10 +193,17 @@ async function handleLoginWrapper() {
             return;
         }
 
-        const { data, error } = await supabaseClient.auth.signUp({
+        const {
+            data,
+            error
+        } = await supabaseClient.auth.signUp({
             email: email,
             password: password,
-            options: { data: { username: username } }
+            options: {
+                data: {
+                    username: username
+                }
+            }
         });
 
         if (error) {
@@ -189,13 +211,13 @@ async function handleLoginWrapper() {
             errorEl.innerText = error.message.includes('already registered') ? "E-Mail wird bereits verwendet." : error.message;
             errorEl.classList.remove('hidden');
             triggerHapticFeedback();
-            
+
             mainBtn.disabled = false;
             mainBtn.innerText = "Registrieren";
         } else {
             alert("Account erfolgreich erstellt! Bitte melde dich jetzt an.");
             toggleAuthMode(); // Zurück zur Anmeldung wischen
-            
+
             mainBtn.disabled = false;
             mainBtn.innerText = "Anmelden";
         }
@@ -211,7 +233,7 @@ function switchTab(tabId) {
 
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     activeTab.classList.remove('hidden');
-    
+
     document.querySelectorAll('.nav-btn').forEach(btn => {
         const isActive = btn.id === `btn-${tabId}`;
         btn.classList.toggle('text-white', isActive);
@@ -236,36 +258,47 @@ function switchTab(tabId) {
 // 4. DATEN LADEN & RENDERN
 // ==========================================
 
-let globalSnusData = []; 
-let globalUserCollection = {}; 
+let globalSnusData = [];
+let globalUserCollection = {};
 
 async function loadDex() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const {
+        data: {
+            user
+        }
+    } = await supabaseClient.auth.getUser();
     if (user) {
-        const { data: myCol } = await supabaseClient.from('user_collections').select('*').eq('user_id', user.id);
+        const {
+            data: myCol
+        } = await supabaseClient.from('user_collections').select('*').eq('user_id', user.id);
         globalUserCollection = {};
         if (myCol) {
             myCol.forEach(item => {
                 globalUserCollection[item.snus_id] = {
                     date: item.collected_at,
-                    ratings: { 
-                        taste: item.rating_taste || 5, 
-                        smell: item.rating_smell || 5, 
-                        bite: item.rating_bite || 5, 
-                        drip: item.rating_drip || 5, 
-                        visuals: item.rating_visuals || 5 
+                    ratings: {
+                        taste: item.rating_taste || 5,
+                        smell: item.rating_smell || 5,
+                        bite: item.rating_bite || 5,
+                        drip: item.rating_drip || 5,
+                        visuals: item.rating_visuals || 5
                     }
                 };
             });
         }
     }
 
-    const { data: snusItems } = await supabaseClient.from('snus_items').select('*').order('id', { ascending: true });
-    globalSnusData = snusItems || []; 
+    const {
+        data: snusItems
+    } = await supabaseClient.from('snus_items').select('*').order('id', {
+        ascending: true
+    });
+    globalSnusData = snusItems || [];
     updateLivePerformance();
     renderDexGrid(globalSnusData);
     loadTopSnusOfWeek();
-    
+    renderSuggestions();
+
     if (user) {
         await loadUsageLogs(user.id);
     }
@@ -273,7 +306,7 @@ async function loadDex() {
 
 let currentDexRenderCount = 0;
 let currentDexItems = [];
-const DEX_CHUNK_SIZE = 18; 
+const DEX_CHUNK_SIZE = 18;
 let dexObserver = null;
 
 function initDexObserver() {
@@ -288,19 +321,21 @@ function initDexObserver() {
         if (entries[0].isIntersecting) {
             loadMoreDexItems();
         }
-    }, { rootMargin: '400px' }); 
-    
+    }, {
+        rootMargin: '400px'
+    });
+
     dexObserver.observe(sentinel);
 }
 
 function renderDexGrid(items) {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
-    grid.innerHTML = ''; 
-    
+    grid.innerHTML = '';
+
     currentDexItems = items;
     currentDexRenderCount = 0;
-    
+
     loadMoreDexItems();
     initDexObserver();
 }
@@ -311,25 +346,26 @@ function loadMoreDexItems() {
 
     const nextChunk = currentDexItems.slice(currentDexRenderCount, currentDexRenderCount + DEX_CHUNK_SIZE);
     let htmlChunk = '';
-    
+
     const cols = localStorage.getItem('dexColumns') || '3';
     const is2Cols = cols === '2';
     const glowActive = localStorage.getItem('dexGlow') === 'true';
-    
+
     nextChunk.forEach(snus => {
-        const isUnlocked = !!globalUserCollection[snus.id]; 
-        
+        const isUnlocked = !!globalUserCollection[snus.id];
+
         const formattedId = '#' + String(snus.id).padStart(3, '0');
         const rarity = (snus.rarity || 'common').toLowerCase().trim();
-        
+
         const boxShadow = glowActive ? `box-shadow: 0 0px 20px -8px var(--${rarity}, var(--common));` : '';
-        
-        const rarityIndicator = is2Cols 
-            ? `<span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>`
-            : `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
-        
+
+        const rarityIndicator = is2Cols ?
+            `<span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>` :
+            `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
+
+        // w-full hinzugefügt, damit das Grid richtig gefüllt wird
         htmlChunk += `
-            <div onclick="openSnusDetail(${snus.id})" class="cursor-pointer group h-full">
+            <div onclick="openSnusDetail(${snus.id})" class="cursor-pointer group h-full w-full">
                 <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] transition-all group-active:scale-95 shadow-md overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale' : ''}" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
                     
                     <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
@@ -349,52 +385,41 @@ function loadMoreDexItems() {
             </div>
         `;
     });
-    
+
     grid.insertAdjacentHTML('beforeend', htmlChunk);
     currentDexRenderCount += DEX_CHUNK_SIZE;
 }
 
-function updateLivePerformance() {
-    const collectedItems = globalSnusData.filter(snus => !!globalUserCollection[snus.id]);
-    
-    collectedItems.sort((a, b) => new Date(globalUserCollection[b.id].date) - new Date(globalUserCollection[a.id].date));
+function renderActiveCansUI() {
+    const container = document.getElementById('active-cans-list');
+    if (!container) return;
 
-    const targetCount = collectedItems.length;
-    if (currentDashboardStats.count !== targetCount) {
-        animateNumber('stat-count', currentDashboardStats.count, targetCount, 1500, "", false);
-        currentDashboardStats.count = targetCount;
-    }
-    const listEl = document.getElementById('latest-unlocks-list');
-    if(!listEl) return;
-    
-    listEl.innerHTML = '';
-    if(collectedItems.length === 0) {
-        listEl.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">Keine gefundenden Dosen.</div>';
+    container.innerHTML = '';
+
+    if (globalActiveLogs.length === 0) {
+        container.innerHTML = '<div class="flex items-center justify-between px-1 py-2"><p class="text-[13px] text-zinc-500">Keine aktiven Dosen.</p><button onclick="triggerHapticFeedback(); openScanModal()" class="flex items-center gap-1 px-3 py-1.5 bg-white/10 rounded-full text-[13px] font-medium text-white active:bg-white/20 transition-colors tracking-wide">Öffne die nächste<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg></button></div>';
         return;
     }
 
-    collectedItems.slice(0, 5).forEach(snus => {
-        const dateObj = new Date(globalUserCollection[snus.id].date);
-        const dateStr = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
-        
-        listEl.innerHTML += `
-            <div class="flex items-center justify-between p-3 border-b border-white/5 last:border-0 cursor-pointer active:bg-white/5 transition-colors" onclick="openSnusDetail(${snus.id})">
-    <div class="flex items-center gap-3 min-w-0 flex-1">
-        <div class="w-11 h-11 flex items-center justify-center flex-shrink-0">
-            <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain" onerror="this.style.display='none'">
-        </div>
-        <div class="min-w-0 flex-1">
-            <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">${snus.name}</h4>
-            <p class="text-[13px] text-[#8E8E93] font-medium mt-0.5">${dateStr}</p>
-        </div>
-    </div>
-    <div class="flex items-center gap-2 pl-4 flex-shrink-0 text-right">
-        <span class="text-[17px] font-semibold text-white tracking-tight">${snus.nicotine}mg</span>
-        <svg class="w-4 h-4 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-        </svg>
-    </div>
-</div>
+    globalActiveLogs.forEach(can => {
+        const snusName = can.snus_items ? can.snus_items.name : 'Unknown';
+        const snusImg = can.snus_items ? can.snus_items.image : '';
+
+        container.innerHTML += `
+            <div class="flex items-center justify-between bg-[#1C1C1E] border border-white/5 rounded-2xl p-3 mb-3 shadow-sm">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-10 h-10 flex items-center justify-center">
+                        <img src="${GITHUB_BASE}${snusImg}" class="h-full object-contain">
+                    </div>
+                    <div class="min-w-0">
+                        <h4 class="text-white text-[15px] font-semibold truncate">${snusName}</h4>
+                        <p class="text-[11px] text-[#8E8E93] tracking-wider">Open since ${new Date(can.opened_at).toLocaleDateString()}</p>
+                    </div>
+                </div>
+                <button onclick="triggerHapticFeedback(); this.innerText='Emptying...'; this.disabled=true; this.classList.add('opacity-50'); finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-all">
+                    Empty
+                </button>
+            </div>
         `;
     });
 }
@@ -403,42 +428,48 @@ function updateLivePerformance() {
 // 5. RATING ENGINE & MODAL LOGIK
 // ==========================================
 
-let tempRatings = { 
-    taste: 5, taste_text: '',
-    smell: 5, smell_text: '',
-    bite: 5, bite_text: '',
-    drip: 5, drip_text: '',
-    visuals: 5, visuals_text: '',
-    strength: 5, strength_text: ''
+let tempRatings = {
+    taste: 5,
+    taste_text: '',
+    smell: 5,
+    smell_text: '',
+    bite: 5,
+    bite_text: '',
+    drip: 5,
+    drip_text: '',
+    visuals: 5,
+    visuals_text: '',
+    strength: 5,
+    strength_text: ''
 };
-let currentSelectedSnusId = null; 
+let currentSelectedSnusId = null;
 
 const RATING_STEPS = ['visuals', 'smell', 'taste', 'bite', 'drip', 'strength'];
 let currentRatingStepIndex = 0;
 
 function initRatingWizard() {
     currentRatingStepIndex = 0;
-    
+
     RATING_STEPS.forEach(cat => {
         tempRatings[cat] = 5;
         tempRatings[`${cat}_text`] = '';
-        
+
         const row = document.getElementById(`row-${cat}`);
-        if(!row) return;
+        if (!row) return;
         row.innerHTML = `<div class="rating-pill" id="pill-${cat}"></div>`;
-        for(let i = 1; i <= 10; i++) {
+        for (let i = 1; i <= 10; i++) {
             const btn = document.createElement('div');
             btn.className = `rating-btn ${i === 5 ? 'active' : 'inactive'}`;
             btn.innerText = i;
             btn.onclick = () => setRating(cat, i);
             row.appendChild(btn);
         }
-        updatePill(cat, 5); 
+        updatePill(cat, 5);
         const valIndicator = row.parentElement.querySelector('.rating-val');
         if (valIndicator) valIndicator.innerText = `5/10`;
-        
+
         const textEl = document.getElementById(`text-${cat}`);
-        if(textEl) textEl.value = '';
+        if (textEl) textEl.value = '';
     });
 
     updateRatingStepUI();
@@ -456,9 +487,9 @@ function setRating(category, value) {
     triggerHapticFeedback();
 }
 
-function updatePill(cat, val) { 
+function updatePill(cat, val) {
     const pill = document.getElementById(`pill-${cat}`);
-    if(pill) pill.style.transform = `translateX(${(val - 1) * 100}%)`; 
+    if (pill) pill.style.transform = `translateX(${(val - 1) * 100}%)`;
 }
 
 function updateRatingStepUI() {
@@ -506,7 +537,7 @@ function updateRatingStepUI() {
     RATING_STEPS.forEach((step, index) => {
         const panel = document.getElementById(`step-${step}`);
         if (!panel) return;
-        
+
         panel.classList.remove('translate-x-0', 'translate-x-full', '-translate-x-full', 'opacity-0', 'opacity-100', 'z-10', 'z-0', 'pointer-events-none');
 
         if (index === currentRatingStepIndex) {
@@ -543,17 +574,38 @@ function prevRatingStep() {
     }
 }
 
-function showInfoView() { hideAllViews(); document.getElementById('modal-view-info').classList.remove('hidden'); }
-function showRatingView() { hideAllViews(); document.getElementById('modal-view-rating').classList.remove('hidden'); document.getElementById('modal-view-rating').classList.add('flex'); }
+function showInfoView() {
+    hideAllViews();
+    document.getElementById('modal-view-info').classList.remove('hidden');
+}
+
+function showRatingView() {
+    hideAllViews();
+    document.getElementById('modal-view-rating').classList.remove('hidden');
+    document.getElementById('modal-view-rating').classList.add('flex');
+}
 
 function showSavedRating() {
     hideAllViews();
     document.getElementById('modal-view-saved-rating').classList.remove('hidden');
     document.getElementById('modal-view-saved-rating').classList.add('flex');
-    let ratings = globalUserCollection[currentSelectedSnusId]?.ratings || { taste: 5, smell: 5, bite: 5, drip: 5, visuals: 5, strength: 5 };
-    
-    const escapeHTML = (str) => str ? String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])) : '';
-    
+    let ratings = globalUserCollection[currentSelectedSnusId]?.ratings || {
+        taste: 5,
+        smell: 5,
+        bite: 5,
+        drip: 5,
+        visuals: 5,
+        strength: 5
+    };
+
+    const escapeHTML = (str) => str ? String(str).replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+    } [tag])) : '';
+
     const createBar = (label, val, text) => {
         const hasText = text && String(text).trim() !== '';
         return `
@@ -563,12 +615,12 @@ function showSavedRating() {
                 ${hasText ? `<div class="bg-black/40 border border-white/10 rounded-xl p-3 text-[14px] text-white/90 italic shadow-sm mt-2 leading-relaxed">"${escapeHTML(text)}"</div>` : ''}
             </div>`;
     };
-    
-    document.getElementById('saved-rating-bars').innerHTML = 
-        createBar("Visuals", ratings.visuals, ratings.visuals_text) + 
-        createBar("Smell", ratings.smell, ratings.smell_text) + 
-        createBar("Taste", ratings.taste, ratings.taste_text) + 
-        createBar("Bite", ratings.bite, ratings.bite_text) + 
+
+    document.getElementById('saved-rating-bars').innerHTML =
+        createBar("Visuals", ratings.visuals, ratings.visuals_text) +
+        createBar("Smell", ratings.smell, ratings.smell_text) +
+        createBar("Taste", ratings.taste, ratings.taste_text) +
+        createBar("Bite", ratings.bite, ratings.bite_text) +
         createBar("Drip", ratings.drip, ratings.drip_text) +
         createBar("Strength", ratings.strength, ratings.strength_text);
 }
@@ -580,6 +632,7 @@ function hideAllViews() {
     document.getElementById('modal-view-saved-rating').classList.add('hidden');
     document.getElementById('modal-view-saved-rating').classList.remove('flex');
 }
+
 // --- Globale Variablen für das Detail-Modal-Tracking ---
 let detailStartY = 0;
 let detailCurrentY = 0;
@@ -737,14 +790,19 @@ function initDetailSwipe() {
         }
     });
 }
+
 // ==========================================
 // 6. DB INSERT (BUG GEFIXT)
 // ==========================================
 
 async function collectCurrentSnus() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const {
+        data: {
+            user
+        }
+    } = await supabaseClient.auth.getUser();
     if (!user) return;
-    
+
     const btn = document.getElementById('rating-next-btn');
     const originalHTML = btn.innerHTML;
     btn.innerHTML = `
@@ -752,7 +810,7 @@ async function collectCurrentSnus() {
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-    `; 
+    `;
     btn.disabled = true;
 
     const isUpdate = !!globalUserCollection[currentSelectedSnusId];
@@ -779,16 +837,16 @@ async function collectCurrentSnus() {
             .update(payload)
             .eq('user_id', user.id)
             .eq('snus_id', currentSelectedSnusId);
-            
+
         error = response.error;
         savedDate = globalUserCollection[currentSelectedSnusId].date;
     } else {
-        const response = await supabaseClient.from('user_collections').insert([{ 
-            user_id: user.id, 
-            snus_id: currentSelectedSnusId, 
+        const response = await supabaseClient.from('user_collections').insert([{
+            user_id: user.id,
+            snus_id: currentSelectedSnusId,
             ...payload
         }]).select().single();
-        
+
         error = response.error;
         if (response.data && response.data.collected_at) {
             savedDate = response.data.collected_at;
@@ -796,20 +854,28 @@ async function collectCurrentSnus() {
     }
 
     if (!error) {
-        globalUserCollection[currentSelectedSnusId] = { date: savedDate, ratings: { ...tempRatings } };
-        
+        globalUserCollection[currentSelectedSnusId] = {
+            date: savedDate,
+            ratings: {
+                ...tempRatings
+            }
+        };
+
         if (!isUpdate) {
             await startNewCan(currentSelectedSnusId);
-            await loadUserStats(user.id); 
-            updateLivePerformance(); 
+            await loadUserStats(user.id);
+            updateLivePerformance();
         }
         renderDexGrid(globalSnusData);
         closeSnusDetail();
     } else {
         alert("Fehler beim Speichern: " + error.message);
     }
-    
-    setTimeout(() => { btn.innerHTML = originalHTML; btn.disabled = false; }, 500);
+
+    setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+    }, 500);
 }
 
 function editRating() {
@@ -848,7 +914,10 @@ async function adminAddSnus() {
     // Flavors formatieren (Komma-getrennt zu Array)
     const flavorArray = flavorsRaw ? flavorsRaw.split(',').map(s => s.trim()).filter(s => s) : [];
 
-    const { data, error } = await supabaseClient.from('snus_items').insert([{
+    const {
+        data,
+        error
+    } = await supabaseClient.from('snus_items').insert([{
         name: name,
         nicotine: parseInt(nicotine),
         rarity: rarity,
@@ -877,11 +946,16 @@ async function adminAddSnus() {
 // ==========================================
 
 async function loadUserStats(userId) {
-    const { count } = await supabaseClient.from('user_collections').select('*', { count: 'exact', head: true }).eq('user_id', userId);
+    const {
+        count
+    } = await supabaseClient.from('user_collections').select('*', {
+        count: 'exact',
+        head: true
+    }).eq('user_id', userId);
     const scoreEl = document.getElementById('score');
     const pouchEl = document.getElementById('pouch-count');
-    if(scoreEl) scoreEl.innerText = count * 100;
-    if(pouchEl) pouchEl.innerText = count || 0;
+    if (scoreEl) scoreEl.innerText = count * 100;
+    if (pouchEl) pouchEl.innerText = count || 0;
 }
 
 function filterDex() {
@@ -893,9 +967,9 @@ function setupProfile(user) {
     const emailEl = document.getElementById('profile-email');
     const initialsEl = document.getElementById('user-initials');
     const adminEl = document.getElementById('admin-panel');
-    
-    if(emailEl) emailEl.innerText = user.email; 
-    if(initialsEl) initialsEl.innerText = user.email[0].toUpperCase();
+
+    if (emailEl) emailEl.innerText = user.email;
+    if (initialsEl) initialsEl.innerText = user.email[0].toUpperCase();
     if (user.email === 'tarayannorman@gmail.com' && adminEl) {
         adminEl.classList.remove('hidden');
     }
@@ -907,14 +981,21 @@ function triggerHapticFeedback() {
     else if (navigator.vibrate) navigator.vibrate(15);
 }
 
-function switchTabWrapper(tabId) { triggerHapticFeedback(); switchTab(tabId); }
+function switchTabWrapper(tabId) {
+    triggerHapticFeedback();
+    switchTab(tabId);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const cols = localStorage.getItem('dexColumns') || '3';
     const grid = document.getElementById('dex-grid');
     if (grid) {
-        grid.classList.remove('grid-cols-2', 'grid-cols-3');
-        grid.classList.add(cols === '2' ? 'grid-cols-2' : 'grid-cols-3');
+        grid.className = "grid gap-3";
+        if (cols === '2') {
+            grid.classList.add('grid-cols-2');
+        } else {
+            grid.classList.add('grid-cols-3');
+        }
     }
     checkUser();
 });
@@ -924,7 +1005,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 
 async function loadTopSnusOfWeek() {
-    const { data, error } = await supabaseClient.rpc('get_social_stats');
+    const {
+        data,
+        error
+    } = await supabaseClient.rpc('get_social_stats');
 
     const container = document.getElementById('top-snus-container');
     if (!container) return;
@@ -943,18 +1027,21 @@ async function loadTopSnusOfWeek() {
         return;
     }
 
-    const { top_rated, most_popular_today } = data;
+    const {
+        top_rated,
+        most_popular_today
+    } = data;
 
     // Render Top Rated card
     if (top_rated && top_rated.snus_id) {
         const snusInfo = globalSnusData.find(s => s.id == top_rated.snus_id);
         if (snusInfo) {
             const ratings = {
-                visuals:  (top_rated.avg_ratings.visuals || 0).toFixed(1),
-                smell:    (top_rated.avg_ratings.smell || 0).toFixed(1),
-                taste:    (top_rated.avg_ratings.taste || 0).toFixed(1),
-                bite:     (top_rated.avg_ratings.bite || 0).toFixed(1),
-                drip:     (top_rated.avg_ratings.drip || 0).toFixed(1),
+                visuals: (top_rated.avg_ratings.visuals || 0).toFixed(1),
+                smell: (top_rated.avg_ratings.smell || 0).toFixed(1),
+                taste: (top_rated.avg_ratings.taste || 0).toFixed(1),
+                bite: (top_rated.avg_ratings.bite || 0).toFixed(1),
+                drip: (top_rated.avg_ratings.drip || 0).toFixed(1),
                 strength: (top_rated.avg_ratings.strength || 0).toFixed(1),
             };
             const overall = (top_rated.avg_score || 0).toFixed(1);
@@ -962,27 +1049,34 @@ async function loadTopSnusOfWeek() {
             container.innerHTML += renderSocialCard("Top Rated Snus 🏆", snusInfo, ratings, overall, count, 'Ratings');
         }
     }
-    
+
     // Render Most Popular Today card
     if (most_popular_today && most_popular_today.snus_id) {
         const snusInfo = globalSnusData.find(s => s.id == most_popular_today.snus_id);
         if (snusInfo) {
             let popOverall = 'N/A';
-            let popAvgRatings = { taste: 'N/A', smell: 'N/A', bite: 'N/A', drip: 'N/A', visuals: 'N/A', strength: 'N/A' };
-            
+            let popAvgRatings = {
+                taste: 'N/A',
+                smell: 'N/A',
+                bite: 'N/A',
+                drip: 'N/A',
+                visuals: 'N/A',
+                strength: 'N/A'
+            };
+
             // Check if there are any ratings for the most popular snus
             if (most_popular_today.rating_count && most_popular_today.rating_count > 0) {
                 popAvgRatings = {
-                    visuals:  (most_popular_today.avg_ratings.visuals || 0).toFixed(1),
-                    smell:    (most_popular_today.avg_ratings.smell || 0).toFixed(1),
-                    taste:    (most_popular_today.avg_ratings.taste || 0).toFixed(1),
-                    bite:     (most_popular_today.avg_ratings.bite || 0).toFixed(1),
-                    drip:     (most_popular_today.avg_ratings.drip || 0).toFixed(1),
+                    visuals: (most_popular_today.avg_ratings.visuals || 0).toFixed(1),
+                    smell: (most_popular_today.avg_ratings.smell || 0).toFixed(1),
+                    taste: (most_popular_today.avg_ratings.taste || 0).toFixed(1),
+                    bite: (most_popular_today.avg_ratings.bite || 0).toFixed(1),
+                    drip: (most_popular_today.avg_ratings.drip || 0).toFixed(1),
                     strength: (most_popular_today.avg_ratings.strength || 0).toFixed(1),
                 };
                 popOverall = (most_popular_today.avg_score || 0).toFixed(1);
             }
-            
+
             container.innerHTML += renderSocialCard("Most Popular Today 🔍", snusInfo, popAvgRatings, popOverall, most_popular_today.scan_count, 'Scans');
         }
     }
@@ -995,18 +1089,18 @@ async function loadTopSnusOfWeek() {
 
 function getScoreColor(score) {
     const val = parseFloat(score);
-    if (val <= 3.9) return 'text-[#FF3B30]'; 
-    if (val <= 6.9) return 'text-[#FFCC00]'; 
-    if (val <= 8.9) return 'text-[#34C759]'; 
-    return 'text-[#32ADE6]'; 
+    if (val <= 3.9) return 'text-[#FF3B30]';
+    if (val <= 6.9) return 'text-[#FFCC00]';
+    if (val <= 8.9) return 'text-[#34C759]';
+    return 'text-[#32ADE6]';
 }
 
 function getScoreRingColor(score) {
     const val = parseFloat(score);
-    if (val <= 3.9) return 'border-[#FF3B30]/40'; 
-    if (val <= 6.9) return 'border-[#FFCC00]/40'; 
-    if (val <= 8.9) return 'border-[#34C759]/40'; 
-    return 'border-[#32ADE6]/40'; 
+    if (val <= 3.9) return 'border-[#FF3B30]/40';
+    if (val <= 6.9) return 'border-[#FFCC00]/40';
+    if (val <= 8.9) return 'border-[#34C759]/40';
+    return 'border-[#32ADE6]/40';
 }
 
 function renderSocialCard(title, snus, ratings, overall, count, countLabel = 'Scans') {
@@ -1078,10 +1172,17 @@ async function searchUsersConnections() {
     resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">Searching...</div>';
 
     userSearchTimeout = setTimeout(async () => {
-        const { data: { user } } = await supabaseClient.auth.getUser();
+        const {
+            data: {
+                user
+            }
+        } = await supabaseClient.auth.getUser();
         if (!user) return;
 
-        const { data: profiles, error: pError } = await supabaseClient
+        const {
+            data: profiles,
+            error: pError
+        } = await supabaseClient
             .from('profiles')
             .select('id, username, avatar_url, xp')
             .ilike('username', `%${query}%`)
@@ -1093,28 +1194,30 @@ async function searchUsersConnections() {
             return;
         }
 
-        const { data: follows } = await supabaseClient
+        const {
+            data: follows
+        } = await supabaseClient
             .from('connections')
             .select('following_id')
             .eq('follower_id', user.id)
             .in('following_id', profiles.map(p => p.id));
-        
+
         const followingSet = new Set(follows?.map(f => f.following_id) || []);
-        
+
         resultsContainer.innerHTML = '';
         profiles.forEach(profile => {
             const isFollowing = followingSet.has(profile.id);
-            const btnIcon = isFollowing 
-                ? `<svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>` 
-                : `<svg class="w-5 h-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>`;
-            const btnClass = isFollowing
-                ? `bg-black border border-white/20 active:bg-white/10`
-                : `bg-white active:bg-zinc-200`;
-            
+            const btnIcon = isFollowing ?
+                `<svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>` :
+                `<svg class="w-5 h-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>`;
+            const btnClass = isFollowing ?
+                `bg-black border border-white/20 active:bg-white/10` :
+                `bg-white active:bg-zinc-200`;
+
             const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=random`;
             const xp = profile.xp || 0;
             const level = Math.floor(xp / 300) + 1;
-            
+
             resultsContainer.innerHTML += `
                 <div class="flex items-center justify-between p-3 bg-[#2C2C2E] rounded-[16px] border border-white/5 shadow-sm">
                     <div class="flex items-center gap-3">
@@ -1134,40 +1237,49 @@ async function searchUsersConnections() {
 }
 
 async function toggleFollow(targetId, btnElement) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const {
+        data: {
+            user
+        }
+    } = await supabaseClient.auth.getUser();
     if (!user) return;
-    
+
     const isFollowing = btnElement.getAttribute('data-following') === 'true';
     btnElement.disabled = true;
-    
+
     if (isFollowing) {
-        const { error } = await supabaseClient
+        const {
+            error
+        } = await supabaseClient
             .from('connections')
             .delete()
             .eq('follower_id', user.id)
             .eq('following_id', targetId);
-        
+
         if (!error) {
             btnElement.setAttribute('data-following', 'false');
             btnElement.className = "w-10 h-10 rounded-full flex items-center justify-center transition-all bg-white active:bg-zinc-200";
             btnElement.innerHTML = `<svg class="w-5 h-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>`;
         }
     } else {
-        const { error } = await supabaseClient
+        const {
+            error
+        } = await supabaseClient
             .from('connections')
-            .insert([{ follower_id: user.id, following_id: targetId }]);
-        
+            .insert([{
+                follower_id: user.id,
+                following_id: targetId
+            }]);
+
         if (!error) {
             btnElement.setAttribute('data-following', 'true');
             btnElement.className = "w-10 h-10 rounded-full flex items-center justify-center transition-all bg-black border border-white/20 active:bg-white/10";
             btnElement.innerHTML = `<svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>`;
         }
     }
-    
+
     btnElement.disabled = false;
-    
-    // Refresh the main lists in the background so they are correct
-    // when the user clears the search.
+
     const connectionsPage = document.getElementById('connections-page');
     if (connectionsPage && !connectionsPage.classList.contains('hidden')) {
         loadConnectionsData();
@@ -1212,7 +1324,11 @@ function closeConnectionsPage() {
 }
 
 async function loadConnectionsData() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const {
+        data: {
+            user
+        }
+    } = await supabaseClient.auth.getUser();
     if (!user) return;
 
     const followersList = document.getElementById('followers-list');
@@ -1222,7 +1338,10 @@ async function loadConnectionsData() {
     followingList.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] py-2">Loading...</div>';
 
     // Load Followers
-    const { data: followers, error: followersError } = await supabaseClient
+    const {
+        data: followers,
+        error: followersError
+    } = await supabaseClient
         .from('connections')
         .select('profiles:profiles!follower_id(id, username, avatar_url, xp)')
         .eq('following_id', user.id);
@@ -1238,7 +1357,10 @@ async function loadConnectionsData() {
     }
 
     // Load Following
-    const { data: following, error: followingError } = await supabaseClient
+    const {
+        data: following,
+        error: followingError
+    } = await supabaseClient
         .from('connections')
         .select('profiles:profiles!following_id(id, username, avatar_url, xp)')
         .eq('follower_id', user.id);
@@ -1275,7 +1397,6 @@ function renderConnectionItem(profile) {
     `;
 }
 
-// Swipe to close for connections page
 document.addEventListener('DOMContentLoaded', () => {
     const connectionsPage = document.getElementById('connections-page');
     if (!connectionsPage) return;
@@ -1288,7 +1409,9 @@ document.addEventListener('DOMContentLoaded', () => {
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         isSwiping = false;
-    }, { passive: true });
+    }, {
+        passive: true
+    });
 
     connectionsPage.addEventListener('touchmove', (e) => {
         if (!touchStartX || !touchStartY) return;
@@ -1299,22 +1422,35 @@ document.addEventListener('DOMContentLoaded', () => {
         let diffX = touchCurrentX - touchStartX;
         let diffY = Math.abs(touchCurrentY - touchStartY);
 
-        if (diffY > Math.abs(diffX)) { return; }
+        if (diffY > Math.abs(diffX)) {
+            return;
+        }
 
         if (diffX > 0) {
             isSwiping = true;
             connectionsPage.style.transition = 'none';
             connectionsPage.style.transform = `translateX(${diffX}px)`;
         }
-    }, { passive: true });
+    }, {
+        passive: true
+    });
 
     connectionsPage.addEventListener('touchend', (e) => {
         if (!isSwiping) return;
         let diffX = e.changedTouches[0].clientX - touchStartX;
         connectionsPage.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
-        if (diffX > window.innerWidth / 3 || diffX > 100) { closeConnectionsPage(); } else { connectionsPage.style.transform = 'translateX(0)'; }
-        setTimeout(() => { connectionsPage.style.transform = ''; connectionsPage.style.transition = ''; }, 300);
-        touchStartX = 0; touchStartY = 0; isSwiping = false;
+        if (diffX > window.innerWidth / 3 || diffX > 100) {
+            closeConnectionsPage();
+        } else {
+            connectionsPage.style.transform = 'translateX(0)';
+        }
+        setTimeout(() => {
+            connectionsPage.style.transform = '';
+            connectionsPage.style.transition = '';
+        }, 300);
+        touchStartX = 0;
+        touchStartY = 0;
+        isSwiping = false;
     });
 });
 
@@ -1324,20 +1460,26 @@ document.addEventListener('DOMContentLoaded', () => {
 let globalActiveLogs = []; // Array für alle aktuell offenen Dosen
 
 async function startNewCan(snusId) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const {
+        data: {
+            user
+        }
+    } = await supabaseClient.auth.getUser();
     if (!user) return false;
 
     // mg_per_gram aus dem globalen Dex ziehen
     const snus = globalSnusData.find(s => s.id == snusId);
     const mgVal = snus ? snus.nicotine : 0;
 
-    const { error } = await supabaseClient
+    const {
+        error
+    } = await supabaseClient
         .from('usage_logs')
-        .insert([{ 
-            user_id: user.id, 
-            snus_id: snusId, 
+        .insert([{
+            user_id: user.id,
+            snus_id: snusId,
             mg_per_gram: mgVal,
-            is_active: true 
+            is_active: true
         }]);
 
     if (!error) {
@@ -1359,35 +1501,50 @@ async function startNewCanFromModal() {
 
     // Button visuell blockieren, damit der User nicht 5x klickt
     const btn = document.getElementById('open-can-btn');
-    if (btn) { btn.innerText = "Processing..."; btn.disabled = true; }
+    if (btn) {
+        btn.innerText = "Processing...";
+        btn.disabled = true;
+    }
 
     const success = await startNewCan(currentSelectedSnusId);
 
     if (success) {
         closeSnusDetail();
         // Wir wechseln automatisch zum Home/Wallet-Tab, damit der User seine neue Dose sieht!
-        switchTab('home'); 
+        switchTab('home');
     } else {
         alert("Fehler beim Öffnen. Hast du das SQL-Update (mg_per_gram) in Supabase ausgeführt?");
     }
 
-    if (btn) { btn.innerText = "Open New Can"; btn.disabled = false; }
+    if (btn) {
+        btn.innerText = "Open New Can";
+        btn.disabled = false;
+    }
 }
 
 // Zentrale Lade-Funktion für alles, was mit Konsum zu tun hat
 async function loadUsageData() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const {
+        data: {
+            user
+        }
+    } = await supabaseClient.auth.getUser();
     if (!user) return;
 
-    const { data: logs, error } = await supabaseClient
+    const {
+        data: logs,
+        error
+    } = await supabaseClient
         .from('usage_logs')
         .select('*, snus_items(name, image)')
         .eq('user_id', user.id)
-        .order('opened_at', { ascending: false });
+        .order('opened_at', {
+            ascending: false
+        });
 
     if (!error && logs) {
         globalActiveLogs = logs.filter(l => l.is_active === true);
-        
+
         renderActiveCansUI();
         calculateUsageStats(logs);
     }
@@ -1395,12 +1552,14 @@ async function loadUsageData() {
 
 async function finishSpecificCan(logId) {
     triggerHapticFeedback();
-    
-    const { error } = await supabaseClient
+
+    const {
+        error
+    } = await supabaseClient
         .from('usage_logs')
-        .update({ 
-            finished_at: new Date().toISOString(), 
-            is_active: false 
+        .update({
+            finished_at: new Date().toISOString(),
+            is_active: false
         })
         .eq('id', logId);
 
@@ -1445,13 +1604,13 @@ function renderActiveCansUI() {
 
 function calculateUsageStats(allLogs) {
     const finishedCans = allLogs.filter(log => !log.is_active && log.finished_at);
-    
+
     // Fallback, wenn noch keine Dose leer ist
     if (finishedCans.length === 0) {
         if (currentDashboardStats.flow !== 0) animateNumber('stat-flow', currentDashboardStats.flow, 0, 1500, " MG", false);
         if (currentDashboardStats.avgPouches !== 0) animateNumber('stat-avg-pouches', currentDashboardStats.avgPouches, 0, 1500, "", true);
         if (currentDashboardStats.avgMg !== 0) animateNumber('stat-avg-mg', currentDashboardStats.avgMg, 0, 1500, " MG", false);
-        
+
         currentDashboardStats.flow = 0;
         currentDashboardStats.avgPouches = 0;
         currentDashboardStats.avgMg = 0;
@@ -1464,29 +1623,27 @@ function calculateUsageStats(allLogs) {
     finishedCans.forEach(can => {
         const mgPerPouch = (can.mg_per_gram || 0) / 2;
         const mgPerCan = mgPerPouch * (can.pouches_per_can || 20);
-        
+
         totalMgHistory += mgPerCan;
         totalPouchesHistory += (can.pouches_per_can || 20);
     });
 
-    const firstEverLog = finishedCans[finishedCans.length - 1]; 
+    const firstEverLog = finishedCans[finishedCans.length - 1];
     const startDate = new Date(firstEverLog.opened_at);
     const today = new Date();
-    
+
     let totalDaysSpan = (today - startDate) / (1000 * 60 * 60 * 24);
     if (totalDaysSpan < 1) totalDaysSpan = 1;
 
-    // Werte berechnen (als echte Zahlen, nicht .toFixed() Strings)
     const avgMgPerDay = totalMgHistory / totalDaysSpan;
     const avgPouchesPerDay = totalPouchesHistory / totalDaysSpan;
 
-    // Animationen triggern, falls sich der Wert geändert hat
     if (currentDashboardStats.flow !== totalMgHistory) {
         animateNumber('stat-flow', currentDashboardStats.flow, totalMgHistory, 1500, " MG", false);
         currentDashboardStats.flow = totalMgHistory;
     }
     if (currentDashboardStats.avgPouches !== avgPouchesPerDay) {
-        animateNumber('stat-avg-pouches', currentDashboardStats.avgPouches, avgPouchesPerDay, 1500, "", true); // isFloat = true
+        animateNumber('stat-avg-pouches', currentDashboardStats.avgPouches, avgPouchesPerDay, 1500, "", true);
         currentDashboardStats.avgPouches = avgPouchesPerDay;
     }
     if (currentDashboardStats.avgMg !== avgMgPerDay) {
@@ -1494,11 +1651,6 @@ function calculateUsageStats(allLogs) {
         currentDashboardStats.avgMg = avgMgPerDay;
     }
 }
-
-
-
-
-
 
 
 
@@ -1514,15 +1666,17 @@ const scanModalBackdrop = document.getElementById('scan-modal-backdrop');
 if (scanModal) {
     scanModal.addEventListener('touchmove', (e) => {
         if (!isScanDragging) {
-            e.preventDefault(); 
+            e.preventDefault();
         }
-    }, { passive: false });
+    }, {
+        passive: false
+    });
 }
 
 
 async function openScanModal() {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
-    
+
     isProcessingScan = false;
     scanModal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
@@ -1530,14 +1684,14 @@ async function openScanModal() {
     setTimeout(() => {
         scanModalBackdrop.classList.remove('opacity-0');
         scanModalBackdrop.classList.add('opacity-100');
-        
+
         scanModalCard.classList.remove('translate-y-full');
         scanModalCard.classList.add('translate-y-0');
     }, 10);
 
     setTimeout(() => {
         const loadingBar = document.getElementById('loading-bar-fill');
-        
+
         if (loadingBar) {
             loadingBar.style.transition = 'width 750ms cubic-bezier(0.4, 0, 0.2, 1)';
             loadingBar.style.width = '100%';
@@ -1550,9 +1704,9 @@ async function openScanModal() {
                 html5QrCode = new Html5Qrcode("scanner-reader");
             }
 
-            await html5QrCode.start(
-                { facingMode: "environment" },
-                {
+            await html5QrCode.start({
+                    facingMode: "environment"
+                }, {
                     fps: 60,
                 },
                 (decodedText, decodedResult) => {
@@ -1571,12 +1725,11 @@ async function openScanModal() {
                         }
                     }, 400);
                 },
-                (errorMessage) => {
-                }
+                (errorMessage) => {}
             );
-            
+
             document.getElementById('camera-loading').classList.add('opacity-0', 'pointer-events-none');
-            
+
             const scannerReader = document.getElementById('scanner-reader');
             if (scannerReader) {
                 scannerReader.classList.remove('opacity-0');
@@ -1596,26 +1749,26 @@ async function openScanModal() {
 function closeScanModal(isDragging = false) {
     scanModalCard.classList.remove('translate-y-0');
     scanModalCard.classList.add('translate-y-full');
-    
+
     scanModalBackdrop.classList.remove('opacity-100');
     scanModalBackdrop.classList.add('opacity-0');
 
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
     if (!isDragging) {
-        scanModalCard.style.transform = ''; 
-        scanModalCard.style.transition = ''; 
+        scanModalCard.style.transform = '';
+        scanModalCard.style.transition = '';
     }
 
     setTimeout(async () => {
         scanModal.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
-        
+
         if (isDragging) {
             scanModalCard.style.transform = '';
-            scanModalCard.style.transition = ''; 
+            scanModalCard.style.transition = '';
         }
-        
+
         if (html5QrCode) {
             try {
                 await html5QrCode.stop();
@@ -1629,9 +1782,9 @@ function closeScanModal(isDragging = false) {
         const loadingBar = document.getElementById('loading-bar-fill');
 
         if (loadingScreen) loadingScreen.classList.remove('opacity-0', 'pointer-events-none');
-        
+
         if (loadingBar) {
-            loadingBar.style.transition = 'none'; 
+            loadingBar.style.transition = 'none';
             loadingBar.style.width = '0%';
         }
 
@@ -1640,7 +1793,7 @@ function closeScanModal(isDragging = false) {
             scannerReader.classList.remove('opacity-100');
             scannerReader.classList.add('opacity-0');
         }
-        
+
     }, 400);
 }
 
@@ -1653,7 +1806,9 @@ if (scanModalCard) {
         scanStartY = e.touches[0].clientY;
         isScanDragging = true;
         scanModalCard.style.transition = 'none';
-    }, { passive: true });
+    }, {
+        passive: true
+    });
 
     scanModalCard.addEventListener('touchmove', (e) => {
         if (!isScanDragging) return;
@@ -1663,7 +1818,9 @@ if (scanModalCard) {
         if (deltaY > 0) {
             scanModalCard.style.transform = `translateY(${deltaY}px)`;
         }
-    }, { passive: true });
+    }, {
+        passive: true
+    });
 
     scanModalCard.addEventListener('touchend', (e) => {
         if (!isScanDragging) return;
@@ -1674,7 +1831,7 @@ if (scanModalCard) {
 
         if (deltaY > 100) {
             scanModalCard.style.transform = 'translateY(100%)';
-            closeScanModal(true); 
+            closeScanModal(true);
         } else {
             scanModalCard.style.transform = 'translateY(0px)';
             setTimeout(() => {
@@ -1731,7 +1888,7 @@ function openSettingsSubpage(type) {
     const subpage = document.getElementById('settings-subpage');
     const titleObj = document.getElementById('subpage-title');
     const contentObj = document.getElementById('subpage-content');
-    
+
     titleObj.innerText = type;
     let html = '';
 
@@ -1740,11 +1897,9 @@ function openSettingsSubpage(type) {
             <div class="flex flex-col items-center mb-8 mt-2">
                 <div class="relative">
                     <input type="file" id="profile-image-upload" accept="image/*" class="hidden" onchange="previewProfileImage(event)">
-                    
                     <div class="w-24 h-24 rounded-full flex-shrink-0 shadow-lg border-2 border-white/5 overflow-hidden bg-zinc-800">
                         <img id="edit-profile-image-preview" src="https://i.pravatar.cc/150?img=11" alt="Profilbild" class="w-full h-full object-cover">
                     </div>
-                    
                     <button onclick="triggerHapticFeedback(); document.getElementById('profile-image-upload').click()" class="absolute bottom-0 right-0 w-8 h-8 bg-[#1C1C1E] border border-white/20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform z-10">
                         <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -1765,15 +1920,7 @@ function openSettingsSubpage(type) {
                     <input type="email" id="edit-email" value="user@example.com" disabled class="w-full bg-black/50 text-[#8E8E93] border border-white/5 rounded-[14px] px-4 py-3.5 text-[17px] outline-none cursor-not-allowed">
                 </div>
                 
-                <input 
-                    type="date" 
-                    id="edit-dob" 
-                    value="2000-01-01"
-                    min="1900-01-01"
-                    max="2099-12-31"
-                    oninput="limitDateInput(this)"
-                    class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all appearance-none"
-                />
+                <input type="date" id="edit-dob" value="2000-01-01" min="1900-01-01" max="2099-12-31" oninput="limitDateInput(this)" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all appearance-none" />
                 
                 <div class="flex flex-col gap-1.5 w-full">
                     <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Location</label>
@@ -1785,8 +1932,7 @@ function openSettingsSubpage(type) {
                 <span>Save Changes</span>
             </button>
         `;
-    } 
-    else if (type === 'Notifications') {
+    } else if (type === 'Notifications') {
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex items-center justify-between p-5">
@@ -1805,8 +1951,7 @@ function openSettingsSubpage(type) {
                 </div>
             </div>
         `;
-    }
-    else if (type === 'Privacy & Security') {
+    } else if (type === 'Privacy & Security') {
         html = `
             <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">Profile Visibility</p>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 mb-8">
@@ -1823,8 +1968,7 @@ function openSettingsSubpage(type) {
                 </div>
             </div>
         `;
-    }
-    else if (type === 'Language') {
+    } else if (type === 'Language') {
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div onclick="triggerHapticFeedback()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
@@ -1841,41 +1985,39 @@ function openSettingsSubpage(type) {
                 </div>
             </div>
         `;
-    }
-    else if (type === 'Darstellung') {
+    } else if (type === 'Darstellung') {
         const cols = localStorage.getItem('dexColumns') || '3';
         const is2Cols = cols === '2';
-        
+
         const toggleBg = is2Cols ? 'bg-white' : 'bg-[#3A3A3C]';
         const handleTransform = is2Cols ? 'translate-x-5' : '';
         const handleBg = is2Cols ? 'bg-black' : 'bg-white';
-        
+
         const glow = localStorage.getItem('dexGlow') === 'true';
         const glowToggleBg = glow ? 'bg-white' : 'bg-[#3A3A3C]';
         const glowHandleTransform = glow ? 'translate-x-5' : '';
         const glowHandleBg = glow ? 'bg-black' : 'bg-white';
-        
+
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex items-center justify-between p-5">
-                        <div class="flex flex-col pr-4">
+                    <div class="flex flex-col pr-4">
                         <span class="text-white text-[17px]">Große Kacheln</span>
                         <span class="text-[#8E8E93] text-[13px] mt-0.5">Zeigt 2 statt 3 Spalten im Dex an</span>
                     </div>
-                        <div onclick="triggerHapticFeedback(); toggleGridColumns(this)" class="w-12 h-7 ${toggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${handleBg} rounded-full transition-transform duration-300 ${handleTransform} shadow-sm"></div></div>
+                    <div onclick="triggerHapticFeedback(); toggleGridColumns(this)" class="w-12 h-7 ${toggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${handleBg} rounded-full transition-transform duration-300 ${handleTransform} shadow-sm"></div></div>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
                 <div class="flex items-center justify-between p-5">
-                        <div class="flex flex-col pr-4">
+                    <div class="flex flex-col pr-4">
                         <span class="text-white text-[17px]">Kachel Glow</span>
                         <span class="text-[#8E8E93] text-[13px] mt-0.5">Farbiger Hintergrund-Glow der Seltenheit</span>
                     </div>
-                        <div onclick="triggerHapticFeedback(); toggleGridGlow(this)" class="w-12 h-7 ${glowToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${glowHandleBg} rounded-full transition-transform duration-300 ${glowHandleTransform} shadow-sm"></div></div>
+                    <div onclick="triggerHapticFeedback(); toggleGridGlow(this)" class="w-12 h-7 ${glowToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${glowHandleBg} rounded-full transition-transform duration-300 ${glowHandleTransform} shadow-sm"></div></div>
                 </div>
             </div>
         `;
-    }
-    else if (type === 'Help Center & FAQ') {
+    } else if (type === 'Help Center & FAQ') {
         html = `
             <div class="space-y-4">
                 <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
@@ -1902,8 +2044,7 @@ function openSettingsSubpage(type) {
                 </div>
             </div>
         `;
-    }
-    else if (type === 'Delete Account') {
+    } else if (type === 'Delete Account') {
         html = `
             <div class="text-center mt-6 mb-8">
                 <div class="w-16 h-16 bg-[#FF3B30]/10 border border-[#FF3B30]/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1924,7 +2065,7 @@ function openSettingsSubpage(type) {
     contentObj.innerHTML = html;
 
     subpage.classList.remove('hidden');
-    
+
     document.body.classList.add('overflow-hidden');
 
     setTimeout(() => {
@@ -1936,16 +2077,16 @@ function openSettingsSubpage(type) {
 function closeSettingsSubpage() {
     const subpage = document.getElementById('settings-subpage');
     if (!subpage) return;
-    
+
     subpage.style.transform = '';
     subpage.style.transition = '';
-    
+
     subpage.classList.remove('translate-x-0');
     subpage.classList.add('translate-x-full');
-    
+
     setTimeout(() => {
         subpage.classList.add('hidden');
-        
+
         document.body.classList.remove('overflow-hidden');
     }, 300);
 }
@@ -1962,7 +2103,9 @@ document.addEventListener('DOMContentLoaded', () => {
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         isSwiping = false;
-    }, { passive: true });
+    }, {
+        passive: true
+    });
 
     settingsSubpage.addEventListener('touchmove', (e) => {
         if (!touchStartX || !touchStartY) return;
@@ -1974,7 +2117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let diffY = Math.abs(touchCurrentY - touchStartY);
 
         if (diffY > Math.abs(diffX)) {
-            return; 
+            return;
         }
 
         if (diffX > 0) {
@@ -1982,7 +2125,9 @@ document.addEventListener('DOMContentLoaded', () => {
             settingsSubpage.style.transition = 'none';
             settingsSubpage.style.transform = `translateX(${diffX}px)`;
         }
-    }, { passive: true });
+    }, {
+        passive: true
+    });
 
     settingsSubpage.addEventListener('touchend', (e) => {
         if (!isSwiping) return;
@@ -1997,7 +2142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             settingsSubpage.style.transform = 'translateX(0)';
         }
-        
+
         setTimeout(() => {
             settingsSubpage.style.transform = '';
             settingsSubpage.style.transition = '';
@@ -2020,7 +2165,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!splashScreen.classList.contains('opacity-0')) {
             splashScreen.classList.remove('opacity-100');
             splashScreen.classList.add('opacity-0');
-            
+
             if (splashSound) {
                 const fadeAudio = setInterval(() => {
                     if (splashSound.volume > 0.1) {
@@ -2031,10 +2176,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }, 50);
             }
-            
+
             setTimeout(() => {
                 splashScreen.classList.add('hidden');
-            }, 500); 
+            }, 500);
         }
     }
 
@@ -2058,26 +2203,31 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 
 async function loadUserStats(userId) {
-    const { count } = await supabaseClient.from('user_collections').select('*', { count: 'exact', head: true }).eq('user_id', userId);
-    
+    const {
+        count
+    } = await supabaseClient.from('user_collections').select('*', {
+        count: 'exact',
+        head: true
+    }).eq('user_id', userId);
+
     const xp = (count || 0) * 100;
-    const level = Math.floor(xp / 300) + 1; 
+    const level = Math.floor(xp / 300) + 1;
 
     const scoreEl = document.getElementById('score');
     const homeLevelEl = document.getElementById('home-level');
-    
-    if(scoreEl) {
+
+    if (scoreEl) {
         scoreEl.innerHTML = `${xp} <span class="text-[20px] text-white/50 font-medium">XP</span>`;
     }
-    if(homeLevelEl) {
+    if (homeLevelEl) {
         homeLevelEl.innerText = `LVL ${level}`;
     }
 
     const profileXpEl = document.getElementById('profile-xp');
     const profileLevelEl = document.getElementById('profile-level');
 
-    if(profileXpEl) profileXpEl.innerText = `${xp} XP`;
-    if(profileLevelEl) profileLevelEl.innerText = `Lvl ${level}`;
+    if (profileXpEl) profileXpEl.innerText = `${xp} XP`;
+    if (profileLevelEl) profileLevelEl.innerText = `Lvl ${level}`;
 }
 
 function filterDex() {
@@ -2089,8 +2239,8 @@ function setupProfile(user) {
     const emailEl = document.getElementById('profile-email');
     const idEl = document.getElementById('profile-id');
     const adminEl = document.getElementById('admin-panel');
-    if(emailEl) emailEl.innerText = user.email; 
-    if(idEl) {
+    if (emailEl) emailEl.innerText = user.email;
+    if (idEl) {
         const shortId = user.id.split('-')[0].toUpperCase();
         idEl.innerText = `ID #${shortId}`;
     }
@@ -2114,7 +2264,7 @@ function previewProfileImage(event) {
 
 function handleProfileSave(btn) {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
-    
+
     btn.disabled = true;
     btn.innerHTML = `
         <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -2126,7 +2276,7 @@ function handleProfileSave(btn) {
 
     setTimeout(() => {
         if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
-        
+
         btn.classList.remove('bg-white', 'text-black');
         btn.classList.add('bg-[#34C759]', 'text-white');
         btn.innerHTML = `
@@ -2142,32 +2292,37 @@ function handleProfileSave(btn) {
             btn.classList.add('bg-white', 'text-black');
             btn.innerHTML = `<span>Save Changes</span>`;
         }, 2000);
-        
+
     }, 500);
 }
 
 let displayedXp = null;
-let actualXp = null; 
+let actualXp = null;
 
 async function loadUserStats(userId) {
-    const { count } = await supabaseClient.from('user_collections').select('*', { count: 'exact', head: true }).eq('user_id', userId);
-    
-    const xp = (count || 0) * 100;
-    const level = Math.floor(xp / 300) + 1; 
+    const {
+        count
+    } = await supabaseClient.from('user_collections').select('*', {
+        count: 'exact',
+        head: true
+    }).eq('user_id', userId);
 
-    actualXp = xp; 
+    const xp = (count || 0) * 100;
+    const level = Math.floor(xp / 300) + 1;
+
+    actualXp = xp;
 
     const profileXpEl = document.getElementById('profile-xp');
     const profileLevelEl = document.getElementById('profile-level');
-    if(profileXpEl) profileXpEl.innerText = `${xp} XP`;
-    if(profileLevelEl) profileLevelEl.innerText = `Lvl ${level}`;
+    if (profileXpEl) profileXpEl.innerText = `${xp} XP`;
+    if (profileLevelEl) profileLevelEl.innerText = `Lvl ${level}`;
 
     if (displayedXp === null) {
         displayedXp = xp;
         const scoreEl = document.getElementById('score');
         const homeLevelEl = document.getElementById('home-level');
-        if(scoreEl) scoreEl.innerHTML = `${xp} <span class="font-medium text-[20px] text-white/50">XP</span>`;
-        if(homeLevelEl) homeLevelEl.innerText = `LVL ${level}`;
+        if (scoreEl) scoreEl.innerHTML = `${xp} <span class="font-medium text-[20px] text-white/50">XP</span>`;
+        if (homeLevelEl) homeLevelEl.innerText = `LVL ${level}`;
     } else if (displayedXp !== actualXp) {
         const homeTab = document.getElementById('tab-home');
         if (!homeTab.classList.contains('hidden')) {
@@ -2198,9 +2353,9 @@ function animateXp(startValue, endValue, newLevel) {
         if (progress < 1) {
             requestAnimationFrame(updateCounter);
         } else {
-            displayedXp = endValue; 
+            displayedXp = endValue;
             if (homeLevelEl) homeLevelEl.innerText = `LVL ${newLevel}`;
-            
+
             if (typeof triggerHapticFeedback === 'function') {
                 triggerHapticFeedback();
             }
@@ -2265,6 +2420,290 @@ window.unlock = function(id) {
 };
 
 
+// ==========================================
+// 12. RECENT SCANS & ALL SCANS MODAL LOGIK
+// ==========================================
 
+function createScanListItemHTML(snus, fromModal = false) {
+    const dateObj = new Date(globalUserCollection[snus.id].date);
+    const dateStr = dateObj.toLocaleDateString('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit'
+    });
+
+    const clickAction = fromModal ?
+        `closeAllScansModal(); setTimeout(() => openSnusDetail(${snus.id}), 300);` :
+        `openSnusDetail(${snus.id})`;
+
+    return `
+        <div class="flex items-center justify-between p-3 border-b border-white/5 last:border-0 cursor-pointer active:bg-white/5 transition-colors" onclick="triggerHapticFeedback(); ${clickAction}">
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+                <div class="w-11 h-11 flex items-center justify-center flex-shrink-0">
+                    <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain" onerror="this.style.display='none'">
+                </div>
+                <div class="min-w-0 flex-1">
+                    <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">${snus.name}</h4>
+                    <p class="text-[13px] text-[#8E8E93] font-medium mt-0.5">${dateStr}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 pl-4 flex-shrink-0 text-right">
+                <span class="text-[17px] font-semibold text-white tracking-tight">${snus.nicotine}mg</span>
+                <svg class="w-4 h-4 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+            </div>
+        </div>
+    `;
+}
+
+function updateLivePerformance() {
+    const collectedItems = globalSnusData.filter(snus => !!globalUserCollection[snus.id]);
+    collectedItems.sort((a, b) => new Date(globalUserCollection[b.id].date) - new Date(globalUserCollection[a.id].date));
+
+    const targetCount = collectedItems.length;
+    if (currentDashboardStats.count !== targetCount) {
+        animateNumber('stat-count', currentDashboardStats.count, targetCount, 1500, "", false);
+        currentDashboardStats.count = targetCount;
+    }
+
+    const listEl = document.getElementById('latest-unlocks-list');
+    const showMoreBtn = document.getElementById('show-more-scans-btn');
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+
+    if (collectedItems.length === 0) {
+        listEl.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">Keine gefundenden Dosen.</div>';
+        if (showMoreBtn) showMoreBtn.classList.add('hidden');
+        return;
+    }
+
+    if (showMoreBtn) {
+        if (collectedItems.length > 4) {
+            showMoreBtn.classList.remove('hidden');
+        } else {
+            showMoreBtn.classList.add('hidden');
+        }
+    }
+
+    collectedItems.slice(0, 4).forEach(snus => {
+        listEl.innerHTML += createScanListItemHTML(snus, false);
+    });
+}
+
+function openAllScansModal() {
+    const modal = document.getElementById('all-scans-modal');
+    const backdrop = document.getElementById('all-scans-backdrop');
+    const card = document.getElementById('all-scans-card');
+    const listContainer = document.getElementById('all-scans-list-container');
+
+    const collectedItems = globalSnusData.filter(snus => !!globalUserCollection[snus.id]);
+    collectedItems.sort((a, b) => new Date(globalUserCollection[b.id].date) - new Date(globalUserCollection[a.id].date));
+
+    listContainer.innerHTML = '';
+    collectedItems.forEach(snus => {
+        listContainer.innerHTML += createScanListItemHTML(snus, true);
+    });
+
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100');
+
+        card.classList.remove('translate-y-full');
+        card.classList.add('translate-y-0');
+    }, 10);
+}
+
+function closeAllScansModal(isDragging = false) {
+    const modal = document.getElementById('all-scans-modal');
+    const backdrop = document.getElementById('all-scans-backdrop');
+    const card = document.getElementById('all-scans-card');
+
+    backdrop.classList.remove('opacity-100');
+    backdrop.classList.add('opacity-0');
+
+    if (!isDragging) {
+        card.classList.remove('translate-y-0');
+        card.classList.add('translate-y-full');
+    }
+
+    setTimeout(() => {
+        modal.classList.add('hidden');
+
+        if (isDragging) {
+            card.style.transform = '';
+            card.style.transition = '';
+            card.classList.remove('translate-y-0');
+            card.classList.add('translate-y-full');
+        }
+
+        if (document.getElementById('snus-modal').classList.contains('hidden')) {
+            document.body.classList.remove('overflow-hidden');
+        }
+    }, 400);
+}
+
+
+let allScansStartY = 0;
+let allScansCurrentY = 0;
+let isAllScansDragging = false;
+let hasAllScansMoved = false;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const allScansCard = document.getElementById('all-scans-card');
+    const allScansScrollArea = document.getElementById('all-scans-scroll-area');
+
+    if (allScansCard && allScansScrollArea) {
+        allScansCard.addEventListener('touchstart', (e) => {
+            if (allScansScrollArea.scrollTop <= 0) {
+                allScansStartY = e.touches[0].clientY;
+                allScansCurrentY = allScansStartY;
+                isAllScansDragging = true;
+                hasAllScansMoved = false;
+            }
+        }, {
+            passive: true
+        });
+
+        allScansCard.addEventListener('touchmove', (e) => {
+            if (!isAllScansDragging) return;
+            allScansCurrentY = e.touches[0].clientY;
+            const deltaY = allScansCurrentY - allScansStartY;
+
+            if (deltaY > 5) {
+                if (!hasAllScansMoved) {
+                    hasAllScansMoved = true;
+                    allScansCard.style.transition = 'none';
+                }
+                allScansCard.style.transform = `translateY(${deltaY}px)`;
+            }
+        }, {
+            passive: true
+        });
+
+        allScansCard.addEventListener('touchend', (e) => {
+            if (!isAllScansDragging) return;
+            isAllScansDragging = false;
+            if (!hasAllScansMoved) return;
+
+            const deltaY = allScansCurrentY - allScansStartY;
+            allScansCard.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
+
+            if (deltaY > 100) {
+                allScansCard.style.transform = 'translateY(100%)';
+                closeAllScansModal(true);
+            } else {
+                allScansCard.style.transform = 'translateY(0px)';
+                setTimeout(() => {
+                    allScansCard.style.transform = '';
+                    allScansCard.style.transition = '';
+                }, 400);
+            }
+        });
+    }
+});
+
+
+
+// ==========================================
+// SUGGESTIONS / NEU ENTDECKEN LOGIK
+// ==========================================
+
+function renderSuggestions() {
+    const container = document.getElementById('suggestions-container');
+    if (!container || globalSnusData.length === 0) return;
+
+    const uncollected = globalSnusData.filter(snus => !globalUserCollection[snus.id]);
+
+    if (uncollected.length === 0) {
+        container.innerHTML = '<p class="text-[13px] text-[#8E8E93] text-center w-full">Du hast bereits alle Snus im Dex gesammelt!</p>';
+        return;
+    }
+
+    const shuffled = uncollected.sort(() => 0.5 - Math.random());
+    const suggestions = shuffled.slice(0, 9); // 9 Dosen
+
+    container.innerHTML = '';
+    const glowActive = localStorage.getItem('dexGlow') === 'true';
+
+    suggestions.forEach(snus => {
+        const formattedId = '#' + String(snus.id).padStart(3, '0');
+        const rarity = (snus.rarity || 'common').toLowerCase().trim();
+        const boxShadow = glowActive ? `box-shadow: 0 0px 20px -8px var(--${rarity}, var(--common));` : '';
+        const rarityIndicator = `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
+
+        container.innerHTML += `
+            <div onclick="openSnusDetail(${snus.id})"class="suggestion-card cursor-pointer group flex-shrink-0 w-[28vw] snap-center transition-transform duration-200 ease-out origin-center">
+                <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] shadow-md overflow-hidden" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
+                    
+                    <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
+                        <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
+                        ${rarityIndicator}
+                    </div>
+
+                    <div class="w-full aspect-square flex items-center justify-center relative mt-1">
+                        <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10" loading="lazy" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
+                    </div>
+                    
+                    <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
+                        <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 text-white">${snus.name}</h5>
+                    </div>
+                    
+                </div>
+            </div>
+        `;
+    });
+
+    setTimeout(initSuggestionsScrollAnimation, 50);
+}
+
+function initSuggestionsScrollAnimation() {
+    const container = document.getElementById('suggestions-container');
+    if (!container) return;
+
+    const cards = container.querySelectorAll('.suggestion-card');
+
+    const updateScale = () => {
+        const containerRect = container.getBoundingClientRect();
+        const containerCenter = containerRect.left + containerRect.width / 2;
+
+        const focusZoneHalfWidth = containerRect.width * 0.35;
+
+        cards.forEach(card => {
+            const cardRect = card.getBoundingClientRect();
+            const cardCenter = cardRect.left + cardRect.width / 2;
+
+            const distanceToCenter = Math.abs(containerCenter - cardCenter);
+
+            let scale = 1.0;
+            let opacity = 1.0;
+
+            if (distanceToCenter > focusZoneHalfWidth) {
+                const distancePastZone = distanceToCenter - focusZoneHalfWidth;
+
+                let progress = distancePastZone / (containerRect.width * 0.15);
+                if (progress > 1) progress = 1;
+
+                scale = 1.0 - (0.15 * progress); 
+                opacity = 1.0 - (0.6 * progress); 
+            }
+
+            card.style.transform = `scale(${scale})`;
+            card.style.opacity = opacity;
+        });
+    };
+
+    updateScale();
+
+    container.addEventListener('scroll', () => {
+        requestAnimationFrame(updateScale);
+    }, {
+        passive: true
+    });
+}
 
 // commits für norman 4
