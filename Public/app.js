@@ -3065,6 +3065,7 @@ async function loadLatestGitHubCommit() {
 // ==========================================
 let dexScrollRafId = null;
 let lastFocusedDexRow = -1;
+let lastHapticTime = 0;
 
 function updateDexScale() {
     const grid = document.getElementById('dex-grid');
@@ -3135,6 +3136,20 @@ function updateDexScale() {
         }
         lastFocusedDexRow = currentRowFocus;
     }
+    
+    if (currentRowFocus !== -1 && currentRowFocus !== lastFocusedDexRow) {
+        // Wir prüfen jetzt auf die neue Funktion: triggerLightHapticFeedback
+        if (lastFocusedDexRow !== -1 && typeof triggerLightHapticFeedback === 'function') {
+            
+            const now = Date.now();
+            // Motor-Cooldown: Maximal 1 sanfter Tick alle 40ms, um "Vibrations-Matsch" zu verhindern
+            if (now - lastHapticTime > 40) {
+                triggerLightHapticFeedback(); 
+                lastHapticTime = now;
+            }
+        }
+        lastFocusedDexRow = currentRowFocus;
+    }
 }
 
 function initDexScrollAnimation() {
@@ -3145,6 +3160,14 @@ function initDexScrollAnimation() {
             dexScrollRafId = requestAnimationFrame(updateDexScale);
         }
     }, { passive: true });
+}
+
+function triggerLightHapticFeedback() {
+    if (window.webkit && window.webkit.messageHandlers.hapticHandler) {
+        window.webkit.messageHandlers.hapticHandler.postMessage("selection");
+    } else if (navigator.vibrate) {
+        navigator.vibrate(5);
+    }
 }
 
 
