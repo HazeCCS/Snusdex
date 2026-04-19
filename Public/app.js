@@ -1009,9 +1009,6 @@ function setupProfile(user) {
 
     if (emailEl) emailEl.innerText = user.email;
     if (initialsEl) initialsEl.innerText = user.email[0].toUpperCase();
-    if (user.email === 'tarayannorman@gmail.com' && adminEl) {
-        adminEl.classList.remove('hidden');
-    }
     loadUserStats(user.id);
 }
 
