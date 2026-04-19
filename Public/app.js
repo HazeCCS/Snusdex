@@ -59,9 +59,13 @@ async function updateGreeting() {
     } = await supabaseClient.auth.getSession();
     let displayIdent = "Collector";
 
-    if (session && session.user && session.user.email) {
-        let rawName = session.user.email.split('@')[0];
-        displayIdent = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+    if (session && session.user) {
+        if (session.user.user_metadata?.username) {
+            displayIdent = session.user.user_metadata.username;
+        } else if (session.user.email) {
+            let rawName = session.user.email.split('@')[0];
+            displayIdent = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+        }
     }
 
     const hour = new Date().getHours();
@@ -1108,7 +1112,7 @@ function setupProfile(user) {
     const initialsEl = document.getElementById('user-initials');
     const adminEl = document.getElementById('admin-panel');
 
-    if (emailEl) emailEl.innerText = user.email;
+    if (emailEl) emailEl.innerText = user.user_metadata?.username || user.email;
     if (initialsEl) initialsEl.innerText = user.email[0].toUpperCase();
     loadUserStats(user.id);
 }
@@ -2511,7 +2515,7 @@ function setupProfile(user) {
     const emailEl = document.getElementById('profile-email');
     const idEl = document.getElementById('profile-id');
     const adminEl = document.getElementById('admin-panel');
-    if (emailEl) emailEl.innerText = user.email;
+    if (emailEl) emailEl.innerText = user.user_metadata?.username || user.email;
     if (idEl) {
         const shortId = user.id.split('-')[0].toUpperCase();
         idEl.innerText = `ID #${shortId}`;
