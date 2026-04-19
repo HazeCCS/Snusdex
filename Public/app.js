@@ -2898,11 +2898,11 @@ function initSuggestionsScrollAnimation() {
 }
 
 // ==========================================
-// GITHUB COMMIT FETCH (App-Version)
+// GITHUB COMMIT FETCH (App-Version + Time)
 // ==========================================
 async function loadLatestGitHubCommit() {
     const repoOwner = 'HazeCCS'; 
-    const repoName = 'Snusdex'; 
+    const repoName = 'Snusdex';
     
     try {
         const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/commits?per_page=1`);
@@ -2913,15 +2913,33 @@ async function loadLatestGitHubCommit() {
         
         if (data && data.length > 0) {
             const fullMessage = data[0].commit.message;
-            
             let shortMsg = fullMessage.split('\n')[0]; 
-            if (shortMsg.length > 35) {
-                shortMsg = shortMsg.substring(0, 35) + '...';
+            if (shortMsg.length > 25) {
+                shortMsg = shortMsg.substring(0, 25) + '...';
+            }
+            
+            const commitDate = new Date(data[0].commit.committer.date);
+            const now = new Date();
+            const diffMs = now - commitDate;
+            
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMins / 60);
+            const diffDays = Math.floor(diffHours / 24);
+            
+            let timeString = "";
+            if (diffDays > 0) {
+                timeString = `vor ${diffDays} Tag${diffDays > 1 ? 'en' : ''}`;
+            } else if (diffHours > 0) {
+                timeString = `vor ${diffHours} Std`;
+            } else if (diffMins > 0) {
+                timeString = `vor ${diffMins} Min`;
+            } else {
+                timeString = `Gerade eben`;
             }
             
             const msgElement = document.getElementById('latest-commit-msg');
             if (msgElement) {
-                msgElement.innerText = shortMsg;
+                msgElement.innerHTML = `${shortMsg} <span class="text-white/40 text-[11px] ml-1 tracking-wide">${timeString}</span>`;
             }
         }
     } catch (error) {
