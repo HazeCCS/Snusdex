@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     loadLatestGitHubCommit();
     checkUser();
+    initDexScrollAnimation();
 });
 
 // ==========================================
@@ -375,6 +376,10 @@ function switchTab(tabId) {
     if (tabId === 'social') {
         loadTopSnusOfWeek();
     }
+
+    if (tabId === 'dex') {
+        setTimeout(updateDexScale, 50);
+    }
 }
 
 // ==========================================
@@ -484,8 +489,9 @@ function loadMoreDexItems() {
             `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
 
         // w-full hinzugefügt, damit das Grid richtig gefüllt wird
+        // NEU: Klassen für die Scroll-Animation hinzugefügt (dex-anim-card, transition-all, duration-200, origin-center)
         htmlChunk += `
-            <div onclick="openSnusDetail(${snus.id})" class="cursor-pointer group h-full w-full">
+            <div onclick="openSnusDetail(${snus.id})" class="dex-anim-card cursor-pointer group h-full w-full transition-all duration-200 ease-out origin-center will-change-transform">
                 <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] transition-all group-active:scale-95 shadow-md overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale' : ''}" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
                     
                     <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
@@ -508,6 +514,7 @@ function loadMoreDexItems() {
 
     grid.insertAdjacentHTML('beforeend', htmlChunk);
     currentDexRenderCount += DEX_CHUNK_SIZE;
+    setTimeout(updateDexScale, 50);
 }
 
 function renderActiveCansUI() {
@@ -3049,6 +3056,96 @@ async function loadLatestGitHubCommit() {
         }
     }
 }
+
+// ==========================================
+// DEX SCROLL ANIMATION & HAPTICS (NEU)
+// ==========================================
+let dexScrollRafId = null;
+let lastFocusedDexRow = -1;
+
+function updateDexScale() {
+    const grid = document.getElementById('dex-grid');
+    if (!grid || grid.children.length === 0) return;
+
+    const viewportCenter = window.innerHeight / 2;
+    // Die Zone in der Mitte, in der die Karte 100% groß ist (25% des Bildschirms)
+    const focusZoneHalfHeight = window.innerHeight * 0.25; 
+
+    const cards = grid.querySelectorAll('.dex-anim-card');
+    let closestRowDist = Infinity;
+    let currentRowFocus = -1;
+    
+    // Spaltenanzahl abrufen für die Reihen-Berechnung
+    const cols = parseInt(localStorage.getItem('dexColumns') || '3');
+
+    cards.forEach((card, index) => {
+        const rect = card.getBoundingClientRect();
+        const cardCenter = rect.top + rect.height / 2;
+        const distanceToCenter = Math.abs(viewportCenter - cardCenter);
+
+        let scale = 1.0;
+        let opacity = 1.0;
+
+        // Wenn die Karte außerhalb der "Focus-Zone" ist, skaliere sie runter
+        if (distanceToCenter > focusZoneHalfHeight) {
+            const distancePastZone = distanceToCenter - focusZoneHalfHeight;
+
+            let progress = distancePastZone / (window.innerHeight * 0.2);
+            if (progress > 1) progress = 1;
+
+            scale = 1.0 - (0.15 * progress);  // Skaliert auf max 0.85
+            opacity = 1.0 - (0.6 * progress); // Opacity auf max 0.4
+        }
+
+        card.style.transform = `scale(${scale})`;
+        card.style.opacity = opacity;
+
+        // Berechnen, welche Reihe dem Zentrum am nächsten ist (für Haptics)
+        if (distanceToCenter < closestRowDist) {
+            closestRowDist = distanceToCenter;
+            currentRowFocus = Math.floor(index / cols); // Index durch Spalten = Reihennummer
+        }
+    });
+
+    // Haptic Feedback auslösen, wenn der User eine neue Reihe "einrastet"
+    if (currentRowFocus !== -1 && currentRowFocus !== lastFocusedDexRow) {
+        if (lastFocusedDexRow !== -1 && typeof triggerHapticFeedback === 'function') {
+            triggerHapticFeedback();
+        }
+        lastFocusedDexRow = currentRowFocus;
+    }
+}
+
+function initDexScrollAnimation() {
+    window.addEventListener('scroll', () => {
+        const activeTab = document.getElementById('tab-dex');
+        if (activeTab && !activeTab.classList.contains('hidden')) {
+            if (dexScrollRafId) cancelAnimationFrame(dexScrollRafId);
+            dexScrollRafId = requestAnimationFrame(updateDexScale);
+        }
+    }, { passive: true });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 //░░░░░████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
