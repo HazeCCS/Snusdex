@@ -3058,14 +3058,13 @@ async function loadLatestGitHubCommit() {
 }
 
 // ==========================================
-// DEX SCROLL ANIMATION & HAPTICS (NEU)
-// ==========================================
-// ==========================================
-// DEX SCROLL ANIMATION & HAPTICS (UPDATE)
+// DEX SCROLL ANIMATION & HAPTICS (PIXEL-PERFECT)
 // ==========================================
 let dexScrollRafId = null;
-let lastFocusedDexRow = -1;
-let lastHapticTime = 0;
+let lastHapticScrollY = 0;
+// Der "Zahnabstand" deines Rades in Pixeln. 
+// Ändere diesen Wert (z.B. 40 für fein, 80 für grob), um das Gefühl anzupassen!
+const HAPTIC_PIXEL_THRESHOLD = 55; 
 
 function updateDexScale() {
     const grid = document.getElementById('dex-grid');
@@ -3073,15 +3072,9 @@ function updateDexScale() {
 
     const viewportCenter = window.innerHeight / 2;
     const focusZoneHalfHeight = window.innerHeight * 0.25; 
-
     const cards = grid.querySelectorAll('.dex-anim-card');
-    let closestRowDist = Infinity;
-    let currentRowFocus = -1;
-    
-    // Spaltenanzahl abrufen für die Reihen-Berechnung
-    const cols = parseInt(localStorage.getItem('dexColumns') || '3');
 
-    cards.forEach((card, index) => {
+    cards.forEach((card) => {
         const rect = card.getBoundingClientRect();
         const cardCenter = rect.top + rect.height / 2;
         const distanceToCenter = Math.abs(viewportCenter - cardCenter);
@@ -3101,63 +3094,38 @@ function updateDexScale() {
 
         card.style.transform = `scale(${scale})`;
         card.style.opacity = opacity;
-
-        // Berechnen, welche Reihe gerade exakt in der Mitte liegt
-        if (distanceToCenter < closestRowDist) {
-            closestRowDist = distanceToCenter;
-            currentRowFocus = Math.floor(index / cols); 
-        }
     });
-
-    // ----------------------------------------------------
-    // DYNAMISCHES HAPTIC FEEDBACK ("Zahnrad"-Effekt)
-    // ----------------------------------------------------
-    if (currentRowFocus !== -1 && currentRowFocus !== lastFocusedDexRow) {
-        if (lastFocusedDexRow !== -1 && typeof triggerHapticFeedback === 'function') {
-            
-            // Berechne, wie viele Zeilen seit dem letzten Frame übersprungen wurden
-            const skippedRows = Math.abs(currentRowFocus - lastFocusedDexRow);
-            
-            // Wenn der User sehr schnell wischt, simulieren wir das schnelle Vorbeirauschen 
-            // der Zeilen durch mehrere, extrem schnelle Haptic-Ticks hintereinander.
-            if (skippedRows > 1) { 
-                // Wir cappen es auf maximal 5 schnelle Ticks, damit das Handy bei einem 
-                // riesigen Sprung (z.B. "Scroll to Top") nicht 3 Sekunden lang vibriert.
-                const ticksToPlay = Math.min(skippedRows, 5); 
-                
-                for (let i = 0; i < ticksToPlay; i++) {
-                    // 35ms Abstand ergibt ein sehr befriedigendes, schnelles Rattern
-                    setTimeout(() => triggerHapticFeedback(), i * 35); 
-                }
-            } else {
-                // Bei langsamem Scrollen: Genau 1 präziser Tick pro Zeile
-                triggerHapticFeedback();
-            }
-        }
-        lastFocusedDexRow = currentRowFocus;
-    }
-    
-    if (currentRowFocus !== -1 && currentRowFocus !== lastFocusedDexRow) {
-        // Wir prüfen jetzt auf die neue Funktion: triggerLightHapticFeedback
-        if (lastFocusedDexRow !== -1 && typeof triggerLightHapticFeedback === 'function') {
-            
-            const now = Date.now();
-            // Motor-Cooldown: Maximal 1 sanfter Tick alle 40ms, um "Vibrations-Matsch" zu verhindern
-            if (now - lastHapticTime > 40) {
-                triggerLightHapticFeedback(); 
-                lastHapticTime = now;
-            }
-        }
-        lastFocusedDexRow = currentRowFocus;
-    }
 }
 
 function initDexScrollAnimation() {
+    // Startpunkt setzen, sobald die Animation initialisiert wird
+    lastHapticScrollY = window.scrollY;
+
     window.addEventListener('scroll', () => {
         const activeTab = document.getElementById('tab-dex');
         if (activeTab && !activeTab.classList.contains('hidden')) {
+            
+            // 1. Visuelle Animation (60fps)
             if (dexScrollRafId) cancelAnimationFrame(dexScrollRafId);
             dexScrollRafId = requestAnimationFrame(updateDexScale);
+
+            // 2. Distanzbasierte Haptik (Pixelgenau)
+            const currentScrollY = window.scrollY;
+            const scrollDelta = Math.abs(currentScrollY - lastHapticScrollY);
+
+            // Sobald wir die Schwelle von X Pixeln überschritten haben...
+            if (scrollDelta >= HAPTIC_PIXEL_THRESHOLD) {
+                
+                // Einen sauberen, leichten Tick feuern
+                if (typeof triggerLightHapticFeedback === 'function') {
+                    triggerLightHapticFeedback();
+                }
+                
+                // Den Ankerpunkt neu setzen, aber überschüssige Pixel (Modulo) mitnehmen!
+                // Dadurch verlierst du bei extrem schnellem Wischen keine Präzision.
+                const sign = currentScrollY > lastHapticScrollY ? 1 : -1;
+                lastHapticScrollY = currentScrollY - (scrollDelta % HAPTIC_PIXEL_THRESHOLD) * sign;
+            }
         }
     }, { passive: true });
 }
