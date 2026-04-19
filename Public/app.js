@@ -1,15 +1,19 @@
 // Neuer Commit 15:26:42
 
-
 // ==========================================
 // 1. SETUP & KONFIGURATION
 // ==========================================
+
+// Prüfen, ob die Bibliothek überhaupt da ist
+if (typeof window.supabase === 'undefined') {
+    console.error("KRITISCH: Supabase CDN wurde nicht geladen! Prüfe deine <script> Tags im HTML.");
+}
+
 const SUPABASE_URL = 'https://aqyjrvukfuyuhlidpoxr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_4gIcuQhw528DH6GrmhF16g_V8im-UMU';
 const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/main/assets/';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-console.log("Supabase Status:", supabase ? "Verbunden" : "Fehlt");
 
 // ==========================================
 // 1.5. SPLASH SCREEN / LOADING
@@ -82,30 +86,32 @@ async function signInWithGoogle() {
     const btnText = document.getElementById('google-btn-text');
     const btn = document.getElementById('google-login-btn');
 
-    // Sicherheitscheck: Ist supabase definiert?
-    if (typeof supabase === 'undefined' || !supabase.auth) {
-        console.error("Supabase Client ist nicht geladen oder falsch initialisiert.");
-        alert("System-Fehler: Supabase Verbindung fehlt.");
-        return;
-    }
-
     try {
+        // Visuelles Feedback
         btnText.innerText = "Verbinde...";
+        btn.style.opacity = "0.7";
         btn.disabled = true;
 
         const { data, error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                // Bei ngrok ist es wichtig, die URL explizit anzugeben oder window.location.origin zu nutzen
-                redirectTo: window.location.origin, 
+                redirectTo: window.location.origin,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'select_account',
+                },
             },
         });
 
         if (error) throw error;
+
     } catch (error) {
         console.error("Google Login Error:", error.message);
-        alert("Fehler: " + error.message);
+        alert("Fehler beim Google-Login: " + error.message);
+        
+        // Reset Button bei Fehler
         btnText.innerText = "Mit Google anmelden";
+        btn.style.opacity = "1";
         btn.disabled = false;
     }
 }
@@ -198,7 +204,6 @@ async function handleLoginWrapper() {
     mainBtn.innerText = "Lädt...";
 
     if (isLoginMode) {
-        // --- DEIN ORIGINALER LOGIN CODE ---
         const {
             error
         } = await supabaseClient.auth.signInWithPassword({
@@ -218,7 +223,6 @@ async function handleLoginWrapper() {
             checkUser();
         }
     } else {
-        // --- REGISTRIERUNGS CODE ---
         const username = document.getElementById('auth-username').value.trim();
         const passwordConfirm = document.getElementById('auth-password-confirm').value;
 
@@ -245,7 +249,6 @@ async function handleLoginWrapper() {
         });
 
         if (error) {
-            // Falls E-Mail schon existiert etc.
             errorEl.innerText = error.message.includes('already registered') ? "E-Mail wird bereits verwendet." : error.message;
             errorEl.classList.remove('hidden');
             triggerHapticFeedback();
@@ -261,13 +264,14 @@ async function handleLoginWrapper() {
         }
     }
 }
+
 // ==========================================
 // 3. NAVIGATION (TABS)
 // ==========================================
 
 function switchTab(tabId) {
     const activeTab = document.getElementById(`tab-${tabId}`);
-    if (!activeTab || !activeTab.classList.contains('hidden')) return;
+    if (!activeTab || activeTab.classList.contains('hidden')) return;
 
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     activeTab.classList.remove('hidden');
@@ -280,7 +284,6 @@ function switchTab(tabId) {
     window.scrollTo(0, 0);
 
     if (tabId === 'home' && displayedXp !== null && actualXp !== null && displayedXp !== actualXp) {
-        // Wir warten 200ms, damit die Fade-In Animation vom Tab fertig ist, bevor die Zahlen hochrollen
         setTimeout(() => {
             const level = Math.floor(actualXp / 300) + 1;
             animateXp(displayedXp, actualXp, level);
@@ -354,7 +357,6 @@ function initDexObserver() {
     const sentinel = document.getElementById('dex-sentinel');
     if (!sentinel) return;
 
-    // Beobachter der auslöst sobald der Bereich ca. 400px vor dem Sichtfeld ist
     dexObserver = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting) {
             loadMoreDexItems();
@@ -401,7 +403,6 @@ function loadMoreDexItems() {
             `<span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>` :
             `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
 
-        // w-full hinzugefügt, damit das Grid richtig gefüllt wird
         htmlChunk += `
             <div onclick="openSnusDetail(${snus.id})" class="cursor-pointer group h-full w-full">
                 <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] transition-all group-active:scale-95 shadow-md overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale' : ''}" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
@@ -428,106 +429,74 @@ function loadMoreDexItems() {
     currentDexRenderCount += DEX_CHUNK_SIZE;
 }
 
-function renderActiveCansUI() {
-    const container = document.getElementById('active-cans-list');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    if (globalActiveLogs.length === 0) {
-        container.innerHTML = '<div class="flex items-center justify-between px-1 py-2"><p class="text-[13px] text-zinc-500">Keine aktiven Dosen.</p><button onclick="triggerHapticFeedback(); openScanModal()" class="flex items-center gap-1 px-3 py-1.5 bg-white/10 rounded-full text-[13px] font-medium text-white active:bg-white/20 transition-colors tracking-wide">Öffne die nächste<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg></button></div>';
-        return;
-    }
-
-    globalActiveLogs.forEach(can => {
-        const snusName = can.snus_items ? can.snus_items.name : 'Unknown';
-        const snusImg = can.snus_items ? can.snus_items.image : '';
-
-        container.innerHTML += `
-            <div class="flex items-center justify-between bg-[#1C1C1E] border border-white/5 rounded-2xl p-3 mb-3 shadow-sm">
-                <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-10 h-10 flex items-center justify-center">
-                        <img src="${GITHUB_BASE}${snusImg}" class="h-full object-contain">
-                    </div>
-                    <div class="min-w-0">
-                        <h4 class="text-white text-[15px] font-semibold truncate">${snusName}</h4>
-                        <p class="text-[11px] text-[#8E8E93] tracking-wider">Open since ${new Date(can.opened_at).toLocaleDateString()}</p>
-                    </div>
-                </div>
-                <button onclick="triggerHapticFeedback(); this.innerText='Emptying...'; this.disabled=true; this.classList.add('opacity-50'); finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-all">
-                    Empty
-                </button>
-            </div>
-        `;
-    });
-}
-
 // ==========================================
-// 5. RATING ENGINE & MODAL LOGIK
+// 5. SNUS DETAIL MODAL SWIPE LOGIK (Wie Camera)
 // ==========================================
 
+const snusModalObj = document.getElementById('snus-modal');
+const snusModalCardObj = document.getElementById('snus-modal-card');
 let detailStartY = 0;
+let detailCurrentY = 0;
 let isDetailDragging = false;
 
-function setupGlobalSwipe() {
-    const card = document.getElementById('snus-modal-card');
-    if (!card) return;
-
-    card.addEventListener('touchstart', (e) => {
-        detailStartY = e.touches[0].clientY;
-        isDetailDragging = true;
-        card.style.transition = 'none'; 
-    }, { passive: true });
-
-    card.addEventListener('touchmove', (e) => {
-        if (!isDetailDragging) return;
-        
-        const currentY = e.touches[0].clientY;
-        const deltaY = currentY - detailStartY;
-
-        if (deltaY > 0) { // Nur nach unten ziehen erlauben
-            if (e.cancelable) e.preventDefault(); // Verhindert System-Gesten
-            card.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+// Blockiert das nervige Hintergrund-Scrollen von iOS komplett für das Modal
+if (snusModalObj) {
+    snusModalObj.addEventListener('touchmove', (e) => {
+        if (!isDetailDragging) {
+            e.preventDefault();
         }
     }, { passive: false });
+}
 
-    card.addEventListener('touchend', (e) => {
+if (snusModalCardObj) {
+    snusModalCardObj.addEventListener('touchstart', (e) => {
+        detailStartY = e.touches[0].clientY;
+        isDetailDragging = true;
+        snusModalCardObj.style.transition = 'none';
+    }, { passive: true });
+
+    snusModalCardObj.addEventListener('touchmove', (e) => {
+        if (!isDetailDragging) return;
+        detailCurrentY = e.touches[0].clientY;
+        const deltaY = detailCurrentY - detailStartY;
+
+        // Nur nach unten ziehen erlauben
+        if (deltaY > 0) {
+            snusModalCardObj.style.transform = `translateY(${deltaY}px)`;
+        }
+    }, { passive: true });
+
+    snusModalCardObj.addEventListener('touchend', (e) => {
         if (!isDetailDragging) return;
         isDetailDragging = false;
-        
-        const deltaY = e.changedTouches[0].clientY - detailStartY;
-        card.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+
+        const deltaY = detailCurrentY - detailStartY;
+        snusModalCardObj.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
 
         if (deltaY > 100) {
-            card.style.transform = 'translate3d(0, 100%, 0)';
+            snusModalCardObj.style.transform = 'translateY(100%)';
             closeSnusDetail(true);
         } else {
-            card.style.transform = 'translate3d(0, 0px, 0)';
+            snusModalCardObj.style.transform = 'translateY(0px)';
             setTimeout(() => {
-                card.style.transform = '';
-                card.style.transition = '';
-            }, 350);
+                snusModalCardObj.style.transform = '';
+                snusModalCardObj.style.transition = '';
+            }, 400);
         }
     });
 }
 
-setupGlobalSwipe();
-
-setupGlobalSwipe();
+// ==========================================
+// RATING WIZARD
+// ==========================================
 
 let tempRatings = {
-    taste: 5,
-    taste_text: '',
-    smell: 5,
-    smell_text: '',
-    bite: 5,
-    bite_text: '',
-    drip: 5,
-    drip_text: '',
-    visuals: 5,
-    visuals_text: '',
-    strength: 5,
-    strength_text: ''
+    taste: 5, taste_text: '',
+    smell: 5, smell_text: '',
+    bite: 5, bite_text: '',
+    drip: 5, drip_text: '',
+    visuals: 5, visuals_text: '',
+    strength: 5, strength_text: ''
 };
 let currentSelectedSnusId = null;
 
@@ -677,20 +646,11 @@ function showSavedRating() {
     document.getElementById('modal-view-saved-rating').classList.remove('hidden');
     document.getElementById('modal-view-saved-rating').classList.add('flex');
     let ratings = globalUserCollection[currentSelectedSnusId]?.ratings || {
-        taste: 5,
-        smell: 5,
-        bite: 5,
-        drip: 5,
-        visuals: 5,
-        strength: 5
+        taste: 5, smell: 5, bite: 5, drip: 5, visuals: 5, strength: 5
     };
 
     const escapeHTML = (str) => str ? String(str).replace(/[&<>'"]/g, tag => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        "'": '&#39;',
-        '"': '&quot;'
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     } [tag])) : '';
 
     const createBar = (label, val, text) => {
@@ -721,34 +681,18 @@ function hideAllViews() {
 }
 
 function openSnusDetail(id, isFromScan = false) {
-    // 1. DATEN-CHECK
-    // Sicherstellen, dass die ID eine Zahl ist, falls sie als String kommt
     const snusId = parseInt(id);
     const snus = globalSnusData.find(s => parseInt(s.id) === snusId);
     
-    if (!snus) {
-        console.error("Snus mit ID " + id + " nicht gefunden!");
-        return;
-    }
-    
+    if (!snus) return;
     currentSelectedSnusId = snusId; 
 
-    // 2. ELEMENTE SICHER BEFÜLLEN (mit Fallbacks)
-    const setText = (id, text) => {
-        const el = document.getElementById(id);
-        if (el) el.innerText = text;
-    };
+    const setText = (id, text) => { const el = document.getElementById(id); if (el) el.innerText = text; };
+    const setHTML = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
 
-    const setHTML = (id, html) => {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = html;
-    };
-
-    // ID Formatieren (z.B. #001)
     setText('modal-id', '#' + String(snus.id).padStart(3, '0'));
     setText('modal-name', snus.name || 'Unbekannter Snus');
 
-    // Rarity & Nicotine
     const rarity = (snus.rarity || 'Common').trim();
     const rarityLower = rarity.toLowerCase();
     const nicotine = snus.nicotine || '??';
@@ -758,33 +702,28 @@ function openSnusDetail(id, isFromScan = false) {
         <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${rarity}</span>
     `);
 
-    // Bild laden
     const modalImg = document.getElementById('modal-image');
     if (modalImg) {
         modalImg.src = snus.image ? `${GITHUB_BASE}${snus.image}` : 'placeholder.png';
     }
 
-    // 3. COLLECTION STATUS (Freigeschaltet oder nicht)
     const isUnlocked = globalUserCollection[snusId];
     const uncollectedGroup = document.getElementById('uncollected-action-group');
     const scannedGroup = document.getElementById('scanned-action-group');
     const statusGroup = document.getElementById('modal-collected-status');
     const dateEl = document.getElementById('modal-unlocked-date');
 
-    // Erstmal alles verstecken
     if (uncollectedGroup) uncollectedGroup.classList.add('hidden');
     if (scannedGroup) scannedGroup.classList.add('hidden');
     if (statusGroup) statusGroup.classList.add('hidden');
 
     if (isUnlocked) {
-        // Fall: Bereits gesammelt
         if (statusGroup) statusGroup.classList.remove('hidden');
         if (dateEl && isUnlocked.date) {
             const dateObj = new Date(isUnlocked.date);
             dateEl.innerText = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
         }
     } else {
-        // Fall: Noch nicht gesammelt
         if (isFromScan) {
             if (scannedGroup) scannedGroup.classList.remove('hidden');
         } else {
@@ -792,11 +731,9 @@ function openSnusDetail(id, isFromScan = false) {
         }
     }
 
-    // 4. VIEWS AKTIVIEREN
     if (typeof showInfoView === "function") showInfoView(); 
     if (typeof initRatingWizard === "function") initRatingWizard();
 
-    // 5. MODAL ANZEIGEN & ANIMIEREN
     const modal = document.getElementById('snus-modal');
     const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
@@ -805,16 +742,13 @@ function openSnusDetail(id, isFromScan = false) {
         modal.classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
 
-        // Animation vorbereiten
         backdrop.style.transition = 'none';
         card.style.transition = 'none';
         backdrop.style.opacity = '0';
         card.style.transform = 'translateY(100%)';
 
-        // Kleiner Force-Reflow
         modal.offsetHeight; 
 
-        // Animation starten
         backdrop.style.transition = 'opacity 0.3s ease-out';
         card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
         
@@ -829,10 +763,8 @@ function closeSnusDetail(isDragging = false) {
     const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
 
-    // 1. Haptik sofort auslösen wie beim Scanner
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
-    // 2. Animation (nur wenn nicht schon durch Drag nach unten geschoben)
     if (!isDragging) {
         card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
         card.style.transform = 'translateY(100%)';
@@ -843,7 +775,6 @@ function closeSnusDetail(isDragging = false) {
     
     document.body.classList.remove('overflow-hidden');
     
-    // 3. Reset nach exakt 400ms (Scanner Timing)
     setTimeout(() => {
         document.getElementById('snus-modal').classList.add('hidden');
         if (isDragging) {
@@ -854,7 +785,7 @@ function closeSnusDetail(isDragging = false) {
 }
 
 // ==========================================
-// 6. DB INSERT (BUG GEFIXT)
+// 6. DB INSERT
 // ==========================================
 
 async function collectCurrentSnus() {
@@ -973,7 +904,6 @@ async function adminAddSnus() {
         return alert("Bitte Name, Nicotine und Image angeben!");
     }
 
-    // Flavors formatieren (Komma-getrennt zu Array)
     const flavorArray = flavorsRaw ? flavorsRaw.split(',').map(s => s.trim()).filter(s => s) : [];
 
     const {
@@ -992,13 +922,11 @@ async function adminAddSnus() {
         alert("Fehler beim Hinzufügen: " + error.message);
     } else {
         alert("Snus erfolgreich hinzugefügt!");
-        // Felder leeren
         document.getElementById('admin-name').value = '';
         document.getElementById('admin-nicotine').value = '';
         document.getElementById('admin-flavor').value = '';
         document.getElementById('admin-barcode').value = '';
         document.getElementById('admin-image').value = '';
-        // Dex direkt neu laden, damit der neue Snus sichtbar ist
         loadDex();
     }
 }
@@ -1014,10 +942,31 @@ async function loadUserStats(userId) {
         count: 'exact',
         head: true
     }).eq('user_id', userId);
+    
+    const xp = (count || 0) * 100;
+    const level = Math.floor(xp / 300) + 1;
+    actualXp = xp;
+
     const scoreEl = document.getElementById('score');
     const pouchEl = document.getElementById('pouch-count');
-    if (scoreEl) scoreEl.innerText = count * 100;
+    const homeLevelEl = document.getElementById('home-level');
+    const profileXpEl = document.getElementById('profile-xp');
+    const profileLevelEl = document.getElementById('profile-level');
+
+    if (scoreEl) scoreEl.innerHTML = `${xp} <span class="text-[20px] text-white/50 font-medium">XP</span>`;
     if (pouchEl) pouchEl.innerText = count || 0;
+    if (homeLevelEl) homeLevelEl.innerText = `LVL ${level}`;
+    if (profileXpEl) profileXpEl.innerText = `${xp} XP`;
+    if (profileLevelEl) profileLevelEl.innerText = `Lvl ${level}`;
+
+    if (displayedXp === null) {
+        displayedXp = xp;
+    } else if (displayedXp !== actualXp) {
+        const homeTab = document.getElementById('tab-home');
+        if (!homeTab.classList.contains('hidden')) {
+            animateXp(displayedXp, actualXp, level);
+        }
+    }
 }
 
 function filterDex() {
@@ -1029,9 +978,18 @@ function setupProfile(user) {
     const emailEl = document.getElementById('profile-email');
     const initialsEl = document.getElementById('user-initials');
     const adminEl = document.getElementById('admin-panel');
+    const idEl = document.getElementById('profile-id');
 
     if (emailEl) emailEl.innerText = user.email;
     if (initialsEl) initialsEl.innerText = user.email[0].toUpperCase();
+    if (idEl) {
+        const shortId = user.id.split('-')[0].toUpperCase();
+        idEl.innerText = `ID #${shortId}`;
+    }
+
+    if (user.email === 'tarayannorman@gmail.com' && adminEl) {
+        adminEl.classList.remove('hidden');
+    }
     loadUserStats(user.id);
 }
 
@@ -1045,48 +1003,59 @@ function switchTabWrapper(tabId) {
     switchTab(tabId);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const allScansCard = document.getElementById('all-scans-card');
+// ==========================================
+// ALL SCANS MODAL SWIPE LOGIK (Wie Camera)
+// ==========================================
+const allScansModalObj = document.getElementById('all-scans-modal');
+const allScansCardObj = document.getElementById('all-scans-card');
+let allScansStartY = 0;
+let allScansCurrentY = 0;
+let isAllScansDragging = false;
 
-    if (allScansCard) {
-        allScansCard.addEventListener('touchstart', (e) => {
-            allScansStartY = e.touches[0].clientY;
-            isAllScansDragging = true;
-            allScansCard.style.transition = 'none';
-        }, { passive: true });
+if (allScansModalObj) {
+    allScansModalObj.addEventListener('touchmove', (e) => {
+        if (!isAllScansDragging) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+}
 
-        allScansCard.addEventListener('touchmove', (e) => {
-            if (!isAllScansDragging) return;
-            
-            const currentY = e.touches[0].clientY;
-            const deltaY = currentY - allScansStartY;
+if (allScansCardObj) {
+    allScansCardObj.addEventListener('touchstart', (e) => {
+        allScansStartY = e.touches[0].clientY;
+        isAllScansDragging = true;
+        allScansCardObj.style.transition = 'none';
+    }, { passive: true });
 
-            if (deltaY > 0) {
-                if (e.cancelable) e.preventDefault();
-                allScansCard.style.transform = `translate3d(0, ${deltaY}px, 0)`;
-            }
-        }, { passive: false });
+    allScansCardObj.addEventListener('touchmove', (e) => {
+        if (!isAllScansDragging) return;
+        allScansCurrentY = e.touches[0].clientY;
+        const deltaY = allScansCurrentY - allScansStartY;
 
-        allScansCard.addEventListener('touchend', (e) => {
-            if (!isAllScansDragging) return;
-            isAllScansDragging = false;
+        if (deltaY > 0) {
+            allScansCardObj.style.transform = `translateY(${deltaY}px)`;
+        }
+    }, { passive: true });
 
-            const deltaY = e.changedTouches[0].clientY - allScansStartY;
-            allScansCard.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+    allScansCardObj.addEventListener('touchend', (e) => {
+        if (!isAllScansDragging) return;
+        isAllScansDragging = false;
 
-            if (deltaY > 100) {
-                allScansCard.style.transform = 'translate3d(0, 100%, 0)';
-                closeAllScansModal(true);
-            } else {
-                allScansCard.style.transform = 'translate3d(0, 0px, 0)';
-                setTimeout(() => {
-                    allScansCard.style.transform = '';
-                    allScansCard.style.transition = '';
-                }, 350);
-            }
-        });
-    }
-});
+        const deltaY = allScansCurrentY - allScansStartY;
+        allScansCardObj.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
+
+        if (deltaY > 100) {
+            allScansCardObj.style.transform = 'translateY(100%)';
+            closeAllScansModal(true);
+        } else {
+            allScansCardObj.style.transform = 'translateY(0px)';
+            setTimeout(() => {
+                allScansCardObj.style.transform = '';
+                allScansCardObj.style.transition = '';
+            }, 400);
+        }
+    });
+}
 
 // ==========================================
 // 9. TOP SNUS OF THE WEEK & SOCIAL
@@ -1107,7 +1076,6 @@ async function loadTopSnusOfWeek() {
         return;
     }
 
-    // Start with empty container
     container.innerHTML = '';
 
     if (!data || (!data.top_rated && !data.most_popular_today)) {
@@ -1120,7 +1088,6 @@ async function loadTopSnusOfWeek() {
         most_popular_today
     } = data;
 
-    // Render Top Rated card
     if (top_rated && top_rated.snus_id) {
         const snusInfo = globalSnusData.find(s => s.id == top_rated.snus_id);
         if (snusInfo) {
@@ -1138,21 +1105,12 @@ async function loadTopSnusOfWeek() {
         }
     }
 
-    // Render Most Popular Today card
     if (most_popular_today && most_popular_today.snus_id) {
         const snusInfo = globalSnusData.find(s => s.id == most_popular_today.snus_id);
         if (snusInfo) {
             let popOverall = 'N/A';
-            let popAvgRatings = {
-                taste: 'N/A',
-                smell: 'N/A',
-                bite: 'N/A',
-                drip: 'N/A',
-                visuals: 'N/A',
-                strength: 'N/A'
-            };
+            let popAvgRatings = { taste: 'N/A', smell: 'N/A', bite: 'N/A', drip: 'N/A', visuals: 'N/A', strength: 'N/A' };
 
-            // Check if there are any ratings for the most popular snus
             if (most_popular_today.rating_count && most_popular_today.rating_count > 0) {
                 popAvgRatings = {
                     visuals: (most_popular_today.avg_ratings.visuals || 0).toFixed(1),
@@ -1169,7 +1127,6 @@ async function loadTopSnusOfWeek() {
         }
     }
 
-    // Final check if anything was rendered
     if (container.innerHTML.trim() === '') {
         container.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">No social stats available yet.</div>';
     }
@@ -1379,13 +1336,11 @@ async function toggleFollow(targetId, btnElement) {
 // 9.6. CONNECTIONS PAGE (New)
 // ==========================================
 
-
-// Swipe-Logik für die Connections-Seite
 let connStartX = 0;
 let connStartY = 0;
 let connCurrentX = 0;
 let isConnDragging = false;
-let isHorizontalIntent = null; // Prüft, ob der User scrollt oder wischt
+let isHorizontalIntent = null; 
 
 function setupConnectionsSwipe() {
     const page = document.getElementById('connections-page');
@@ -1396,9 +1351,9 @@ function setupConnectionsSwipe() {
         connStartY = e.touches[0].clientY;
         connCurrentX = connStartX;
         isConnDragging = true;
-        isHorizontalIntent = null; // Intent bei jedem neuen Touch zurücksetzen
+        isHorizontalIntent = null; 
         
-        page.style.transition = 'none'; // Sofortiges Tracking
+        page.style.transition = 'none'; 
     }, { passive: true });
 
     page.addEventListener('touchmove', (e) => {
@@ -1410,9 +1365,7 @@ function setupConnectionsSwipe() {
         const deltaX = connCurrentX - connStartX;
         const deltaY = currentY - connStartY;
 
-        // 1. Finde heraus, ob der User vertikal oder horizontal wischt (nur beim ersten Bewegen)
         if (isHorizontalIntent === null) {
-            // Wenn die Bewegung nach oben/unten größer ist als nach links/rechts -> abbrechen
             if (Math.abs(deltaY) > Math.abs(deltaX)) {
                 isHorizontalIntent = false;
                 isConnDragging = false; 
@@ -1422,12 +1375,11 @@ function setupConnectionsSwipe() {
             }
         }
 
-        // 2. Wenn es ein horizontaler Swipe ist, folge dem Finger (nur nach rechts)
         if (isHorizontalIntent && deltaX > 0) {
-            if (e.cancelable) e.preventDefault(); // Verhindert Browser-Back-Swipe Konflikte
+            if (e.cancelable) e.preventDefault(); 
             page.style.transform = `translateX(${deltaX}px)`;
         }
-    }, { passive: false }); // false, damit wir preventDefault nutzen können
+    }, { passive: false }); 
 
     page.addEventListener('touchend', () => {
         if (!isConnDragging) return;
@@ -1435,13 +1387,11 @@ function setupConnectionsSwipe() {
 
         const deltaX = connCurrentX - connStartX;
         
-        // Die Apple-Bezier-Kurve für das Zurückschnappen
         page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
 
-        if (deltaX > 100) { // Schwellenwert: Wenn mehr als 100px gezogen, dann schließen
+        if (deltaX > 100) { 
             closeConnectionsPage();
         } else {
-            // Zurück in die Ausgangsposition
             page.style.transform = 'translateX(0px)';
             setTimeout(() => {
                 page.style.transition = '';
@@ -1450,30 +1400,25 @@ function setupConnectionsSwipe() {
     });
 }
 
-// Einmal initialisieren
 setupConnectionsSwipe();
 
 function openConnectionsPage() {
     const page = document.getElementById('connections-page');
     if (!page) return;
 
-    // 1. Reset & Lade Daten
     document.getElementById('connections-search-input').value = '';
     document.getElementById('connections-search-results').innerHTML = '';
     document.getElementById('connections-lists').style.display = 'block';
     loadConnectionsData();
 
-    // 2. Setup (Unsichtbar nach rechts schieben)
     page.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
     
     page.style.transition = 'none';
     page.style.transform = 'translateX(100%)';
 
-    // 3. Force Reflow (zwingt den Browser, die Startposition zu übernehmen)
     page.offsetHeight; 
 
-    // 4. Animation abspielen
     page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
     page.style.transform = 'translateX(0)';
 }
@@ -1482,16 +1427,13 @@ function closeConnectionsPage() {
     const page = document.getElementById('connections-page');
     if (!page) return;
 
-    // 1. Animation nach rechts weg
     page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
     page.style.transform = 'translateX(100%)';
 
-    // 2. Aufräumen nach der Animation
     setTimeout(() => {
         page.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
         
-        // Reset Styles für den nächsten Start
         page.style.transform = '';
         page.style.transition = '';
     }, 350);
@@ -1508,8 +1450,8 @@ async function loadConnectionsData() {
     const followersList = document.getElementById('followers-list');
     const followingList = document.getElementById('following-list');
 
-        followersList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">Loading...</div>';
-        followingList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">Loading...</div>';
+    followersList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">Loading...</div>';
+    followingList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">Loading...</div>';
 
     // Load Followers
     const {
@@ -1521,16 +1463,16 @@ async function loadConnectionsData() {
         .eq('following_id', user.id);
 
     if (followersError || !followers || followers.length === 0) {
-            followersList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">No one is following you yet.</div>';
+        followersList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">No one is following you yet.</div>';
     } else {
         followersList.innerHTML = '';
-            const sortedFollowers = followers
-                .map(conn => Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles)
-                .filter(p => p)
-                .sort((a, b) => (b.xp || 0) - (a.xp || 0));
+        const sortedFollowers = followers
+            .map(conn => Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles)
+            .filter(p => p)
+            .sort((a, b) => (b.xp || 0) - (a.xp || 0));
 
-            sortedFollowers.forEach((profile, idx) => {
-                followersList.innerHTML += renderConnectionItem(profile, idx);
+        sortedFollowers.forEach((profile, idx) => {
+            followersList.innerHTML += renderConnectionItem(profile, idx);
         });
     }
 
@@ -1544,109 +1486,52 @@ async function loadConnectionsData() {
         .eq('follower_id', user.id);
 
     if (followingError || !following || following.length === 0) {
-            followingList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">You are not following anyone yet.</div>';
+        followingList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">You are not following anyone yet.</div>';
     } else {
         followingList.innerHTML = '';
-            const sortedFollowing = following
-                .map(conn => Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles)
-                .filter(p => p)
-                .sort((a, b) => (b.xp || 0) - (a.xp || 0));
+        const sortedFollowing = following
+            .map(conn => Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles)
+            .filter(p => p)
+            .sort((a, b) => (b.xp || 0) - (a.xp || 0));
 
-            sortedFollowing.forEach((profile, idx) => {
-                followingList.innerHTML += renderConnectionItem(profile, idx);
+        sortedFollowing.forEach((profile, idx) => {
+            followingList.innerHTML += renderConnectionItem(profile, idx);
         });
     }
 }
 
-    function renderConnectionItem(profile, index) {
+function renderConnectionItem(profile, index) {
     const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=random`;
     const xp = profile.xp || 0;
     const level = Math.floor(xp / 300) + 1;
-        const cans = Math.floor(xp / 100);
+    const cans = Math.floor(xp / 100);
 
-        let rankHtml = '';
-        if (index !== undefined) {
-            let rankColor = 'text-[#8E8E93]';
-            if (index === 0) rankColor = 'text-[#FFCC00]';
-            else if (index === 1) rankColor = 'text-[#E5E4E2]';
-            else if (index === 2) rankColor = 'text-[#CD7F32]';
-            
-            rankHtml = `<span class="text-[15px] font-bold ${rankColor} w-5 text-center mr-1 flex-shrink-0">${index + 1}</span>`;
-        }
+    let rankHtml = '';
+    if (index !== undefined) {
+        let rankColor = 'text-[#8E8E93]';
+        if (index === 0) rankColor = 'text-[#FFCC00]';
+        else if (index === 1) rankColor = 'text-[#E5E4E2]';
+        else if (index === 2) rankColor = 'text-[#CD7F32]';
+        
+        rankHtml = `<span class="text-[15px] font-bold ${rankColor} w-5 text-center mr-1 flex-shrink-0">${index + 1}</span>`;
+    }
 
     return `
-            <div class="flex items-center justify-between p-3 border-b border-white/5 last:border-0 cursor-pointer active:bg-white/5 transition-colors">
-                <div class="flex items-center gap-3 min-w-0 flex-1">
-                    ${rankHtml}
-                    <img src="${avatar}" class="w-11 h-11 rounded-full object-cover border border-white/10 flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
-                    <div class="min-w-0 flex-1">
-                        <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">${profile.username || 'Unknown'}</h4>
-                        <p class="text-[13px] text-[#8E8E93] font-medium mt-0.5">Lvl ${level} • ${cans} Cans</p>
-                    </div>
+        <div class="flex items-center justify-between p-3 border-b border-white/5 last:border-0 cursor-pointer active:bg-white/5 transition-colors">
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+                ${rankHtml}
+                <img src="${avatar}" class="w-11 h-11 rounded-full object-cover border border-white/10 flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
+                <div class="min-w-0 flex-1">
+                    <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                    <p class="text-[13px] text-[#8E8E93] font-medium mt-0.5">Lvl ${level} • ${cans} Cans</p>
+                </div>
             </div>
-                <div class="flex items-center gap-2 pl-4 flex-shrink-0 text-right">
-                    <span class="text-[17px] font-semibold text-white tracking-tight">${xp} XP</span>
+            <div class="flex items-center gap-2 pl-4 flex-shrink-0 text-right">
+                <span class="text-[17px] font-semibold text-white tracking-tight">${xp} XP</span>
             </div>
         </div>
     `;
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-    const connectionsPage = document.getElementById('connections-page');
-    if (!connectionsPage) return;
-
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let isSwiping = false;
-
-    connectionsPage.addEventListener('touchstart', (e) => {
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        isSwiping = false;
-    }, {
-        passive: true
-    });
-
-    connectionsPage.addEventListener('touchmove', (e) => {
-        if (!touchStartX || !touchStartY) return;
-
-        let touchCurrentX = e.touches[0].clientX;
-        let touchCurrentY = e.touches[0].clientY;
-
-        let diffX = touchCurrentX - touchStartX;
-        let diffY = Math.abs(touchCurrentY - touchStartY);
-
-        if (diffY > Math.abs(diffX)) {
-            return;
-        }
-
-        if (diffX > 0) {
-            isSwiping = true;
-            connectionsPage.style.transition = 'none';
-            connectionsPage.style.transform = `translateX(${diffX}px)`;
-        }
-    }, {
-        passive: true
-    });
-
-    connectionsPage.addEventListener('touchend', (e) => {
-        if (!isSwiping) return;
-        let diffX = e.changedTouches[0].clientX - touchStartX;
-        connectionsPage.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
-        if (diffX > window.innerWidth / 3 || diffX > 100) {
-            closeConnectionsPage();
-        } else {
-            connectionsPage.style.transform = 'translateX(0)';
-        }
-        setTimeout(() => {
-            connectionsPage.style.transform = '';
-            connectionsPage.style.transition = '';
-        }, 300);
-        touchStartX = 0;
-        touchStartY = 0;
-        isSwiping = false;
-    });
-});
 
 // 10. USAGE LOGS & CONCURRENT CAN TRACKING
 // ==========================================
@@ -1846,8 +1731,9 @@ function calculateUsageStats(allLogs) {
     }
 }
 
-
-
+// ==========================================
+// CAMERA SCANNER LOGIK
+// ==========================================
 
 let html5QrCode = null;
 let isProcessingScan = false;
@@ -1855,7 +1741,6 @@ let isProcessingScan = false;
 const scanModal = document.getElementById('scan-modal');
 const scanModalCard = document.getElementById('scan-modal-card');
 const scanModalBackdrop = document.getElementById('scan-modal-backdrop');
-
 
 if (scanModal) {
     scanModal.addEventListener('touchmove', (e) => {
@@ -1866,7 +1751,6 @@ if (scanModal) {
         passive: false
     });
 }
-
 
 async function openScanModal() {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
@@ -1938,7 +1822,6 @@ async function openScanModal() {
         }
     }, 300);
 }
-
 
 function closeScanModal(isDragging = false) {
     scanModalCard.classList.remove('translate-y-0');
@@ -2346,475 +2229,6 @@ document.addEventListener('DOMContentLoaded', () => {
         touchStartY = 0;
         isSwiping = false;
     });
-});
-
-// ==========================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    const splashScreen = document.getElementById('splash-screen');
-    const splashVideo = document.getElementById('splash-video');
-    const splashSound = document.getElementById('splash-sound');
-
-    function removeSplashScreen() {
-        if (!splashScreen.classList.contains('opacity-0')) {
-            splashScreen.classList.remove('opacity-100');
-            splashScreen.classList.add('opacity-0');
-
-            if (splashSound) {
-                const fadeAudio = setInterval(() => {
-                    if (splashSound.volume > 0.1) {
-                        splashSound.volume -= 0.1;
-                    } else {
-                        splashSound.pause();
-                        clearInterval(fadeAudio);
-                    }
-                }, 50);
-            }
-
-            setTimeout(() => {
-                splashScreen.classList.add('hidden');
-            }, 500);
-        }
-    }
-
-    if (splashScreen && splashVideo) {
-        splashVideo.play().then(() => {
-            if (splashSound) {
-                splashSound.play().catch(e => console.log("Audio-Autoplay blockiert"));
-            }
-        });
-
-        splashVideo.addEventListener('ended', removeSplashScreen);
-
-        setTimeout(removeSplashScreen, 2500);
-    }
-});
-
-//
-
-// ==========================================
-// 8. HELPER & INITIALISIERUNG
-// ==========================================
-
-async function loadUserStats(userId) {
-    const {
-        count
-    } = await supabaseClient.from('user_collections').select('*', {
-        count: 'exact',
-        head: true
-    }).eq('user_id', userId);
-
-    const xp = (count || 0) * 100;
-    const level = Math.floor(xp / 300) + 1;
-
-    const scoreEl = document.getElementById('score');
-    const homeLevelEl = document.getElementById('home-level');
-
-    if (scoreEl) {
-        scoreEl.innerHTML = `${xp} <span class="text-[20px] text-white/50 font-medium">XP</span>`;
-    }
-    if (homeLevelEl) {
-        homeLevelEl.innerText = `LVL ${level}`;
-    }
-
-    const profileXpEl = document.getElementById('profile-xp');
-    const profileLevelEl = document.getElementById('profile-level');
-
-    if (profileXpEl) profileXpEl.innerText = `${xp} XP`;
-    if (profileLevelEl) profileLevelEl.innerText = `Lvl ${level}`;
-}
-
-function filterDex() {
-    const term = document.getElementById('dex-search').value.toLowerCase();
-    renderDexGrid(globalSnusData.filter(s => s.name?.toLowerCase().includes(term) || s.flavor?.some(f => f.toLowerCase().includes(term))));
-}
-
-function setupProfile(user) {
-    const emailEl = document.getElementById('profile-email');
-    const idEl = document.getElementById('profile-id');
-    const adminEl = document.getElementById('admin-panel');
-    if (emailEl) emailEl.innerText = user.email;
-    if (idEl) {
-        const shortId = user.id.split('-')[0].toUpperCase();
-        idEl.innerText = `ID #${shortId}`;
-    }
-
-    if (user.email === 'tarayannorman@gmail.com' && adminEl) {
-        adminEl.classList.remove('hidden');
-    }
-    loadUserStats(user.id);
-}
-
-function previewProfileImage(event) {
-    const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('edit-profile-image-preview').src = e.target.result;
-        }
-        reader.readAsDataURL(file);
-    }
-}
-
-function handleProfileSave(btn) {
-    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
-
-    btn.disabled = true;
-    btn.innerHTML = `
-        <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        Saving...
-    `;
-
-    setTimeout(() => {
-        if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
-
-        btn.classList.remove('bg-white', 'text-black');
-        btn.classList.add('bg-[#34C759]', 'text-white');
-        btn.innerHTML = `
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            Saved
-        `;
-
-        setTimeout(() => {
-            btn.disabled = false;
-            btn.classList.remove('bg-[#34C759]', 'text-white');
-            btn.classList.add('bg-white', 'text-black');
-            btn.innerHTML = `<span>Save Changes</span>`;
-        }, 2000);
-
-    }, 500);
-}
-
-let displayedXp = null;
-let actualXp = null;
-
-async function loadUserStats(userId) {
-    const {
-        count
-    } = await supabaseClient.from('user_collections').select('*', {
-        count: 'exact',
-        head: true
-    }).eq('user_id', userId);
-
-    const xp = (count || 0) * 100;
-    const level = Math.floor(xp / 300) + 1;
-
-    actualXp = xp;
-
-    const profileXpEl = document.getElementById('profile-xp');
-    const profileLevelEl = document.getElementById('profile-level');
-    if (profileXpEl) profileXpEl.innerText = `${xp} XP`;
-    if (profileLevelEl) profileLevelEl.innerText = `Lvl ${level}`;
-
-    if (displayedXp === null) {
-        displayedXp = xp;
-        const scoreEl = document.getElementById('score');
-        const homeLevelEl = document.getElementById('home-level');
-        if (scoreEl) scoreEl.innerHTML = `${xp} <span class="font-medium text-[20px] text-white/50">XP</span>`;
-        if (homeLevelEl) homeLevelEl.innerText = `LVL ${level}`;
-    } else if (displayedXp !== actualXp) {
-        const homeTab = document.getElementById('tab-home');
-        if (!homeTab.classList.contains('hidden')) {
-            animateXp(displayedXp, actualXp, level);
-        }
-    }
-}
-
-function animateXp(startValue, endValue, newLevel) {
-    const scoreEl = document.getElementById('score');
-    const homeLevelEl = document.getElementById('home-level');
-    if (!scoreEl) return;
-
-    const duration = 1500;
-    const startTime = performance.now();
-
-    function updateCounter(currentTime) {
-        const elapsed = currentTime - startTime;
-        let progress = elapsed / duration;
-        if (progress > 1) progress = 1;
-
-        const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-
-        const currentVal = Math.floor(startValue + (endValue - startValue) * easeProgress);
-
-        scoreEl.innerHTML = `${currentVal} <span class="font-medium text-[20px] text-white/50">XP</span>`;
-
-        if (progress < 1) {
-            requestAnimationFrame(updateCounter);
-        } else {
-            displayedXp = endValue;
-            if (homeLevelEl) homeLevelEl.innerText = `LVL ${newLevel}`;
-
-            if (typeof triggerHapticFeedback === 'function') {
-                triggerHapticFeedback();
-            }
-        }
-    }
-
-    requestAnimationFrame(updateCounter);
-}
-
-let currentDashboardStats = {
-    count: 0,
-    flow: 0,
-    avgPouches: 0,
-    avgMg: 0
-};
-
-function animateNumber(elementId, startValue, endValue, duration = 1500, suffix = "", isFloat = false) {
-    const el = document.getElementById(elementId);
-    if (!el) return;
-
-    const startTime = performance.now();
-
-    function update(currentTime) {
-        const elapsed = currentTime - startTime;
-        let progress = elapsed / duration;
-        if (progress > 1) progress = 1;
-
-        const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-        const currentVal = startValue + (endValue - startValue) * easeProgress;
-
-        let displayStr = "";
-        if (isFloat) {
-            displayStr = currentVal.toFixed(1).replace('.', ',');
-        } else {
-            displayStr = Math.floor(currentVal).toLocaleString('de-DE');
-        }
-
-        el.innerText = `${displayStr}${suffix}`;
-
-        if (progress < 1) {
-            requestAnimationFrame(update);
-        } else {
-            let finalStr = isFloat ? endValue.toFixed(1).replace('.', ',') : Math.floor(endValue).toLocaleString('de-DE');
-            el.innerText = `${finalStr}${suffix}`;
-        }
-    }
-    requestAnimationFrame(update);
-}
-
-// ==========================================
-// 11. DEBUGGING & DEV COMMANDS
-// ==========================================
-window.unlock = function(id) {
-    const foundSnus = globalSnusData.find(s => s.id === id);
-    if (foundSnus) {
-        console.log(`[Dev] Unlocking Snus #${id}: ${foundSnus.name} for rating...`);
-        openSnusDetail(foundSnus.id, true);
-    } else {
-        console.error(`[Dev] Snus mit ID ${id} nicht gefunden!`);
-    }
-    return "Dev command executed.";
-};
-
-
-// ==========================================
-// 12. RECENT SCANS & ALL SCANS MODAL LOGIK
-// ==========================================
-
-function createScanListItemHTML(snus, fromModal = false) {
-    const dateObj = new Date(globalUserCollection[snus.id].date);
-    const dateStr = dateObj.toLocaleDateString('de-DE', {
-        day: '2-digit',
-        month: '2-digit',
-        year: '2-digit'
-    });
-
-    const clickAction = fromModal ?
-        `closeAllScansModal(); setTimeout(() => openSnusDetail(${snus.id}), 300);` :
-        `openSnusDetail(${snus.id})`;
-
-    return `
-        <div class="flex items-center justify-between p-3 border-b border-white/5 last:border-0 cursor-pointer active:bg-white/5 transition-colors" onclick="triggerHapticFeedback(); ${clickAction}">
-            <div class="flex items-center gap-3 min-w-0 flex-1">
-                <div class="w-11 h-11 flex items-center justify-center flex-shrink-0">
-                    <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain" onerror="this.style.display='none'">
-                </div>
-                <div class="min-w-0 flex-1">
-                    <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">${snus.name}</h4>
-                    <p class="text-[13px] text-[#8E8E93] font-medium mt-0.5">${dateStr}</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-2 pl-4 flex-shrink-0 text-right">
-                <span class="text-[17px] font-semibold text-white tracking-tight">${snus.nicotine}mg</span>
-                <svg class="w-4 h-4 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                </svg>
-            </div>
-        </div>
-    `;
-}
-
-function updateLivePerformance() {
-    const collectedItems = globalSnusData.filter(snus => !!globalUserCollection[snus.id]);
-    collectedItems.sort((a, b) => new Date(globalUserCollection[b.id].date) - new Date(globalUserCollection[a.id].date));
-
-    const targetCount = collectedItems.length;
-    if (currentDashboardStats.count !== targetCount) {
-        animateNumber('stat-count', currentDashboardStats.count, targetCount, 1500, "", false);
-        currentDashboardStats.count = targetCount;
-    }
-
-    const listEl = document.getElementById('latest-unlocks-list');
-    const showMoreBtn = document.getElementById('show-more-scans-btn');
-    if (!listEl) return;
-
-    listEl.innerHTML = '';
-
-    if (collectedItems.length === 0) {
-        listEl.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">Keine gefundenden Dosen.</div>';
-        if (showMoreBtn) showMoreBtn.classList.add('hidden');
-        return;
-    }
-
-    if (showMoreBtn) {
-        if (collectedItems.length > 4) {
-            showMoreBtn.classList.remove('hidden');
-        } else {
-            showMoreBtn.classList.add('hidden');
-        }
-    }
-
-    collectedItems.slice(0, 4).forEach(snus => {
-        listEl.innerHTML += createScanListItemHTML(snus, false);
-    });
-}
-
-function openAllScansModal() {
-    const modal = document.getElementById('all-scans-modal');
-    const backdrop = document.getElementById('all-scans-backdrop');
-    const card = document.getElementById('all-scans-card');
-    const listContainer = document.getElementById('all-scans-list-container');
-
-    const collectedItems = globalSnusData.filter(snus => !!globalUserCollection[snus.id]);
-    collectedItems.sort((a, b) => new Date(globalUserCollection[b.id].date) - new Date(globalUserCollection[a.id].date));
-
-    listContainer.innerHTML = '';
-    collectedItems.forEach(snus => {
-        listContainer.innerHTML += createScanListItemHTML(snus, true);
-    });
-
-    modal.classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
-
-    setTimeout(() => {
-        backdrop.classList.remove('opacity-0');
-        backdrop.classList.add('opacity-100');
-
-        card.classList.remove('translate-y-full');
-        card.classList.add('translate-y-0');
-    }, 10);
-}
-
-function closeAllScansModal(isDragging = false) {
-    const modal = document.getElementById('all-scans-modal');
-    const backdrop = document.getElementById('all-scans-backdrop');
-    const card = document.getElementById('all-scans-card');
-
-    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
-
-    backdrop.classList.remove('opacity-100');
-    backdrop.classList.add('opacity-0');
-
-    if (!isDragging) {
-        card.classList.remove('translate-y-0');
-        card.classList.add('translate-y-full');
-    }
-
-    setTimeout(() => {
-        modal.classList.add('hidden');
-
-        if (isDragging) {
-            card.style.transform = '';
-            card.style.transition = '';
-            card.classList.remove('translate-y-0');
-            card.classList.add('translate-y-full');
-        }
-
-        if (document.getElementById('snus-modal').classList.contains('hidden')) {
-            document.body.classList.remove('overflow-hidden');
-        }
-    }, 400);
-}
-
-let allScansStartY = 0;
-let allScansCurrentY = 0;
-let isAllScansDragging = false;
-let allScansRafId = null;
-
-document.addEventListener('DOMContentLoaded', () => {
-    const allScansCard = document.getElementById('all-scans-card');
-    const allScansScrollArea = document.getElementById('all-scans-scroll-area');
-
-    if (allScansCard && allScansScrollArea) {
-        allScansCard.addEventListener('touchstart', (e) => {
-            if (allScansScrollArea.scrollTop > 0) {
-                isAllScansDragging = false;
-                return;
-            }
-            allScansStartY = e.touches[0].clientY;
-            isAllScansDragging = true;
-            
-            allScansCard.style.transition = 'transform 0s';
-            allScansCard.style.willChange = 'transform';
-        }, { passive: true });
-
-        allScansCard.addEventListener('touchmove', (e) => {
-            if (!isAllScansDragging) return;
-            
-            const currentY = e.touches[0].clientY;
-            const deltaY = currentY - allScansStartY;
-
-            if (deltaY > 0 && allScansScrollArea.scrollTop <= 0) {
-                if (e.cancelable) e.preventDefault();
-                
-                // Fix: Untergeordneten Container vom Scrollen abhalten
-                allScansScrollArea.style.overflowY = 'hidden';
-
-                if (allScansRafId) cancelAnimationFrame(allScansRafId);
-                allScansRafId = requestAnimationFrame(() => {
-                    allScansCard.style.transform = `translate3d(0, ${deltaY}px, 0)`;
-                });
-            } else {
-                isAllScansDragging = false;
-                allScansScrollArea.style.overflowY = 'auto';
-                allScansCard.style.transform = '';
-            }
-        }, { passive: false });
-
-        allScansCard.addEventListener('touchend', (e) => {
-            if (!isAllScansDragging) return;
-            isAllScansDragging = false;
-            
-            if (allScansRafId) cancelAnimationFrame(allScansRafId);
-
-            const deltaY = e.changedTouches[0].clientY - allScansStartY;
-            allScansCard.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
-            allScansCard.style.willChange = 'auto';
-
-            if (deltaY > 100) {
-                allScansCard.style.transform = 'translate3d(0, 100%, 0)';
-                closeAllScansModal(true); // Haptik!
-                
-                setTimeout(() => { 
-                    allScansScrollArea.style.overflowY = 'auto'; 
-                }, 400);
-            } else {
-                allScansCard.style.transform = 'translate3d(0, 0px, 0)';
-                setTimeout(() => {
-                    allScansCard.style.transform = '';
-                    allScansCard.style.transition = '';
-                    allScansScrollArea.style.overflowY = 'auto';
-                }, 400);
-            }
-        });
-    }
 });
 
 // ==========================================
