@@ -83,30 +83,51 @@ async function signInWithGoogle() {
     const btnText = document.getElementById('google-btn-text');
     const btn = document.getElementById('google-login-btn');
 
-    // Wir prüfen hier direkt auf das Objekt
+    // 1. Validierung des Clients
     if (!supabaseClient || !supabaseClient.auth) {
-        console.error("Fehler: Der supabase-Client ist nicht bereit.");
-        alert("System-Fehler: Verbindung zur Datenbank konnte nicht hergestellt werden.");
+        console.error("Supabase Client fehlt!");
+        alert("Verbindung zum Server wird aufgebaut... Bitte versuche es in 2 Sekunden erneut.");
         return;
     }
 
     try {
-        btnText.innerText = "Verbinde...";
+        // UI Feedback
+        btnText.innerText = "Öffne Google...";
         btn.disabled = true;
+        btn.style.opacity = "0.7";
+
+        // 2. Redirect URL für WebViews optimieren
+        // Auf iOS WebViews ist window.location.origin oft 'file://' oder lokal.
+        // Falls du eine echte Domain hast (ngrok oder live), setze sie hier fest ein.
+        const redirectUrl = window.location.origin + window.location.pathname;
 
         const { data, error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin + window.location.pathname
+                redirectTo: redirectUrl,
+                queryParams: {
+                    prompt: 'select_account', // Zwingt Google zur Kontoauswahl (hilft bei WebView-Hängern)
+                    access_type: 'offline'
+                }
             }
         });
 
         if (error) throw error;
+
+        // data.url enthält den Google-Link. In manchen WebViews muss man 
+        // den Redirect manuell triggern, falls er nicht automatisch passiert:
+        if (data?.url) {
+            window.location.href = data.url;
+        }
+
     } catch (error) {
         console.error("Google Login Error:", error.message);
-        alert("Login fehlgeschlagen: " + error.message);
+        alert("Login-Fehler: " + error.message);
+        
+        // UI Reset
         btnText.innerText = "Mit Google anmelden";
         btn.disabled = false;
+        btn.style.opacity = "1";
     }
 }
 
