@@ -39,6 +39,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 600);
     });
     loadLatestGitHubCommit();
+
+    // 1. Prüfe auf Google OAuth Fehler in der URL (z.B. wegen Supabase Trigger Problemen)
+    const hash = window.location.hash;
+    if (hash.includes('error=')) {
+        const params = new URLSearchParams(hash.substring(1));
+        const errorDesc = params.get('error_description') || 'Login Fehler';
+        alert("Google Login Fehler: " + decodeURIComponent(errorDesc.replace(/\+/g, ' ')));
+        window.location.hash = ''; // URL aufräumen
+    }
+
+    // 2. Auf Änderungen des Auth-Status hören (damit Redirects immer erkannt werden)
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN') checkUser();
+    });
+
     checkUser();
 });
 
