@@ -432,25 +432,22 @@ let detailStartY = 0;
 let detailCurrentY = 0;
 let isDetailDragging = false;
 
-// Diese Funktion wird nur EINMAL aufgerufen, wenn die Seite lädt
 function setupGlobalSwipe() {
     const card = document.getElementById('snus-modal-card');
-    const backdrop = document.getElementById('modal-backdrop');
-    const scrollContent = document.getElementById('modal-view-info'); 
 
     if (!card) return;
 
     card.addEventListener('touchstart', (e) => {
-        // Swipe nur starten, wenn wir am oberen Rand des Inhalts sind
-        if (scrollContent && scrollContent.scrollTop > 0) {
+        // Nur Swipe starten, wenn das Modal GANZ OBEN hingescannt ist
+        if (card.scrollTop > 0) {
             isDetailDragging = false;
             return;
         }
 
         detailStartY = e.touches[0].clientY;
-        detailCurrentY = detailStartY; // Reset CurrentY
+        detailCurrentY = detailStartY; 
         isDetailDragging = true;
-        card.style.transition = 'none';
+        card.style.transition = 'none'; // Direkt am Finger kleben
     }, { passive: true });
 
     card.addEventListener('touchmove', (e) => {
@@ -459,30 +456,35 @@ function setupGlobalSwipe() {
         detailCurrentY = e.touches[0].clientY;
         const deltaY = detailCurrentY - detailStartY;
 
-        if (deltaY > 0) {
+        // Nur nach unten ziehen erlauben
+        if (deltaY > 0 && card.scrollTop <= 0) {
+            if (e.cancelable) e.preventDefault(); // Verhindert iOS Rubber-Banding beim Ziehen
             card.style.transform = `translateY(${deltaY}px)`;
-            const opacity = Math.max(0, 1 - (deltaY / 400));
-            backdrop.style.opacity = opacity;
         }
-    }, { passive: true });
+    }, { passive: false }); // Wichtig: false, damit preventDefault() klappt
 
     card.addEventListener('touchend', () => {
         if (!isDetailDragging) return;
         isDetailDragging = false;
 
         const deltaY = detailCurrentY - detailStartY;
-        card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s ease';
+        // Gleiche Apple-Smooth-Kurve wie im Scanner
+        card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
 
-        if (deltaY > 120) {
-            closeSnusDetail();
+        if (deltaY > 100) {
+            card.style.transform = 'translateY(100%)';
+            closeSnusDetail(true);
         } else {
+            // Zurückschnappen
             card.style.transform = 'translateY(0px)';
-            backdrop.style.opacity = '1';
+            setTimeout(() => {
+                card.style.transform = '';
+                card.style.transition = '';
+            }, 400);
         }
     });
 }
 
-// Sofort ausführen
 setupGlobalSwipe();
 
 let tempRatings = {
@@ -795,12 +797,15 @@ function openSnusDetail(id, isFromScan = false) {
     if (typeof triggerHapticFeedback === "function") triggerHapticFeedback();
 }
 
-function closeSnusDetail() {
+function closeSnusDetail(isDragging = false) {
     const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
 
-    card.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
-    card.style.transform = 'translateY(100%)';
+    if (!isDragging) {
+        card.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+        card.style.transform = 'translateY(100%)';
+    }
+    
     backdrop.style.transition = 'opacity 0.3s ease-in';
     backdrop.style.opacity = '0';
     
@@ -808,6 +813,10 @@ function closeSnusDetail() {
     
     setTimeout(() => {
         document.getElementById('snus-modal').classList.add('hidden');
+        if (isDragging) {
+            card.style.transform = '';
+            card.style.transition = '';
+        }
     }, 350);
 }
 
@@ -1237,17 +1246,18 @@ async function searchUsersConnections() {
             const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=random`;
             const xp = profile.xp || 0;
             const level = Math.floor(xp / 300) + 1;
+            const cans = Math.floor(xp / 100);
 
             resultsContainer.innerHTML += `
                 <div class="flex items-center justify-between p-3 bg-[#2C2C2E] rounded-[16px] border border-white/5 shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <img src="${avatar}" class="w-12 h-12 rounded-full object-cover border border-white/10" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
-                        <div>
-                            <h4 class="text-white text-[16px] font-bold tracking-tight">${profile.username || 'Unknown'}</h4>
-                            <p class="text-[12px] text-[#8E8E93] font-medium">Lvl ${level} • ${xp} XP</p>
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <img src="${avatar}" class="w-12 h-12 rounded-full object-cover border border-white/10 flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
+                        <div class="min-w-0 flex-1">
+                            <h4 class="text-white text-[16px] font-bold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                            <p class="text-[12px] text-[#8E8E93] font-medium">Lvl ${level} • ${cans} Cans</p>
                         </div>
                     </div>
-                    <button onclick="triggerHapticFeedback(); toggleFollow('${profile.id}', this)" class="w-10 h-10 rounded-full flex items-center justify-center transition-all ${btnClass}" data-following="${isFollowing}">
+                    <button onclick="triggerHapticFeedback(); toggleFollow('${profile.id}', this)" class="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ml-3 ${btnClass}" data-following="${isFollowing}">
                         ${btnIcon}
                     </button>
                 </div>
@@ -1439,8 +1449,8 @@ async function loadConnectionsData() {
     const followersList = document.getElementById('followers-list');
     const followingList = document.getElementById('following-list');
 
-    followersList.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] py-2">Loading...</div>';
-    followingList.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] py-2">Loading...</div>';
+        followersList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">Loading...</div>';
+        followingList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">Loading...</div>';
 
     // Load Followers
     const {
@@ -1452,12 +1462,16 @@ async function loadConnectionsData() {
         .eq('following_id', user.id);
 
     if (followersError || !followers || followers.length === 0) {
-        followersList.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] py-2 px-4">No one is following you yet.</div>';
+            followersList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">No one is following you yet.</div>';
     } else {
         followersList.innerHTML = '';
-        followers.forEach(conn => {
-            const profile = Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles;
-            if (profile) followersList.innerHTML += renderConnectionItem(profile);
+            const sortedFollowers = followers
+                .map(conn => Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles)
+                .filter(p => p)
+                .sort((a, b) => (b.xp || 0) - (a.xp || 0));
+
+            sortedFollowers.forEach((profile, idx) => {
+                followersList.innerHTML += renderConnectionItem(profile, idx);
         });
     }
 
@@ -1471,32 +1485,48 @@ async function loadConnectionsData() {
         .eq('follower_id', user.id);
 
     if (followingError || !following || following.length === 0) {
-        followingList.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] py-2 px-4">You are not following anyone yet.</div>';
+            followingList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">You are not following anyone yet.</div>';
     } else {
         followingList.innerHTML = '';
-        following.forEach(conn => {
-            const profile = Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles;
-            if (profile) followingList.innerHTML += renderConnectionItem(profile);
+            const sortedFollowing = following
+                .map(conn => Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles)
+                .filter(p => p)
+                .sort((a, b) => (b.xp || 0) - (a.xp || 0));
+
+            sortedFollowing.forEach((profile, idx) => {
+                followingList.innerHTML += renderConnectionItem(profile, idx);
         });
     }
 }
 
-function renderConnectionItem(profile) {
+    function renderConnectionItem(profile, index) {
     const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=random`;
     const xp = profile.xp || 0;
     const level = Math.floor(xp / 300) + 1;
+        const cans = Math.floor(xp / 100);
+
+        let rankHtml = '';
+        if (index !== undefined) {
+            let rankColor = 'text-[#8E8E93]';
+            if (index === 0) rankColor = 'text-[#FFCC00]';
+            else if (index === 1) rankColor = 'text-[#E5E4E2]';
+            else if (index === 2) rankColor = 'text-[#CD7F32]';
+            
+            rankHtml = `<span class="text-[15px] font-bold ${rankColor} w-5 text-center mr-1 flex-shrink-0">${index + 1}</span>`;
+        }
 
     return `
-        <div class="flex items-center justify-between p-3 bg-[#1C1C1E] rounded-[16px] border border-white/5 shadow-sm">
-            <div class="flex items-center gap-3 min-w-0">
-                <img src="${avatar}" class="w-11 h-11 rounded-full object-cover border-2 border-black flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
-                <div class="min-w-0">
-                    <h4 class="text-white text-[16px] font-bold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
-                    <p class="text-[12px] text-[#8E8E93] font-medium">${xp} XP</p>
-                </div>
+            <div class="flex items-center justify-between p-3 border-b border-white/5 last:border-0 cursor-pointer active:bg-white/5 transition-colors">
+                <div class="flex items-center gap-3 min-w-0 flex-1">
+                    ${rankHtml}
+                    <img src="${avatar}" class="w-11 h-11 rounded-full object-cover border border-white/10 flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
+                    <div class="min-w-0 flex-1">
+                        <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                        <p class="text-[13px] text-[#8E8E93] font-medium mt-0.5">Lvl ${level} • ${cans} Cans</p>
+                    </div>
             </div>
-            <div class="inline-flex items-center justify-center px-2.5 py-1 bg-white/10 border border-white/5 rounded-md flex-shrink-0">
-                <span class="text-[11px] font-bold text-white uppercase tracking-wider">Lvl ${level}</span>
+                <div class="flex items-center gap-2 pl-4 flex-shrink-0 text-right">
+                    <span class="text-[17px] font-semibold text-white tracking-tight">${xp} XP</span>
             </div>
         </div>
     `;
@@ -2656,7 +2686,6 @@ function closeAllScansModal(isDragging = false) {
 let allScansStartY = 0;
 let allScansCurrentY = 0;
 let isAllScansDragging = false;
-let hasAllScansMoved = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     const allScansCard = document.getElementById('all-scans-card');
@@ -2664,36 +2693,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (allScansCard && allScansScrollArea) {
         allScansCard.addEventListener('touchstart', (e) => {
-            if (allScansScrollArea.scrollTop <= 0) {
-                allScansStartY = e.touches[0].clientY;
-                allScansCurrentY = allScansStartY;
-                isAllScansDragging = true;
-                hasAllScansMoved = false;
+            if (allScansScrollArea.scrollTop > 0) {
+                isAllScansDragging = false;
+                return;
             }
-        }, {
-            passive: true
-        });
+            allScansStartY = e.touches[0].clientY;
+            allScansCurrentY = allScansStartY;
+            isAllScansDragging = true;
+            allScansCard.style.transition = 'none';
+        }, { passive: true });
 
         allScansCard.addEventListener('touchmove', (e) => {
             if (!isAllScansDragging) return;
+            
             allScansCurrentY = e.touches[0].clientY;
             const deltaY = allScansCurrentY - allScansStartY;
 
-            if (deltaY > 5) {
-                if (!hasAllScansMoved) {
-                    hasAllScansMoved = true;
-                    allScansCard.style.transition = 'none';
-                }
+            if (deltaY > 0 && allScansScrollArea.scrollTop <= 0) {
+                if (e.cancelable) e.preventDefault(); // Stoppt Browser-Scroll
                 allScansCard.style.transform = `translateY(${deltaY}px)`;
             }
-        }, {
-            passive: true
-        });
+        }, { passive: false });
 
         allScansCard.addEventListener('touchend', (e) => {
             if (!isAllScansDragging) return;
             isAllScansDragging = false;
-            if (!hasAllScansMoved) return;
 
             const deltaY = allScansCurrentY - allScansStartY;
             allScansCard.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
