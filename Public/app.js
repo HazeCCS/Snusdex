@@ -4,12 +4,12 @@
 // ==========================================
 // 1. SETUP & KONFIGURATION
 // ==========================================
-const SUPABASE_URL = 'https://aqyjrvukfuyuhlidpoxr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_4gIcuQhw528DH6GrmhF16g_V8im-UMU';
 const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/main/assets/';
+const SUPABASE_URL = 'https://aqyjrvukfuyuhlidpoxr.supabase.co';
 
+// Hier definieren wir den Client (darf nicht 'supabase' heißen, da das CDN dies blockiert)
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-console.log("Supabase Status:", supabase ? "Verbunden" : "Fehlt");
 
 // ==========================================
 // 1.5. SPLASH SCREEN / LOADING
@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 600);
     });
     loadLatestGitHubCommit();
+    checkUser();
 });
 
 // ==========================================
@@ -82,10 +83,10 @@ async function signInWithGoogle() {
     const btnText = document.getElementById('google-btn-text');
     const btn = document.getElementById('google-login-btn');
 
-    // Sicherheitscheck: Ist supabase definiert?
-    if (typeof supabase === 'undefined' || !supabase.auth) {
-        console.error("Supabase Client ist nicht geladen oder falsch initialisiert.");
-        alert("System-Fehler: Supabase Verbindung fehlt.");
+    // Wir prüfen hier direkt auf das Objekt
+    if (!supabaseClient || !supabaseClient.auth) {
+        console.error("Fehler: Der supabase-Client ist nicht bereit.");
+        alert("System-Fehler: Verbindung zur Datenbank konnte nicht hergestellt werden.");
         return;
     }
 
@@ -93,18 +94,17 @@ async function signInWithGoogle() {
         btnText.innerText = "Verbinde...";
         btn.disabled = true;
 
-        const { data, error } = await supabase.auth.signInWithOAuth({
+        const { data, error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                // Bei ngrok ist es wichtig, die URL explizit anzugeben oder window.location.origin zu nutzen
-                redirectTo: window.location.origin, 
-            },
+                redirectTo: window.location.origin + window.location.pathname
+            }
         });
 
         if (error) throw error;
     } catch (error) {
         console.error("Google Login Error:", error.message);
-        alert("Fehler: " + error.message);
+        alert("Login fehlgeschlagen: " + error.message);
         btnText.innerText = "Mit Google anmelden";
         btn.disabled = false;
     }
@@ -114,25 +114,29 @@ async function signInWithGoogle() {
 // DEINE ALTE CHECK USER LOGIK (Unverändert)
 // ==========================================
 async function checkUser() {
-    const {
-        data: {
-            session
+    try {
+        const { data, error } = await supabaseClient.auth.getSession();
+        if (error) throw error;
+        
+        const session = data?.session;
+        const overlay = document.getElementById('auth-overlay');
+
+        if (session) {
+            overlay.classList.add('opacity-0');
+            setTimeout(() => overlay.classList.add('hidden'), 500);
+
+            setupProfile(session.user);
+
+            loadDex();
+            loadUsageData();
+
+            updateGreeting();
+        } else {
+            overlay.classList.remove('hidden', 'opacity-0');
         }
-    } = await supabaseClient.auth.getSession();
-    const overlay = document.getElementById('auth-overlay');
-
-    if (session) {
-        overlay.classList.add('opacity-0');
-        setTimeout(() => overlay.classList.add('hidden'), 500);
-
-        setupProfile(session.user);
-
-        loadDex();
-        loadUsageData();
-
-        updateGreeting();
-    } else {
-        overlay.classList.remove('hidden', 'opacity-0');
+    } catch (err) {
+        console.error("Session check failed:", err);
+        document.getElementById('auth-overlay').classList.remove('hidden', 'opacity-0');
     }
 }
 
@@ -337,9 +341,6 @@ async function loadDex() {
     loadTopSnusOfWeek();
     renderSuggestions();
 
-    if (user) {
-        await loadUsageLogs(user.id);
-    }
 }
 
 let currentDexRenderCount = 0;
