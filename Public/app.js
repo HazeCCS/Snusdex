@@ -74,42 +74,6 @@ greetingElement.innerHTML = `${message}, <span class="text-white font-semibold">
 }
 
 // ==========================================
-// GOOGLE ANMELDUNG 
-// ==========================================
-
-async function signInWithGoogle() {
-    const btnText = document.getElementById('google-btn-text');
-    const btn = document.getElementById('google-login-btn');
-
-    // Sicherheitscheck: Ist supabase definiert?
-    if (typeof supabase === 'undefined' || !supabase.auth) {
-        console.error("Supabase Client ist nicht geladen oder falsch initialisiert.");
-        alert("System-Fehler: Supabase Verbindung fehlt.");
-        return;
-    }
-
-    try {
-        btnText.innerText = "Verbinde...";
-        btn.disabled = true;
-
-        const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                // Bei ngrok ist es wichtig, die URL explizit anzugeben oder window.location.origin zu nutzen
-                redirectTo: window.location.origin, 
-            },
-        });
-
-        if (error) throw error;
-    } catch (error) {
-        console.error("Google Login Error:", error.message);
-        alert("Fehler: " + error.message);
-        btnText.innerText = "Mit Google anmelden";
-        btn.disabled = false;
-    }
-}
-
-// ==========================================
 // DEINE ALTE CHECK USER LOGIK (Unverändert)
 // ==========================================
 async function checkUser() {
@@ -466,16 +430,27 @@ container.innerHTML += `
 // ==========================================
 
 let detailStartY = 0;
+let detailCurrentY = 0;
 let isDetailDragging = false;
+let detailRafId = null;
 
 function setupGlobalSwipe() {
 const card = document.getElementById('snus-modal-card');
 if (!card) return;
 
 card.addEventListener('touchstart', (e) => {
+        // Modal muss ganz oben sein
+        if (card.scrollTop > 0) {
+            isDetailDragging = false;
+            return;
+        }
 detailStartY = e.touches[0].clientY;
 isDetailDragging = true;
-card.style.transition = 'none'; 
+        
+        // Vorbereitung für 0 Lag: CSS-Übergänge aus & GPU-Beschleunigung an
+        card.style.transition = 'transform 0s'; 
+        card.style.willChange = 'transform';
+        card.style.transition = 'none'; 
 }, { passive: true });
 
 card.addEventListener('touchmove', (e) => {
@@ -484,9 +459,28 @@ if (!isDetailDragging) return;
 const currentY = e.touches[0].clientY;
 const deltaY = currentY - detailStartY;
 
-if (deltaY > 0) { // Nur nach unten ziehen erlauben
-if (e.cancelable) e.preventDefault(); // Verhindert System-Gesten
-card.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+        // Wir ziehen nach unten
+        if (deltaY > 0 && card.scrollTop <= 0) {
+            if (e.cancelable) e.preventDefault();
+            
+            // MAGISCHER FIX: Wir frieren den Scroll-Bereich ein!
+            // Das killt das iOS-Ruckeln komplett.
+            card.style.overflowY = 'hidden';
+
+            // Nutzt die echte Bildwiederholrate (60Hz/120Hz) des Handys
+            if (detailRafId) cancelAnimationFrame(detailRafId);
+            detailRafId = requestAnimationFrame(() => {
+                // translate3d zwingt das Handy, die Grafikkarte zu nutzen
+                card.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+            });
+        } else {
+            // User zieht nach oben -> Abbruch
+            isDetailDragging = false;
+            card.style.overflowY = 'auto'; // Scrollen wieder an
+            card.style.transform = '';
+        if (deltaY > 0) { // Nur nach unten ziehen erlauben
+            if (e.cancelable) e.preventDefault(); // Verhindert System-Gesten
+            card.style.transform = `translate3d(0, ${deltaY}px, 0)`;
 }
 }, { passive: false });
 
@@ -494,18 +488,29 @@ card.addEventListener('touchend', (e) => {
 if (!isDetailDragging) return;
 isDetailDragging = false;
 
+        if (detailRafId) cancelAnimationFrame(detailRafId);
+        
 const deltaY = e.changedTouches[0].clientY - detailStartY;
-card.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+        card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
+        card.style.willChange = 'auto';
+        card.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
 
 if (deltaY > 100) {
 card.style.transform = 'translate3d(0, 100%, 0)';
-closeSnusDetail(true);
+            closeSnusDetail(true); // Haptik wird hier drinnen gefeuert
+            
+            // Scrollen erst wieder erlauben, wenn das Modal unsichtbar ist
+            setTimeout(() => { card.style.overflowY = 'auto'; }, 400); 
+            closeSnusDetail(true);
 } else {
+            // Zurückschnappen lassen
 card.style.transform = 'translate3d(0, 0px, 0)';
 setTimeout(() => {
 card.style.transform = '';
 card.style.transition = '';
-}, 350);
+                card.style.overflowY = 'auto'; 
+            }, 400);
+            }, 350);
 }
 });
 }
@@ -1046,12 +1051,21 @@ switchTab(tabId);
 
 document.addEventListener('DOMContentLoaded', () => {
 const allScansCard = document.getElementById('all-scans-card');
+    const allScansScrollArea = document.getElementById('all-scans-scroll-area');
 
-if (allScansCard) {
+    if (allScansCard && allScansScrollArea) {
+    if (allScansCard) {
 allScansCard.addEventListener('touchstart', (e) => {
+            if (allScansScrollArea.scrollTop > 0) {
+                isAllScansDragging = false;
+                return;
+            }
 allScansStartY = e.touches[0].clientY;
 isAllScansDragging = true;
-allScansCard.style.transition = 'none';
+            
+            allScansCard.style.transition = 'transform 0s';
+            allScansCard.style.willChange = 'transform';
+            allScansCard.style.transition = 'none';
 }, { passive: true });
 
 allScansCard.addEventListener('touchmove', (e) => {
@@ -1060,28 +1074,52 @@ if (!isAllScansDragging) return;
 const currentY = e.touches[0].clientY;
 const deltaY = currentY - allScansStartY;
 
-if (deltaY > 0) {
+            if (deltaY > 0 && allScansScrollArea.scrollTop <= 0) {
+            if (deltaY > 0) {
 if (e.cancelable) e.preventDefault();
-allScansCard.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+                
+                // Fix: Untergeordneten Container vom Scrollen abhalten
+                allScansScrollArea.style.overflowY = 'hidden';
+
+                if (allScansRafId) cancelAnimationFrame(allScansRafId);
+                allScansRafId = requestAnimationFrame(() => {
+                    allScansCard.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+                });
+            } else {
+                isAllScansDragging = false;
+                allScansScrollArea.style.overflowY = 'auto';
+                allScansCard.style.transform = '';
+                allScansCard.style.transform = `translate3d(0, ${deltaY}px, 0)`;
 }
 }, { passive: false });
 
 allScansCard.addEventListener('touchend', (e) => {
 if (!isAllScansDragging) return;
 isAllScansDragging = false;
+            
+            if (allScansRafId) cancelAnimationFrame(allScansRafId);
 
 const deltaY = e.changedTouches[0].clientY - allScansStartY;
-allScansCard.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+            allScansCard.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
+            allScansCard.style.willChange = 'auto';
+            allScansCard.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
 
 if (deltaY > 100) {
 allScansCard.style.transform = 'translate3d(0, 100%, 0)';
-closeAllScansModal(true);
+                closeAllScansModal(true); // Haptik!
+                
+                setTimeout(() => { 
+                    allScansScrollArea.style.overflowY = 'auto'; 
+                }, 400);
+                closeAllScansModal(true);
 } else {
 allScansCard.style.transform = 'translate3d(0, 0px, 0)';
 setTimeout(() => {
 allScansCard.style.transform = '';
 allScansCard.style.transition = '';
-}, 350);
+                    allScansScrollArea.style.overflowY = 'auto';
+                }, 400);
+                }, 350);
 }
 });
 }
