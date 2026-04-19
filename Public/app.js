@@ -143,6 +143,18 @@ async function checkUser() {
         const overlay = document.getElementById('auth-overlay');
 
         if (session) {
+            // NEU: Prüfen ob Username existiert (wichtig für Google Login)
+            const hasUsername = session.user.user_metadata?.username;
+            
+            if (!hasUsername) {
+                document.getElementById('auth-main-view').classList.add('hidden');
+                document.getElementById('auth-verify-view')?.classList.add('hidden');
+                document.getElementById('auth-username-view').classList.remove('hidden');
+                document.getElementById('auth-title').innerText = "Fast geschafft";
+                document.getElementById('auth-subtitle').innerText = "Wie möchtest du heißen?";
+                return; // Warte auf Usereingabe
+            }
+
             overlay.classList.add('opacity-0');
             setTimeout(() => overlay.classList.add('hidden'), 500);
 
@@ -158,6 +170,44 @@ async function checkUser() {
     } catch (err) {
         console.error("Session check failed:", err);
         document.getElementById('auth-overlay').classList.remove('hidden', 'opacity-0');
+    }
+}
+
+// ==========================================
+// NEU: USERNAME SETUP NACH GOOGLE LOGIN
+// ==========================================
+async function saveSetupUsername() {
+    const usernameInput = document.getElementById('setup-username').value.trim();
+    const errorEl = document.getElementById('setup-username-error');
+    const btn = document.getElementById('setup-username-btn');
+
+    if (!usernameInput) {
+        errorEl.innerText = "Bitte gib einen Benutzernamen ein.";
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Speichere...";
+
+    try {
+        const { error: updateError } = await supabaseClient.auth.updateUser({
+            data: { username: usernameInput }
+        });
+        if (updateError) throw updateError;
+
+        const { data: userData } = await supabaseClient.auth.getUser();
+        if (userData?.user) {
+            await supabaseClient.from('profiles').update({ username: usernameInput }).eq('id', userData.user.id);
+        }
+
+        errorEl.classList.add('hidden');
+        checkUser();
+    } catch (error) {
+        errorEl.innerText = error.message;
+        errorEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerText = "Weiter";
     }
 }
 
