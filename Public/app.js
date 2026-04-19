@@ -147,11 +147,17 @@ async function checkUser() {
             const hasUsername = session.user.user_metadata?.username;
             
             if (!hasUsername) {
-                document.getElementById('auth-main-view').classList.add('hidden');
+                const usernameView = document.getElementById('auth-username-view');
+                if (!usernameView) {
+                    console.error("HTML Element 'auth-username-view' fehlt in der index.html!");
+                    return; // Stoppe Ausführung, um Endlosschleife/Absturz zu verhindern
+                }
+                
+                document.getElementById('auth-main-view')?.classList.add('hidden');
                 document.getElementById('auth-verify-view')?.classList.add('hidden');
-                document.getElementById('auth-username-view').classList.remove('hidden');
-                document.getElementById('auth-title').innerText = "Fast geschafft";
-                document.getElementById('auth-subtitle').innerText = "Wie möchtest du heißen?";
+                usernameView.classList.remove('hidden');
+                if (document.getElementById('auth-title')) document.getElementById('auth-title').innerText = "Fast geschafft";
+                if (document.getElementById('auth-subtitle')) document.getElementById('auth-subtitle').innerText = "Wie möchtest du heißen?";
                 return; // Warte auf Usereingabe
             }
 

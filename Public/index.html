@@ -316,6 +316,20 @@
                         Zurück zur Anmeldung
                     </button>
                 </div>
+
+                            <div id="auth-username-view" class="hidden transition-all duration-300">
+                <p class="text-white/80 text-[15px] text-center mb-6 leading-relaxed">
+                    Bitte wähle deinen Benutzernamen für den Dex.
+                </p>
+                <div class="space-y-4">
+                    <input type="text" id="setup-username" placeholder="Benutzername" class="w-full bg-black border border-white/10 text-white rounded-xl px-4 py-4 text-[17px] text-center focus:border-white outline-none transition-all">
+                    <button id="setup-username-btn" onclick="triggerHapticFeedback(); saveSetupUsername()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-xl active:scale-95 transition-transform mt-2">
+                        Weiter
+                    </button>
+                    <p id="setup-username-error" class="text-[#FF3B30] text-sm text-center hidden"></p>
+                </div>
+            </div>
+            
             </div>
 
         </div>
