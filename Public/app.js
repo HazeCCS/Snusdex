@@ -432,59 +432,77 @@ function renderActiveCansUI() {
 let detailStartY = 0;
 let detailCurrentY = 0;
 let isDetailDragging = false;
+let detailRafId = null;
 
 function setupGlobalSwipe() {
     const card = document.getElementById('snus-modal-card');
-    const scrollContent = document.getElementById('modal-view-info'); 
-
     if (!card) return;
 
     card.addEventListener('touchstart', (e) => {
-        detailStartY = e.touches[0].clientY;
-        
-        // Blockieren, wenn der User gerade in den Text runtergescrollt hat
-        if (scrollContent && scrollContent.scrollTop > 0) {
+        // Modal muss ganz oben sein
+        if (card.scrollTop > 0) {
             isDetailDragging = false;
             return;
         }
-
+        detailStartY = e.touches[0].clientY;
         isDetailDragging = true;
-        card.style.transition = 'none'; // Direkt an den Finger binden
+        
+        // Vorbereitung für 0 Lag: CSS-Übergänge aus & GPU-Beschleunigung an
+        card.style.transition = 'transform 0s'; 
+        card.style.willChange = 'transform';
     }, { passive: true });
 
     card.addEventListener('touchmove', (e) => {
         if (!isDetailDragging) return;
         
-        detailCurrentY = e.touches[0].clientY;
-        const deltaY = detailCurrentY - detailStartY;
+        const currentY = e.touches[0].clientY;
+        const deltaY = currentY - detailStartY;
 
-        // Wichtig: Nur wenn wir nach UNTEN ziehen
-        if (deltaY > 0) {
-            if (e.cancelable) e.preventDefault(); // Killt das iOS Rubber-Banding!
-            card.style.transform = `translateY(${deltaY}px)`;
+        // Wir ziehen nach unten
+        if (deltaY > 0 && card.scrollTop <= 0) {
+            if (e.cancelable) e.preventDefault();
+            
+            // MAGISCHER FIX: Wir frieren den Scroll-Bereich ein!
+            // Das killt das iOS-Ruckeln komplett.
+            card.style.overflowY = 'hidden';
+
+            // Nutzt die echte Bildwiederholrate (60Hz/120Hz) des Handys
+            if (detailRafId) cancelAnimationFrame(detailRafId);
+            detailRafId = requestAnimationFrame(() => {
+                // translate3d zwingt das Handy, die Grafikkarte zu nutzen
+                card.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+            });
         } else {
-            // User zieht doch nach oben -> abbrechen und normal scrollen lassen
+            // User zieht nach oben -> Abbruch
             isDetailDragging = false;
+            card.style.overflowY = 'auto'; // Scrollen wieder an
             card.style.transform = '';
         }
-    }, { passive: false }); // WICHTIG für preventDefault
+    }, { passive: false });
 
-    card.addEventListener('touchend', () => {
+    card.addEventListener('touchend', (e) => {
         if (!isDetailDragging) return;
         isDetailDragging = false;
-
-        const deltaY = detailCurrentY - detailStartY;
+        
+        if (detailRafId) cancelAnimationFrame(detailRafId);
+        
+        const deltaY = e.changedTouches[0].clientY - detailStartY;
         card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
+        card.style.willChange = 'auto';
 
-        // Schwelle wie beim Scanner auf 100px gesetzt
         if (deltaY > 100) {
-            card.style.transform = 'translateY(100%)';
-            closeSnusDetail(true); // Hier feuert jetzt auch die Haptik!
+            card.style.transform = 'translate3d(0, 100%, 0)';
+            closeSnusDetail(true); // Haptik wird hier drinnen gefeuert
+            
+            // Scrollen erst wieder erlauben, wenn das Modal unsichtbar ist
+            setTimeout(() => { card.style.overflowY = 'auto'; }, 400); 
         } else {
-            card.style.transform = 'translateY(0px)';
+            // Zurückschnappen lassen
+            card.style.transform = 'translate3d(0, 0px, 0)';
             setTimeout(() => {
                 card.style.transform = '';
                 card.style.transition = '';
+                card.style.overflowY = 'auto'; 
             }, 400);
         }
     });
@@ -1023,17 +1041,72 @@ function switchTabWrapper(tabId) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const cols = localStorage.getItem('dexColumns') || '3';
-    const grid = document.getElementById('dex-grid');
-    if (grid) {
-        grid.className = "grid gap-3";
-        if (cols === '2') {
-            grid.classList.add('grid-cols-2');
-        } else {
-            grid.classList.add('grid-cols-3');
-        }
+    const allScansCard = document.getElementById('all-scans-card');
+    const allScansScrollArea = document.getElementById('all-scans-scroll-area');
+
+    if (allScansCard && allScansScrollArea) {
+        allScansCard.addEventListener('touchstart', (e) => {
+            if (allScansScrollArea.scrollTop > 0) {
+                isAllScansDragging = false;
+                return;
+            }
+            allScansStartY = e.touches[0].clientY;
+            isAllScansDragging = true;
+            
+            allScansCard.style.transition = 'transform 0s';
+            allScansCard.style.willChange = 'transform';
+        }, { passive: true });
+
+        allScansCard.addEventListener('touchmove', (e) => {
+            if (!isAllScansDragging) return;
+            
+            const currentY = e.touches[0].clientY;
+            const deltaY = currentY - allScansStartY;
+
+            if (deltaY > 0 && allScansScrollArea.scrollTop <= 0) {
+                if (e.cancelable) e.preventDefault();
+                
+                // Fix: Untergeordneten Container vom Scrollen abhalten
+                allScansScrollArea.style.overflowY = 'hidden';
+
+                if (allScansRafId) cancelAnimationFrame(allScansRafId);
+                allScansRafId = requestAnimationFrame(() => {
+                    allScansCard.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+                });
+            } else {
+                isAllScansDragging = false;
+                allScansScrollArea.style.overflowY = 'auto';
+                allScansCard.style.transform = '';
+            }
+        }, { passive: false });
+
+        allScansCard.addEventListener('touchend', (e) => {
+            if (!isAllScansDragging) return;
+            isAllScansDragging = false;
+            
+            if (allScansRafId) cancelAnimationFrame(allScansRafId);
+
+            const deltaY = e.changedTouches[0].clientY - allScansStartY;
+            allScansCard.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
+            allScansCard.style.willChange = 'auto';
+
+            if (deltaY > 100) {
+                allScansCard.style.transform = 'translate3d(0, 100%, 0)';
+                closeAllScansModal(true); // Haptik!
+                
+                setTimeout(() => { 
+                    allScansScrollArea.style.overflowY = 'auto'; 
+                }, 400);
+            } else {
+                allScansCard.style.transform = 'translate3d(0, 0px, 0)';
+                setTimeout(() => {
+                    allScansCard.style.transform = '';
+                    allScansCard.style.transition = '';
+                    allScansScrollArea.style.overflowY = 'auto';
+                }, 400);
+            }
+        });
     }
-    checkUser();
 });
 
 // ==========================================
@@ -2665,7 +2738,6 @@ function closeAllScansModal(isDragging = false) {
     const backdrop = document.getElementById('all-scans-backdrop');
     const card = document.getElementById('all-scans-card');
 
-    // Haptik!
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
     backdrop.classList.remove('opacity-100');
@@ -2695,59 +2767,7 @@ function closeAllScansModal(isDragging = false) {
 let allScansStartY = 0;
 let allScansCurrentY = 0;
 let isAllScansDragging = false;
-
-document.addEventListener('DOMContentLoaded', () => {
-    const allScansCard = document.getElementById('all-scans-card');
-    const allScansScrollArea = document.getElementById('all-scans-scroll-area');
-
-    if (allScansCard && allScansScrollArea) {
-        allScansCard.addEventListener('touchstart', (e) => {
-            allScansStartY = e.touches[0].clientY;
-            
-            if (allScansScrollArea.scrollTop > 0) {
-                isAllScansDragging = false;
-                return;
-            }
-            
-            isAllScansDragging = true;
-            allScansCard.style.transition = 'none';
-        }, { passive: true });
-
-        allScansCard.addEventListener('touchmove', (e) => {
-            if (!isAllScansDragging) return;
-            
-            allScansCurrentY = e.touches[0].clientY;
-            const deltaY = allScansCurrentY - allScansStartY;
-
-            if (deltaY > 0) {
-                if (e.cancelable) e.preventDefault();
-                allScansCard.style.transform = `translateY(${deltaY}px)`;
-            } else {
-                isAllScansDragging = false;
-                allScansCard.style.transform = '';
-            }
-        }, { passive: false });
-
-        allScansCard.addEventListener('touchend', () => {
-            if (!isAllScansDragging) return;
-            isAllScansDragging = false;
-
-            const deltaY = allScansCurrentY - allScansStartY;
-            allScansCard.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
-
-            if (deltaY > 100) {
-                allScansCard.style.transform = 'translateY(100%)';
-                closeAllScansModal(true);
-            } else {
-                allScansCard.style.transform = 'translateY(0px)';
-                setTimeout(() => {
-                    allScansCard.style.transform = '';
-                    allScansCard.style.transition = '';
-                }, 400);
-            }
-        });
-    }
-});
+let allScansRafId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     const allScansCard = document.getElementById('all-scans-card');
@@ -2760,45 +2780,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             allScansStartY = e.touches[0].clientY;
-            allScansCurrentY = allScansStartY;
             isAllScansDragging = true;
-            allScansCard.style.transition = 'none';
+            
+            allScansCard.style.transition = 'transform 0s';
+            allScansCard.style.willChange = 'transform';
         }, { passive: true });
 
         allScansCard.addEventListener('touchmove', (e) => {
             if (!isAllScansDragging) return;
             
-            allScansCurrentY = e.touches[0].clientY;
-            const deltaY = allScansCurrentY - allScansStartY;
+            const currentY = e.touches[0].clientY;
+            const deltaY = currentY - allScansStartY;
 
             if (deltaY > 0 && allScansScrollArea.scrollTop <= 0) {
-                if (e.cancelable) e.preventDefault(); // Stoppt Browser-Scroll
-                allScansCard.style.transform = `translateY(${deltaY}px)`;
+                if (e.cancelable) e.preventDefault();
+                
+                // Fix: Untergeordneten Container vom Scrollen abhalten
+                allScansScrollArea.style.overflowY = 'hidden';
+
+                if (allScansRafId) cancelAnimationFrame(allScansRafId);
+                allScansRafId = requestAnimationFrame(() => {
+                    allScansCard.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+                });
+            } else {
+                isAllScansDragging = false;
+                allScansScrollArea.style.overflowY = 'auto';
+                allScansCard.style.transform = '';
             }
         }, { passive: false });
 
         allScansCard.addEventListener('touchend', (e) => {
             if (!isAllScansDragging) return;
             isAllScansDragging = false;
+            
+            if (allScansRafId) cancelAnimationFrame(allScansRafId);
 
-            const deltaY = allScansCurrentY - allScansStartY;
-            allScansCard.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
+            const deltaY = e.changedTouches[0].clientY - allScansStartY;
+            allScansCard.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
+            allScansCard.style.willChange = 'auto';
 
             if (deltaY > 100) {
-                allScansCard.style.transform = 'translateY(100%)';
-                closeAllScansModal(true);
+                allScansCard.style.transform = 'translate3d(0, 100%, 0)';
+                closeAllScansModal(true); // Haptik!
+                
+                setTimeout(() => { 
+                    allScansScrollArea.style.overflowY = 'auto'; 
+                }, 400);
             } else {
-                allScansCard.style.transform = 'translateY(0px)';
+                allScansCard.style.transform = 'translate3d(0, 0px, 0)';
                 setTimeout(() => {
                     allScansCard.style.transform = '';
                     allScansCard.style.transition = '';
+                    allScansScrollArea.style.overflowY = 'auto';
                 }, 400);
             }
         });
     }
 });
-
-
 
 // ==========================================
 // SUGGESTIONS / NEU ENTDECKEN LOGIK
@@ -2951,4 +2989,34 @@ async function loadLatestGitHubCommit() {
     }
 }
 
-// commits für norman 4
+//░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+//░░░░░████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+//░░░░█░░░██░░░██████░░░░░░░░░░░░░░░░░░░░░
+//░░░██░░░░░░░░░█░░░███░░░░██░░░░░░░░░░░░░
+//░░░█░░░░░░░░░░█░░░░░██░░░░██░░░░░░██░░░░
+//░░░██░░░░░░░░░█░░░░░░██░░░░██░░░░██░░░░░
+//░░░░░█████░░░░█░░░░░░░█░░░░░░█░██░░░░░░░
+//░░░░░░░░░░█░░░█░░░░░░░█░░░░░░░██░░░░░░░░
+//░░░█░░░░░█░░░░█░░░░░░██░░░░░░████░░░░░░░
+//░░░░██████░░░░█░░░░███░░░░░██░░░█░░░░░░░
+//░░░░░░░░░░░░░░██████░░░░░░██░░░░░██░░░░░
+//░░██████░░░░░░░░░░░░░░█░░░░░░░░░░░█░░░█░
+//░░░░█░░██░░░░░░░░░░░░░█░░░░░░░░░░░░░░░█░
+//░░░░█████░█░░░░░░░░░░░█░░░░░░░░░░░░░░░█░
+//░░░░██░░░░███░███░░░███░░█░█░░░███░░░██░
+//░░░░█░░░░░█░░░█░██░██░█░░█░█░░██░░░░███░
+//░░░░█░░░░░█░░░█░█░░█░░█░░█░██░██░░░░░█░░
+//░░░░█░░░░░█░░░███░░█████░█████░████░░█░░
+//░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+//░░░▄█▀▀▀▀▀▀▀▄░░░░░░▄▄▄▄░░░░█░░░░░░░░░░░░
+//░░█░░░░░░░░░░▀█░░░░░░░░█░░▀░▀█░░░░░░░░░░
+//░▐░░░█▀▀█░░░░░░█░░░░▄▄█░░█░░░█░░░░░░░░░░
+//░█░░░▌░░░█░░░░░▐░░███▄▄▄░▐▄▄█░░░░░░░░░░░
+//░▌░░░██▀▀▀░░░░░▐░░░░░░░░░░░░░░░░░░░░░░░░
+//░▌░░░▌▀█░░░░░░░▐░░░█▀▀█░░▄█▀░░░░░░░░░░░░
+//▐░░░▐░░░█▄░░░░░▀░░░░░▄█░▐▄▄░░░░░░░░░░░░░
+//░█░░▐░░░░▀▄░░░█░░░░▄█░░░▐░░▀█░░░░░░░░░░░
+//░░██░░░░░░░▄▄█░░░░░▀▀▀▀░▐▄▄█▀░░░░░░░░░░░
+//░░░▀▀▀▀▀▀▀▀░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+//░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+// ==========================================
