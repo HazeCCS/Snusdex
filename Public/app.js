@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
             audio.pause();
         }, 600);
     });
+    loadLatestGitHubCommit();
 });
 
 // ==========================================
@@ -434,20 +435,21 @@ let isDetailDragging = false;
 
 function setupGlobalSwipe() {
     const card = document.getElementById('snus-modal-card');
+    const scrollContent = document.getElementById('modal-view-info'); 
 
     if (!card) return;
 
     card.addEventListener('touchstart', (e) => {
-        // Nur Swipe starten, wenn das Modal GANZ OBEN hingescannt ist
-        if (card.scrollTop > 0) {
+        detailStartY = e.touches[0].clientY;
+        
+        // Blockieren, wenn der User gerade in den Text runtergescrollt hat
+        if (scrollContent && scrollContent.scrollTop > 0) {
             isDetailDragging = false;
             return;
         }
 
-        detailStartY = e.touches[0].clientY;
-        detailCurrentY = detailStartY; 
         isDetailDragging = true;
-        card.style.transition = 'none'; // Direkt am Finger kleben
+        card.style.transition = 'none'; // Direkt an den Finger binden
     }, { passive: true });
 
     card.addEventListener('touchmove', (e) => {
@@ -456,26 +458,29 @@ function setupGlobalSwipe() {
         detailCurrentY = e.touches[0].clientY;
         const deltaY = detailCurrentY - detailStartY;
 
-        // Nur nach unten ziehen erlauben
-        if (deltaY > 0 && card.scrollTop <= 0) {
-            if (e.cancelable) e.preventDefault(); // Verhindert iOS Rubber-Banding beim Ziehen
+        // Wichtig: Nur wenn wir nach UNTEN ziehen
+        if (deltaY > 0) {
+            if (e.cancelable) e.preventDefault(); // Killt das iOS Rubber-Banding!
             card.style.transform = `translateY(${deltaY}px)`;
+        } else {
+            // User zieht doch nach oben -> abbrechen und normal scrollen lassen
+            isDetailDragging = false;
+            card.style.transform = '';
         }
-    }, { passive: false }); // Wichtig: false, damit preventDefault() klappt
+    }, { passive: false }); // WICHTIG für preventDefault
 
     card.addEventListener('touchend', () => {
         if (!isDetailDragging) return;
         isDetailDragging = false;
 
         const deltaY = detailCurrentY - detailStartY;
-        // Gleiche Apple-Smooth-Kurve wie im Scanner
         card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
 
+        // Schwelle wie beim Scanner auf 100px gesetzt
         if (deltaY > 100) {
             card.style.transform = 'translateY(100%)';
-            closeSnusDetail(true);
+            closeSnusDetail(true); // Hier feuert jetzt auch die Haptik!
         } else {
-            // Zurückschnappen
             card.style.transform = 'translateY(0px)';
             setTimeout(() => {
                 card.style.transform = '';
@@ -801,23 +806,28 @@ function closeSnusDetail(isDragging = false) {
     const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
 
+    // 1. Haptik sofort auslösen wie beim Scanner
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
+
+    // 2. Animation (nur wenn nicht schon durch Drag nach unten geschoben)
     if (!isDragging) {
-        card.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+        card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
         card.style.transform = 'translateY(100%)';
     }
     
-    backdrop.style.transition = 'opacity 0.3s ease-in';
+    backdrop.style.transition = 'opacity 0.4s ease-in';
     backdrop.style.opacity = '0';
     
     document.body.classList.remove('overflow-hidden');
     
+    // 3. Reset nach exakt 400ms (Scanner Timing)
     setTimeout(() => {
         document.getElementById('snus-modal').classList.add('hidden');
         if (isDragging) {
             card.style.transform = '';
             card.style.transition = '';
         }
-    }, 350);
+    }, 400);
 }
 
 // ==========================================
@@ -2658,6 +2668,9 @@ function closeAllScansModal(isDragging = false) {
     const backdrop = document.getElementById('all-scans-backdrop');
     const card = document.getElementById('all-scans-card');
 
+    // Haptik!
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
+
     backdrop.classList.remove('opacity-100');
     backdrop.classList.add('opacity-0');
 
@@ -2682,10 +2695,62 @@ function closeAllScansModal(isDragging = false) {
     }, 400);
 }
 
-
 let allScansStartY = 0;
 let allScansCurrentY = 0;
 let isAllScansDragging = false;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const allScansCard = document.getElementById('all-scans-card');
+    const allScansScrollArea = document.getElementById('all-scans-scroll-area');
+
+    if (allScansCard && allScansScrollArea) {
+        allScansCard.addEventListener('touchstart', (e) => {
+            allScansStartY = e.touches[0].clientY;
+            
+            if (allScansScrollArea.scrollTop > 0) {
+                isAllScansDragging = false;
+                return;
+            }
+            
+            isAllScansDragging = true;
+            allScansCard.style.transition = 'none';
+        }, { passive: true });
+
+        allScansCard.addEventListener('touchmove', (e) => {
+            if (!isAllScansDragging) return;
+            
+            allScansCurrentY = e.touches[0].clientY;
+            const deltaY = allScansCurrentY - allScansStartY;
+
+            if (deltaY > 0) {
+                if (e.cancelable) e.preventDefault();
+                allScansCard.style.transform = `translateY(${deltaY}px)`;
+            } else {
+                isAllScansDragging = false;
+                allScansCard.style.transform = '';
+            }
+        }, { passive: false });
+
+        allScansCard.addEventListener('touchend', () => {
+            if (!isAllScansDragging) return;
+            isAllScansDragging = false;
+
+            const deltaY = allScansCurrentY - allScansStartY;
+            allScansCard.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
+
+            if (deltaY > 100) {
+                allScansCard.style.transform = 'translateY(100%)';
+                closeAllScansModal(true);
+            } else {
+                allScansCard.style.transform = 'translateY(0px)';
+                setTimeout(() => {
+                    allScansCard.style.transform = '';
+                    allScansCard.style.transition = '';
+                }, 400);
+            }
+        });
+    }
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     const allScansCard = document.getElementById('all-scans-card');
@@ -2833,6 +2898,42 @@ function initSuggestionsScrollAnimation() {
     }, {
         passive: true
     });
+}
+
+// ==========================================
+// GITHUB COMMIT FETCH (App-Version)
+// ==========================================
+async function loadLatestGitHubCommit() {
+    const repoOwner = 'HazeCCS'; 
+    const repoName = 'Snusdex'; 
+    
+    try {
+        const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/commits?per_page=1`);
+        
+        if (!response.ok) throw new Error('Repo ist privat oder API Rate Limit erreicht');
+        
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+            const fullMessage = data[0].commit.message;
+            
+            let shortMsg = fullMessage.split('\n')[0]; 
+            if (shortMsg.length > 35) {
+                shortMsg = shortMsg.substring(0, 35) + '...';
+            }
+            
+            const msgElement = document.getElementById('latest-commit-msg');
+            if (msgElement) {
+                msgElement.innerText = shortMsg;
+            }
+        }
+    } catch (error) {
+        console.warn('GitHub Commit Log:', error.message);
+        const msgElement = document.getElementById('latest-commit-msg');
+        if (msgElement) {
+            msgElement.innerText = 'Unavailable';
+        }
+    }
 }
 
 // commits für norman 4
