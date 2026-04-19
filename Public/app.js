@@ -9,6 +9,7 @@ const SUPABASE_KEY = 'sb_publishable_4gIcuQhw528DH6GrmhF16g_V8im-UMU';
 const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/main/assets/';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+console.log("Supabase Status:", supabase ? "Verbunden" : "Fehlt");
 
 // ==========================================
 // 1.5. SPLASH SCREEN / LOADING
