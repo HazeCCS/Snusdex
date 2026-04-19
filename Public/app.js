@@ -3063,17 +3063,12 @@ async function loadLatestGitHubCommit() {
 let dexScrollRafId = null;
 let lastFocusedDexRow = -1;
 
-// ==========================================
-// DEX SCROLL ANIMATION & HAPTICS (UPDATE)
-// ==========================================
-let dexScrollRafId = null;
-let lastFocusedDexRow = -1;
-
 function updateDexScale() {
     const grid = document.getElementById('dex-grid');
     if (!grid || grid.children.length === 0) return;
 
     const viewportCenter = window.innerHeight / 2;
+    // Die Zone in der Mitte, in der die Karte 100% groß ist (25% des Bildschirms)
     const focusZoneHalfHeight = window.innerHeight * 0.25; 
 
     const cards = grid.querySelectorAll('.dex-anim-card');
@@ -3091,63 +3086,34 @@ function updateDexScale() {
         let scale = 1.0;
         let opacity = 1.0;
 
-        // Visuelle Skalierung
+        // Wenn die Karte außerhalb der "Focus-Zone" ist, skaliere sie runter
         if (distanceToCenter > focusZoneHalfHeight) {
             const distancePastZone = distanceToCenter - focusZoneHalfHeight;
+
             let progress = distancePastZone / (window.innerHeight * 0.2);
             if (progress > 1) progress = 1;
 
-            scale = 1.0 - (0.15 * progress);  
-            opacity = 1.0 - (0.6 * progress); 
+            scale = 1.0 - (0.15 * progress);  // Skaliert auf max 0.85
+            opacity = 1.0 - (0.6 * progress); // Opacity auf max 0.4
         }
 
         card.style.transform = `scale(${scale})`;
         card.style.opacity = opacity;
 
-        // Berechnen, welche Reihe gerade exakt in der Mitte liegt
+        // Berechnen, welche Reihe dem Zentrum am nächsten ist (für Haptics)
         if (distanceToCenter < closestRowDist) {
             closestRowDist = distanceToCenter;
-            currentRowFocus = Math.floor(index / cols); 
+            currentRowFocus = Math.floor(index / cols); // Index durch Spalten = Reihennummer
         }
     });
 
-    // ----------------------------------------------------
-    // DYNAMISCHES HAPTIC FEEDBACK ("Zahnrad"-Effekt)
-    // ----------------------------------------------------
+    // Haptic Feedback auslösen, wenn der User eine neue Reihe "einrastet"
     if (currentRowFocus !== -1 && currentRowFocus !== lastFocusedDexRow) {
         if (lastFocusedDexRow !== -1 && typeof triggerHapticFeedback === 'function') {
-            
-            // Berechne, wie viele Zeilen seit dem letzten Frame übersprungen wurden
-            const skippedRows = Math.abs(currentRowFocus - lastFocusedDexRow);
-            
-            // Wenn der User sehr schnell wischt, simulieren wir das schnelle Vorbeirauschen 
-            // der Zeilen durch mehrere, extrem schnelle Haptic-Ticks hintereinander.
-            if (skippedRows > 1) { 
-                // Wir cappen es auf maximal 5 schnelle Ticks, damit das Handy bei einem 
-                // riesigen Sprung (z.B. "Scroll to Top") nicht 3 Sekunden lang vibriert.
-                const ticksToPlay = Math.min(skippedRows, 5); 
-                
-                for (let i = 0; i < ticksToPlay; i++) {
-                    // 35ms Abstand ergibt ein sehr befriedigendes, schnelles Rattern
-                    setTimeout(() => triggerHapticFeedback(), i * 35); 
-                }
-            } else {
-                // Bei langsamem Scrollen: Genau 1 präziser Tick pro Zeile
-                triggerHapticFeedback();
-            }
+            triggerHapticFeedback();
         }
         lastFocusedDexRow = currentRowFocus;
     }
-}
-
-function initDexScrollAnimation() {
-    window.addEventListener('scroll', () => {
-        const activeTab = document.getElementById('tab-dex');
-        if (activeTab && !activeTab.classList.contains('hidden')) {
-            if (dexScrollRafId) cancelAnimationFrame(dexScrollRafId);
-            dexScrollRafId = requestAnimationFrame(updateDexScale);
-        }
-    }, { passive: true });
 }
 
 function initDexScrollAnimation() {
