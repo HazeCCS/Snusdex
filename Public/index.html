@@ -248,7 +248,7 @@
 
             <div id="auth-main-view" class="block transition-all duration-300">
                 <div class="space-y-3 mb-6">
-                    <button class="w-full flex items-center justify-center gap-2 bg-white text-black font-semibold text-[15px] py-3 rounded-xl active:scale-95 transition-transform">
+                   <button id="google-login-btn" onclick="signInWithGoogle()" class="w-full flex items-center justify-center gap-2 bg-white text-black font-semibold text-[15px] py-3 rounded-xl active:scale-95 transition-transform">
                         <svg class="w-5 h-5" viewBox="0 0 24 24">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -614,7 +614,7 @@
     <div id="snus-modal" class="fixed inset-0 z-[999] hidden flex flex-col justify-end">
     <div id="modal-backdrop" class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-400" onclick="triggerHapticFeedback(); closeSnusDetail()"></div>
 
-    <div id="snus-modal-card" class="relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1000] mt-auto pb-10 max-h-[90vh] overflow-y-auto overflow-x-hidden w-full max-w-md mx-auto overscroll-contain">
+    <div id="snus-modal-card" class="relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1000] mt-auto pb-10 w-full max-w-md mx-auto">
         
         <div id="snus-modal-drag-handle" class="sticky top-0 bg-[#1C1C1E] z-50 pt-4 pb-4 flex justify-center flex-shrink-0 w-full">
             <div class="w-10 h-1.5 bg-[#3A3A3C] rounded-full"></div>
@@ -778,7 +778,7 @@
                 </div>
             </div>
 
-            <div id="all-scans-scroll-area" class="w-full flex-1 overflow-y-auto overscroll-contain px-5 pt-4">
+            <div id="all-scans-scroll-area" class="w-full flex-1 px-5 pt-4">
                 <div id="all-scans-list-container" class="bg-[#1C1C1E] border border-white/5 rounded-2xl shadow-sm overflow-hidden mb-8">
                     </div>
             </div>

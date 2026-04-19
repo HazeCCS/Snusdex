@@ -74,6 +74,42 @@ async function updateGreeting() {
 }
 
 // ==========================================
+// GOOGLE ANMELDUNG 
+// ==========================================
+
+async function signInWithGoogle() {
+    const btnText = document.getElementById('google-btn-text');
+    const btn = document.getElementById('google-login-btn');
+
+    // Sicherheitscheck: Ist supabase definiert?
+    if (typeof supabase === 'undefined' || !supabase.auth) {
+        console.error("Supabase Client ist nicht geladen oder falsch initialisiert.");
+        alert("System-Fehler: Supabase Verbindung fehlt.");
+        return;
+    }
+
+    try {
+        btnText.innerText = "Verbinde...";
+        btn.disabled = true;
+
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                // Bei ngrok ist es wichtig, die URL explizit anzugeben oder window.location.origin zu nutzen
+                redirectTo: window.location.origin, 
+            },
+        });
+
+        if (error) throw error;
+    } catch (error) {
+        console.error("Google Login Error:", error.message);
+        alert("Fehler: " + error.message);
+        btnText.innerText = "Mit Google anmelden";
+        btn.disabled = false;
+    }
+}
+
+// ==========================================
 // DEINE ALTE CHECK USER LOGIK (Unverändert)
 // ==========================================
 async function checkUser() {
