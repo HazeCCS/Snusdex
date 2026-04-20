@@ -1156,8 +1156,26 @@ async function loadUserStats(userId) {
 }
 
 function filterDex() {
-    const term = document.getElementById('dex-search').value.toLowerCase();
-    renderDexGrid(globalSnusData.filter(s => s.name?.toLowerCase().includes(term) || s.flavor?.some(f => f.toLowerCase().includes(term))));
+    const searchEl = document.getElementById('dex-search');
+    if (!searchEl) return;
+    
+    const term = searchEl.value.toLowerCase().trim();
+    if (!term) {
+        renderDexGrid(globalSnusData);
+        return;
+    }
+
+    const searchWords = term.split(/\s+/);
+    
+    renderDexGrid(globalSnusData.filter(s => {
+        const searchableText = [
+            s.name, 
+            s.brand, 
+            Array.isArray(s.flavor) ? s.flavor.join(' ') : s.flavor
+        ].filter(Boolean).join(' ').toLowerCase();
+        
+        return searchWords.every(word => searchableText.includes(word));
+    }));
 }
 
 function setupProfile(user) {
@@ -2560,8 +2578,26 @@ async function loadUserStats(userId) {
 }
 
 function filterDex() {
-    const term = document.getElementById('dex-search').value.toLowerCase();
-    renderDexGrid(globalSnusData.filter(s => s.name?.toLowerCase().includes(term) || s.flavor?.some(f => f.toLowerCase().includes(term))));
+    const searchEl = document.getElementById('dex-search');
+    if (!searchEl) return;
+    
+    const term = searchEl.value.toLowerCase().trim();
+    if (!term) {
+        renderDexGrid(globalSnusData);
+        return;
+    }
+
+    const searchWords = term.split(/\s+/);
+    
+    renderDexGrid(globalSnusData.filter(s => {
+        const searchableText = [
+            s.name, 
+            s.brand, 
+            Array.isArray(s.flavor) ? s.flavor.join(' ') : s.flavor
+        ].filter(Boolean).join(' ').toLowerCase();
+        
+        return searchWords.every(word => searchableText.includes(word));
+    }));
 }
 
 function setupProfile(user) {
