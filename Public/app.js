@@ -418,7 +418,7 @@ async function loadDex() {
 
     const {
         data: snusItems
-    } = await supabaseClient.from('snus_items').select('*').order('id', {
+    } = await supabaseClient.from('snus_products').select('*').order('id', {
         ascending: true
     });
     globalSnusData = snusItems || [];
@@ -581,8 +581,8 @@ function renderActiveCansUI() {
     }
 
     globalActiveLogs.forEach(can => {
-        const snusName = can.snus_items ? can.snus_items.name : 'Unknown';
-        const snusImg = can.snus_items ? can.snus_items.image : '';
+        const snusName = can.snus_products ? can.snus_products.name : 'Unknown';
+        const snusImg = can.snus_products ? can.snus_products.image : '';
 
         container.innerHTML += `
             <div class="flex items-center justify-between bg-[#1C1C1E] border border-white/5 rounded-2xl p-3 mb-3 shadow-sm">
@@ -608,6 +608,7 @@ function renderActiveCansUI() {
 // ==========================================
 
 let detailStartY = 0;
+let detailCurrentY = 0;
 let isDetailDragging = false;
 
 function setupGlobalSwipe() {
@@ -616,6 +617,7 @@ function setupGlobalSwipe() {
 
     card.addEventListener('touchstart', (e) => {
         detailStartY = e.touches[0].clientY;
+        detailCurrentY = detailStartY;
         isDetailDragging = true;
         card.style.transition = 'none'; 
     }, { passive: true });
@@ -623,31 +625,30 @@ function setupGlobalSwipe() {
     card.addEventListener('touchmove', (e) => {
         if (!isDetailDragging) return;
         
-        const currentY = e.touches[0].clientY;
-        const deltaY = currentY - detailStartY;
+        detailCurrentY = e.touches[0].clientY;
+        const deltaY = detailCurrentY - detailStartY;
 
-        if (deltaY > 0) { // Nur nach unten ziehen erlauben
-            if (e.cancelable) e.preventDefault(); // Verhindert System-Gesten
-            card.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+        if (deltaY > 0) {
+            card.style.transform = `translateY(${deltaY}px)`;
         }
-    }, { passive: false });
+    }, { passive: true });
 
     card.addEventListener('touchend', (e) => {
         if (!isDetailDragging) return;
         isDetailDragging = false;
         
-        const deltaY = e.changedTouches[0].clientY - detailStartY;
-        card.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+        const deltaY = detailCurrentY - detailStartY;
+        card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
 
         if (deltaY > 100) {
-            card.style.transform = 'translate3d(0, 100%, 0)';
+            card.style.transform = 'translateY(100%)';
             closeSnusDetail(true);
         } else {
-            card.style.transform = 'translate3d(0, 0px, 0)';
+            card.style.transform = 'translateY(0px)';
             setTimeout(() => {
                 card.style.transform = '';
                 card.style.transition = '';
-            }, 350);
+            }, 400);
         }
     });
 }
@@ -943,23 +944,14 @@ function openSnusDetail(id, isFromScan = false) {
     if (modal && backdrop && card) {
         modal.classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
-        card.classList.remove('translate-y-full');
 
-        // Animation vorbereiten
-        backdrop.style.transition = 'none';
-        card.style.transition = 'none';
-        backdrop.style.opacity = '0';
-        card.style.transform = 'translateY(100%)';
+        setTimeout(() => {
+            backdrop.classList.remove('opacity-0');
+            backdrop.classList.add('opacity-100');
 
-        // Kleiner Force-Reflow
-        modal.offsetHeight; 
-
-        // Animation starten
-        backdrop.style.transition = 'opacity 0.3s ease-out';
-        card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
-        
-        backdrop.style.opacity = '1';
-        card.style.transform = 'translateY(0)';
+            card.classList.remove('translate-y-full');
+            card.classList.add('translate-y-0');
+        }, 10);
     }
     
     if (typeof triggerHapticFeedback === "function") triggerHapticFeedback();
@@ -972,23 +964,27 @@ function closeSnusDetail(isDragging = false) {
     // 1. Haptik sofort auslösen wie beim Scanner
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
-    // 2. Animation (nur wenn nicht schon durch Drag nach unten geschoben)
+    // 2. Animation
+    card.classList.remove('translate-y-0');
+    card.classList.add('translate-y-full');
+    
+    backdrop.classList.remove('opacity-100');
+    backdrop.classList.add('opacity-0');
+    
     if (!isDragging) {
-        card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
-        card.style.transform = 'translateY(100%)';
-    }
-    
-    backdrop.style.transition = 'opacity 0.4s ease-in';
-    backdrop.style.opacity = '0';
-    
-    document.body.classList.remove('overflow-hidden');
-    
-    // 3. Reset nach exakt 400ms (Scanner Timing)
-    setTimeout(() => {
-        document.getElementById('snus-modal').classList.add('hidden');
-        card.classList.add('translate-y-full');
         card.style.transform = '';
         card.style.transition = '';
+    }
+    
+    // 3. Reset
+    setTimeout(() => {
+        document.getElementById('snus-modal').classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+        
+        if (isDragging) {
+            card.style.transform = '';
+            card.style.transition = '';
+        }
     }, 400);
 }
 
@@ -1118,7 +1114,7 @@ async function adminAddSnus() {
     const {
         data,
         error
-    } = await supabaseClient.from('snus_items').insert([{
+    } = await supabaseClient.from('snus_products').insert([{
         name: name,
         nicotine: parseInt(nicotine),
         rarity: rarity,
@@ -1869,7 +1865,7 @@ async function loadUsageData() {
         error
     } = await supabaseClient
         .from('usage_logs')
-        .select('*, snus_items(name, image)')
+        .select('*, snus_products(name, image)')
         .eq('user_id', user.id)
         .order('opened_at', {
             ascending: false
@@ -1913,8 +1909,8 @@ function renderActiveCansUI() {
     }
 
     globalActiveLogs.forEach(can => {
-        const snusName = can.snus_items ? can.snus_items.name : 'Unknown';
-        const snusImg = can.snus_items ? can.snus_items.image : '';
+        const snusName = can.snus_products ? can.snus_products.name : 'Unknown';
+        const snusImg = can.snus_products ? can.snus_products.image : '';
 
         container.innerHTML += `
             <div class="flex items-center justify-between bg-[#1C1C1E] border border-white/5 rounded-2xl p-3 mb-3 shadow-sm">
