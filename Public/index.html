@@ -444,7 +444,16 @@
                 </div>
                 
                 <input type="text" id="dex-search" oninput="filterDex()" placeholder="Search Snus..." 
-                    class="w-full bg-[#1C1C1E] border border-white/10 rounded-[16px] py-3.5 pl-12 pr-4 text-[17px] text-white outline-none placeholder:text-[#8E8E93] focus:border-white/30 focus:bg-[#2C2C2E] transition-all shadow-sm">
+                    class="w-full bg-[#1C1C1E] border border-white/10 rounded-[16px] py-3.5 pl-12 pr-24 text-[17px] text-white outline-none placeholder:text-[#8E8E93] focus:border-white/30 focus:bg-[#2C2C2E] transition-all shadow-sm">
+                
+                <div class="absolute inset-y-0 right-2 flex items-center gap-1.5 pr-1">
+                    <button id="dex-sort-btn" onclick="triggerHapticFeedback(); toggleDexSort()" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 border border-white/5 text-[#8E8E93] transition-all duration-200 active:scale-90 shadow-sm">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16"/></svg>
+                    </button>
+                    <button id="dex-filter-unlocked-btn" onclick="triggerHapticFeedback(); toggleDexFilterUnlocked()" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 border border-white/5 text-[#8E8E93] transition-all duration-200 active:scale-90 shadow-sm">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    </button>
+                </div>
             </div>
 
             <div id="dex-grid" class="grid grid-cols-3 gap-3"></div>

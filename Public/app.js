@@ -1155,27 +1155,79 @@ async function loadUserStats(userId) {
     if (pouchEl) pouchEl.innerText = count || 0;
 }
 
+let dexSortState = 0; 
+let dexSortMode = 'id';
+let dexFilterUnlocked = false;
+
+function toggleDexSort() {
+    // Status: 0 (Striche), 1 (#/ID), 2 (A/Alphabet)
+    dexSortState = (dexSortState === 0 || dexSortState === 2) ? 1 : 2;
+    const btn = document.getElementById('dex-sort-btn');
+    
+    if (dexSortState === 1) {
+        dexSortMode = 'id';
+        btn.innerHTML = `<span class="font-bold text-[16px]">#</span>`;
+        btn.classList.add('text-white', 'bg-white/20');
+        btn.classList.remove('text-[#8E8E93]', 'bg-white/10');
+    } else if (dexSortState === 2) {
+        dexSortMode = 'alpha';
+        btn.innerHTML = `<span class="font-bold text-[16px]">A</span>`;
+        btn.classList.add('text-white', 'bg-white/20');
+        btn.classList.remove('text-[#8E8E93]', 'bg-white/10');
+    }
+    filterDex();
+}
+
+function toggleDexFilterUnlocked() {
+    dexFilterUnlocked = !dexFilterUnlocked;
+    const btn = document.getElementById('dex-filter-unlocked-btn');
+    if (dexFilterUnlocked) {
+        btn.classList.add('bg-white', 'text-black');
+        btn.classList.remove('text-[#8E8E93]', 'bg-white/10');
+    } else {
+        btn.classList.remove('bg-white', 'text-black');
+        btn.classList.add('text-[#8E8E93]', 'bg-white/10');
+    }
+    filterDex();
+}
+
 function filterDex() {
     const searchEl = document.getElementById('dex-search');
     if (!searchEl) return;
     
     const term = searchEl.value.toLowerCase().trim();
-    if (!term) {
-        renderDexGrid(globalSnusData);
-        return;
+    const searchWords = term ? term.split(/\s+/) : [];
+    
+    let filtered = globalSnusData.filter(s => {
+        // Filter für freigeschaltete
+        if (dexFilterUnlocked && !globalUserCollection[s.id]) {
+            return false;
+        }
+        
+        // Text Filter (Suchleiste)
+        if (searchWords.length > 0) {
+            const searchableText = [
+                s.name, 
+                s.brand, 
+                Array.isArray(s.flavor) ? s.flavor.join(' ') : s.flavor
+            ].filter(Boolean).join(' ').toLowerCase();
+            
+            if (!searchWords.every(word => searchableText.includes(word))) {
+                return false;
+            }
+        }
+        
+        return true;
+    });
+
+    // Sortierung
+    if (dexSortMode === 'alpha') {
+        filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    } else {
+        filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
     }
 
-    const searchWords = term.split(/\s+/);
-    
-    renderDexGrid(globalSnusData.filter(s => {
-        const searchableText = [
-            s.name, 
-            s.brand, 
-            Array.isArray(s.flavor) ? s.flavor.join(' ') : s.flavor
-        ].filter(Boolean).join(' ').toLowerCase();
-        
-        return searchWords.every(word => searchableText.includes(word));
-    }));
+    renderDexGrid(filtered);
 }
 
 function setupProfile(user) {
@@ -2582,22 +2634,35 @@ function filterDex() {
     if (!searchEl) return;
     
     const term = searchEl.value.toLowerCase().trim();
-    if (!term) {
-        renderDexGrid(globalSnusData);
-        return;
+    const searchWords = term ? term.split(/\s+/) : [];
+    
+    let filtered = globalSnusData.filter(s => {
+        if (dexFilterUnlocked && !globalUserCollection[s.id]) {
+            return false;
+        }
+        
+        if (searchWords.length > 0) {
+            const searchableText = [
+                s.name, 
+                s.brand, 
+                Array.isArray(s.flavor) ? s.flavor.join(' ') : s.flavor
+            ].filter(Boolean).join(' ').toLowerCase();
+            
+            if (!searchWords.every(word => searchableText.includes(word))) {
+                return false;
+            }
+        }
+        
+        return true;
+    });
+
+    if (dexSortMode === 'alpha') {
+        filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    } else {
+        filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
     }
 
-    const searchWords = term.split(/\s+/);
-    
-    renderDexGrid(globalSnusData.filter(s => {
-        const searchableText = [
-            s.name, 
-            s.brand, 
-            Array.isArray(s.flavor) ? s.flavor.join(' ') : s.flavor
-        ].filter(Boolean).join(' ').toLowerCase();
-        
-        return searchWords.every(word => searchableText.includes(word));
-    }));
+    renderDexGrid(filtered);
 }
 
 function setupProfile(user) {
