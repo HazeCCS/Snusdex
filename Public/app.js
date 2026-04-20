@@ -654,8 +654,6 @@ function setupGlobalSwipe() {
 
 setupGlobalSwipe();
 
-setupGlobalSwipe();
-
 let tempRatings = {
     taste: 5,
     taste_text: '',
@@ -945,6 +943,7 @@ function openSnusDetail(id, isFromScan = false) {
     if (modal && backdrop && card) {
         modal.classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
+        card.classList.remove('translate-y-full');
 
         // Animation vorbereiten
         backdrop.style.transition = 'none';
@@ -987,10 +986,9 @@ function closeSnusDetail(isDragging = false) {
     // 3. Reset nach exakt 400ms (Scanner Timing)
     setTimeout(() => {
         document.getElementById('snus-modal').classList.add('hidden');
-        if (isDragging) {
-            card.style.transform = '';
-            card.style.transition = '';
-        }
+        card.classList.add('translate-y-full');
+        card.style.transform = '';
+        card.style.transition = '';
     }, 400);
 }
 
