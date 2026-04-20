@@ -431,8 +431,51 @@ async function loadDex() {
 
 let currentDexRenderCount = 0;
 let currentDexItems = [];
-const DEX_CHUNK_SIZE = 18;
+const DEX_CHUNK_SIZE = 30; // Erhöht für einen durchgängigeren Aufbau
 let dexObserver = null;
+let imageLazyObserver = null;
+
+function initImageLazyLoadObserver() {
+    if (imageLazyObserver) return;
+    
+    // rootMargin: 800px = ca. 5 Reihen (1 Reihe ≈ 150-160px) im Voraus laden
+    imageLazyObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                const src = img.getAttribute('data-src');
+                
+                if (src) {
+                    const container = img.closest('.dex-image-container');
+                    const video = container ? container.querySelector('.dex-placeholder') : null;
+                    
+                    img.onload = () => {
+                        img.classList.remove('opacity-0');
+                        if (video) {
+                            video.style.opacity = '0';
+                            setTimeout(() => video.remove(), 500); // DOM freiräumen für Performance
+                        }
+                    };
+                    
+                    img.onerror = () => {
+                        img.src = 'https://via.placeholder.com/150/000000/FFFFFF?text=?';
+                        img.classList.remove('opacity-0');
+                        if (video) {
+                            video.style.opacity = '0';
+                            setTimeout(() => video.remove(), 500);
+                        }
+                    };
+
+                    img.src = src; // Trigger Request
+                    img.removeAttribute('data-src');
+                    observer.unobserve(img); // Nur einmal auslösen
+                }
+            }
+        });
+    }, {
+        rootMargin: '0px 0px 800px 0px'
+    });
+}
 
 function initDexObserver() {
     if (dexObserver) {
@@ -441,13 +484,13 @@ function initDexObserver() {
     const sentinel = document.getElementById('dex-sentinel');
     if (!sentinel) return;
 
-    // Beobachter der auslöst sobald der Bereich ca. 400px vor dem Sichtfeld ist
+    // Beobachter der auslöst sobald der Bereich ca. 800px vor dem Sichtfeld ist (ca. 5 Reihen)
     dexObserver = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting) {
             loadMoreDexItems();
         }
     }, {
-        rootMargin: '400px'
+        rootMargin: '800px'
     });
 
     dexObserver.observe(sentinel);
@@ -499,10 +542,11 @@ function loadMoreDexItems() {
                         ${rarityIndicator}
                     </div>
 
-                    <div class="w-full aspect-square flex items-center justify-center relative mt-1">
-                        <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10" loading="lazy" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
+                    <div class="dex-image-container w-full aspect-square flex items-center justify-center relative mt-1">
+                            <video class="dex-placeholder absolute inset-0 w-[60%] h-[60%] m-auto object-contain z-0 transition-opacity duration-300 opacity-50 pointer-events-none" muted playsinline loop autoplay src="SnusDexLoadingSlot.mp4"></video>
+                            <img data-src="${GITHUB_BASE}${snus.image}" class="dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-500">
                     </div>
-                    
+
                     <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
                         <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
                     </div>
@@ -513,6 +557,14 @@ function loadMoreDexItems() {
     });
 
     grid.insertAdjacentHTML('beforeend', htmlChunk);
+
+    if (!imageLazyObserver) initImageLazyLoadObserver();
+        
+        grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
+            img.classList.add('observed');
+            imageLazyObserver.observe(img);
+        });
+        
     currentDexRenderCount += DEX_CHUNK_SIZE;
     setTimeout(updateDexScale, 50);
 }
