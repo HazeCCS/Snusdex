@@ -656,7 +656,7 @@
                         <div id="modal-nicotine" class="flex items-center justify-center gap-2"></div>
                     </div>
 
-                    <div id="uncollected-action-group" class="w-full">
+                    <div id="uncollected-action-group" class="w-full space-y-3">
                         <button onclick="triggerHapticFeedback(); closeSnusDetail(); setTimeout(openScanModal, 400)" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] shadow-[0_4px_14px_rgba(255,255,255,0.1)] flex justify-center items-center gap-2 active:scale-95 transition-transform">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -664,6 +664,12 @@
                             </svg>
                             Dose scannen
                         </button>
+                        <a id="order-snus-btn-uncollected" href="https://snuzone.com" target="_blank" onclick="triggerHapticFeedback()" class="w-full bg-[#34C759]/10 border border-[#34C759]/20 text-[#34C759] font-semibold text-[17px] py-4 rounded-[14px] flex justify-center items-center gap-2 active:scale-95 transition-transform">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            Snus bestellen
+                        </a>
                     </div>
 
                     <div id="scanned-action-group" class="hidden w-full">
@@ -679,17 +685,19 @@
                         
                         <div class="grid grid-cols-3 gap-2 mb-6">
                             <div class="bg-black/30 border border-white/5 rounded-[16px] p-3 flex flex-col justify-center">
-                                <span class="text-[#8E8E93] text-[10px] uppercase tracking-wider font-semibold block mb-0.5">Geöffnet</span>
-                                <span class="text-white text-[17px] font-bold">12x</span>
-                            </div>
-                            <div class="bg-black/30 border border-white/5 rounded-[16px] p-3 flex flex-col justify-center">
-                                <span class="text-[#8E8E93] text-[10px] uppercase tracking-wider font-semibold block mb-0.5">Diesen Monat</span>
-                                <span class="text-white text-[17px] font-bold">3x</span>
-                            </div>
-                            <div class="bg-black/30 border border-white/5 rounded-[16px] p-3 flex flex-col justify-center">
                                 <span class="text-[#8E8E93] text-[10px] uppercase tracking-wider font-semibold block mb-0.5">Unlocked at</span>
                                 <span id="modal-unlocked-date" class="text-white text-[13px] font-bold">Jan '24</span>
                             </div>
+                            <div class="bg-black/30 border border-white/5 rounded-[16px] p-3 flex flex-col justify-center">
+                                <span class="text-[#8E8E93] text-[10px] uppercase tracking-wider font-semibold block mb-0.5">Geöffnet</span>
+                                <span class="text-white text-[17px] font-bold">12x</span>
+                            </div>
+                            <a id="order-snus-btn" href="https://snuzone.com" target="_blank" onclick="triggerHapticFeedback()" class="bg-[#34C759]/10 border border-[#34C759]/20 rounded-[16px] p-2 flex flex-col justify-center items-center active:scale-95 transition-transform text-[#34C759]">
+                                <svg class="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <span class="text-[10px] uppercase tracking-wider font-bold">Bestellen</span>
+                            </a>
                         </div>
 
                         <div class="flex gap-3 mb-3"> <button onclick="triggerHapticFeedback(); showSavedRating()" class="flex-1 bg-white/10 border border-white/5 text-white font-medium text-[15px] py-3.5 rounded-[14px] active:scale-95 transition-transform shadow-sm">

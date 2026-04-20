@@ -903,6 +903,16 @@ function openSnusDetail(id, isFromScan = false) {
     if (modalImg) {
         modalImg.src = snus.image ? `${GITHUB_BASE}${snus.image}` : 'placeholder.png';
     }
+    
+    // 2.5 NACHBESTELLEN LINK DYNAMISCH SETZEN
+    // Hier kannst du den Affiliate-Link anpassen:
+    const affiliateLink = `https://snuzone.com/search?q=${encodeURIComponent(snus.name)}`;
+    
+    const orderBtn = document.getElementById('order-snus-btn');
+    if (orderBtn) orderBtn.href = affiliateLink;
+    
+    const orderBtnUncollected = document.getElementById('order-snus-btn-uncollected');
+    if (orderBtnUncollected) orderBtnUncollected.href = affiliateLink;
 
     // 3. COLLECTION STATUS (Freigeschaltet oder nicht)
     const isUnlocked = globalUserCollection[snusId];
