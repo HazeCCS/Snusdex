@@ -2312,6 +2312,59 @@ function openSettingsSubpage(type) {
                 <span>Save Changes</span>
             </button>
         `;
+    } else if (type === 'Stats') {
+        const brandStats = getBrandStats();
+        
+        let gridHTML = '<div class="grid grid-cols-2 gap-4 pb-6">';
+
+        brandStats.forEach(stat => {
+            // Berechne den Prozentsatz
+            const percentage = stat.total > 0 ? (stat.unlocked / stat.total) : 0;
+            
+            // SVG Circle Mathematik
+            const radius = 24;
+            const circumference = 2 * Math.PI * radius; // Umfang
+            const offset = circumference - (percentage * circumference); // Füllstand
+
+            // Farbe: Grün wenn komplett, sonst Weiß/Grau
+            const isCompleted = stat.unlocked === stat.total;
+            const strokeColor = isCompleted ? '#34C759' : '#FFFFFF';
+
+            gridHTML += `
+                <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 flex flex-col items-center text-center shadow-sm relative">
+                    <div class="relative w-[64px] h-[64px] mb-4 flex items-center justify-center">
+                        <svg class="absolute inset-0 w-full h-full transform -rotate-90">
+                            <circle cx="32" cy="32" r="${radius}" stroke="rgba(255,255,255,0.05)" stroke-width="5" fill="none" />
+                            <circle cx="32" cy="32" r="${radius}" stroke="${strokeColor}" stroke-width="5" fill="none" 
+                                stroke-dasharray="${circumference}" 
+                                stroke-dashoffset="${offset}" 
+                                stroke-linecap="round" 
+                                class="transition-all duration-1000 ease-out" />
+                        </svg>
+                        <span class="text-[13px] font-bold ${isCompleted ? 'text-[#34C759]' : 'text-white'} absolute">
+                            ${Math.round(percentage * 100)}%
+                        </span>
+                    </div>
+                    
+                    <h3 class="text-[16px] font-semibold text-white tracking-tight leading-tight line-clamp-1 w-full mb-1">
+                        ${stat.name}
+                    </h3>
+                    <p class="text-[13px] font-medium text-[#8E8E93]">
+                        <span class="${isCompleted ? 'text-[#34C759]' : 'text-white'}">${stat.unlocked}</span> / ${stat.total}
+                    </p>
+                </div>
+            `;
+        });
+
+        gridHTML += '</div>';
+        
+        // Füge noch einen Header-Text hinzu für ein runderes Bild
+        html = `
+            <p class="text-[#8E8E93] text-[15px] mb-6 leading-relaxed">
+                Verfolge deinen Sammler-Fortschritt sortiert nach Snus-Marken.
+            </p>
+            ${gridHTML}
+        `;
     } else if (type === 'Notifications') {
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
@@ -3464,7 +3517,33 @@ function initBrandScrollAnimation(container) {
     }, { passive: true });
 }
 
+// ==========================================
+// STATS HELPER
+// ==========================================
+function getBrandStats() {
+    const stats = {};
+    
+    // Daten aggregieren
+    globalSnusData.forEach(snus => {
+        const brand = snus.brand || 'Unbekannt';
+        
+        if (!stats[brand]) {
+            stats[brand] = { total: 0, unlocked: 0 };
+        }
+        
+        stats[brand].total++;
+        if (globalUserCollection[snus.id]) {
+            stats[brand].unlocked++;
+        }
+    });
 
+    // In Array umwandeln und alphabetisch sortieren
+    return Object.keys(stats).map(brand => ({
+        name: brand,
+        total: stats[brand].total,
+        unlocked: stats[brand].unlocked
+    })).sort((a, b) => a.name.localeCompare(b.name));
+}
 
 
 
