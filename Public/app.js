@@ -423,7 +423,8 @@ async function loadDex() {
     });
     globalSnusData = snusItems || [];
     updateLivePerformance();
-    renderDexGrid(globalSnusData);
+    updateDexSortButtonUI();
+    filterDex();
     loadTopSnusOfWeek();
     renderSuggestions();
 
@@ -1165,26 +1166,28 @@ async function loadUserStats(userId) {
     if (pouchEl) pouchEl.innerText = count || 0;
 }
 
-let dexSortState = 0; 
-let dexSortMode = 'id';
+let dexSortMode = localStorage.getItem('dexDefaultSort') || 'id';
 let dexFilterUnlocked = false;
 
-function toggleDexSort() {
-    // Status: 0 (Striche), 1 (#/ID), 2 (A/Alphabet)
-    dexSortState = (dexSortState === 0 || dexSortState === 2) ? 1 : 2;
+function updateDexSortButtonUI() {
     const btn = document.getElementById('dex-sort-btn');
+    if (!btn) return;
     
-    if (dexSortState === 1) {
-        dexSortMode = 'id';
+    if (dexSortMode === 'id') {
         btn.innerHTML = `<span class="font-bold text-[16px]">#</span>`;
         btn.classList.add('text-white', 'bg-white/20');
         btn.classList.remove('text-[#8E8E93]', 'bg-white/10');
-    } else if (dexSortState === 2) {
-        dexSortMode = 'alpha';
+    } else {
         btn.innerHTML = `<span class="font-bold text-[16px]">A</span>`;
         btn.classList.add('text-white', 'bg-white/20');
         btn.classList.remove('text-[#8E8E93]', 'bg-white/10');
     }
+}
+
+function toggleDexSort() {
+    dexSortMode = (dexSortMode === 'id') ? 'alpha' : 'id';
+    
+    updateDexSortButtonUI();
     filterDex();
 }
 
@@ -1201,44 +1204,6 @@ function toggleDexFilterUnlocked() {
     filterDex();
 }
 
-function filterDex() {
-    const searchEl = document.getElementById('dex-search');
-    if (!searchEl) return;
-    
-    const term = searchEl.value.toLowerCase().trim();
-    const searchWords = term ? term.split(/\s+/) : [];
-    
-    let filtered = globalSnusData.filter(s => {
-        // Filter für freigeschaltete
-        if (dexFilterUnlocked && !globalUserCollection[s.id]) {
-            return false;
-        }
-        
-        // Text Filter (Suchleiste)
-        if (searchWords.length > 0) {
-            const searchableText = [
-                s.name, 
-                s.brand, 
-                Array.isArray(s.flavor) ? s.flavor.join(' ') : s.flavor
-            ].filter(Boolean).join(' ').toLowerCase();
-            
-            if (!searchWords.every(word => searchableText.includes(word))) {
-                return false;
-            }
-        }
-        
-        return true;
-    });
-
-    // Sortierung
-    if (dexSortMode === 'alpha') {
-        filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    } else {
-        filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
-    }
-
-    renderDexGrid(filtered);
-}
 
 function setupProfile(user) {
     const emailEl = document.getElementById('profile-email');
@@ -2293,6 +2258,12 @@ function toggleGridGlow(element) {
     if (globalSnusData.length > 0) filterDex();
 }
 
+function toggleDefaultSort(element) {
+    toggleSetting(element);
+    const isActive = element.classList.contains('bg-white'); // true = Nach Marke, false = Nach ID
+    localStorage.setItem('dexDefaultSort', isActive ? 'alpha' : 'id');
+}
+
 function openSettingsSubpage(type) {
     const subpage = document.getElementById('settings-subpage');
     const titleObj = document.getElementById('subpage-title');
@@ -2407,8 +2378,24 @@ function openSettingsSubpage(type) {
         const glowHandleTransform = glow ? 'translate-x-5' : '';
         const glowHandleBg = glow ? 'bg-black' : 'bg-white';
 
+        // NEU: Status für Standard-Sortierung auslesen
+        const defaultSort = localStorage.getItem('dexDefaultSort') || 'id';
+        const isAlphaDefault = defaultSort === 'alpha';
+        const sortToggleBg = isAlphaDefault ? 'bg-white' : 'bg-[#3A3A3C]';
+        const sortHandleTransform = isAlphaDefault ? 'translate-x-5' : '';
+        const sortHandleBg = isAlphaDefault ? 'bg-black' : 'bg-white';
+
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
+                <div class="flex items-center justify-between p-5">
+                    <div class="flex flex-col pr-4">
+                        <span class="text-white text-[17px]">Nach Marke starten</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">Dex ist beim App-Start nach Name statt ID sortiert</span>
+                    </div>
+                    <div onclick="triggerHapticFeedback(); toggleDefaultSort(this)" class="w-12 h-7 ${sortToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${sortHandleBg} rounded-full transition-transform duration-300 ${sortHandleTransform} shadow-sm"></div></div>
+                </div>
+                <div class="h-[1px] bg-white/5 mx-5"></div>
+
                 <div class="flex items-center justify-between p-5">
                     <div class="flex flex-col pr-4">
                         <span class="text-white text-[17px]">Große Kacheln</span>
@@ -2647,10 +2634,12 @@ function filterDex() {
     const searchWords = term ? term.split(/\s+/) : [];
     
     let filtered = globalSnusData.filter(s => {
+        // Filter für freigeschaltete
         if (dexFilterUnlocked && !globalUserCollection[s.id]) {
             return false;
         }
         
+        // Text Filter (Suchleiste)
         if (searchWords.length > 0) {
             const searchableText = [
                 s.name, 
@@ -2666,13 +2655,30 @@ function filterDex() {
         return true;
     });
 
-    if (dexSortMode === 'alpha') {
-        filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    } else {
-        filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
-    }
+    const grid = document.getElementById('dex-grid');
+    if (!grid) return;
 
-    renderDexGrid(filtered);
+    // Reset der Layout-Klassen für saubere Wechsel
+    grid.className = ''; // Löscht alle bestehenden Klassen des Containers
+
+    if (dexSortMode === 'alpha') {
+        // --- NEU: Sort by Name (Grouped Layout) ---
+        grid.classList.add('flex', 'flex-col', 'w-full'); 
+        
+        // Observer für Chunking abschalten, da wir hier horizontales Scrollen nutzen
+        if (dexObserver) dexObserver.disconnect(); 
+        
+        const groupedData = groupAndSortByBrand(filtered);
+        renderDexGrouped(groupedData);
+        
+    } else {
+        // --- BESTEHEND: Sort by ID (Grid Layout) ---
+        const cols = localStorage.getItem('dexColumns') || '3';
+        grid.classList.add('grid', cols === '2' ? 'grid-cols-2' : 'grid-cols-3', 'gap-3');
+        
+        filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+        renderDexGrid(filtered); // Lädt Chunks & triggert Observer neu
+    }
 }
 
 function setupProfile(user) {
@@ -3224,6 +3230,8 @@ let lastHapticScrollY = 0;
 const HAPTIC_PIXEL_THRESHOLD = 55; 
 
 function updateDexScale() {
+    if (typeof dexSortMode !== 'undefined' && dexSortMode === 'alpha') return;
+
     const grid = document.getElementById('dex-grid');
     if (!grid || grid.children.length === 0) return;
 
@@ -3295,7 +3303,166 @@ function triggerLightHapticFeedback() {
     }
 }
 
+// ==========================================
+// BRAND GROUPING & RENDERING (Sort by Name)
+// ==========================================
 
+function groupAndSortByBrand(items) {
+    const groups = {};
+    
+    // 1. Gruppieren nach Marke
+    items.forEach(snus => {
+        const brand = snus.brand || 'Unbekannt';
+        if (!groups[brand]) groups[brand] = [];
+        groups[brand].push(snus);
+    });
+
+    // 2. Marken alphabetisch sortieren
+    const sortedBrands = Object.keys(groups).sort();
+
+    const result = [];
+    sortedBrands.forEach(brand => {
+        const brandItems = groups[brand];
+        
+        // 3. Innerhalb der Marke sortieren: Freigeschaltet zuerst, dann nach ID
+        brandItems.sort((a, b) => {
+            const aUnlocked = !!globalUserCollection[a.id];
+            const bUnlocked = !!globalUserCollection[b.id];
+            
+            if (aUnlocked && !bUnlocked) return -1;
+            if (!aUnlocked && bUnlocked) return 1;
+            
+            return parseInt(a.id) - parseInt(b.id);
+        });
+
+        const unlockedCount = brandItems.filter(item => !!globalUserCollection[item.id]).length;
+
+        result.push({
+            brandName: brand,
+            items: brandItems,
+            totalCount: brandItems.length,
+            unlockedCount: unlockedCount
+        });
+    });
+    
+    return result;
+}
+
+function createBrandHeaderHTML(brandName, unlockedCount, totalCount) {
+    return `
+        <div class="flex justify-between items-end mb-3 px-1 mt-6 first:mt-2">
+            <h2 class="text-[20px] font-semibold text-white tracking-tight">${brandName}</h2>
+            <span class="text-[13px] font-medium text-[#8E8E93] bg-white/10 px-2.5 py-1 rounded-full border border-white/5">
+                ${unlockedCount} / ${totalCount}
+            </span>
+        </div>
+    `;
+}
+
+function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
+    const formattedId = '#' + String(snus.id).padStart(3, '0');
+    const rarity = (snus.rarity || 'common').toLowerCase().trim();
+    const boxShadow = glowActive ? `box-shadow: 0 0px 20px -8px var(--${rarity}, var(--common));` : '';
+    const rarityIndicator = `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
+
+    return `
+        <div onclick="openSnusDetail(${snus.id})" class="brand-anim-card cursor-pointer group flex-shrink-0 w-[28vw] max-w-[120px] snap-center transition-all duration-200 ease-out origin-center will-change-transform">
+            <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] shadow-md overflow-hidden transition-transform group-active:scale-95 ${!isUnlocked ? 'opacity-40 grayscale' : ''}" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
+                <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
+                    <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
+                    ${rarityIndicator}
+                </div>
+                <div class="dex-image-container w-full aspect-square flex items-center justify-center relative mt-1">
+                    <video class="dex-placeholder absolute inset-0 w-[60%] h-[60%] m-auto object-contain z-0 transition-opacity duration-300 opacity-50 pointer-events-none" muted playsinline loop autoplay src="SnusDexLoadingSlot.mp4"></video>
+                    <img data-src="${GITHUB_BASE}${snus.image}" class="dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-500">
+                </div>
+                <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
+                    <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderDexGrouped(groupedData) {
+    const grid = document.getElementById('dex-grid');
+    if (!grid) return;
+    
+    grid.innerHTML = '';
+    const glowActive = localStorage.getItem('dexGlow') === 'true';
+    let finalHTML = '';
+
+    groupedData.forEach(brandData => {
+        const header = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
+        let cardsHTML = '';
+        brandData.items.forEach(snus => {
+            const isUnlocked = !!globalUserCollection[snus.id];
+            cardsHTML += createHorizontalCardHTML(snus, isUnlocked, glowActive);
+        });
+
+        // NEU: Dem Container die Klasse "brand-carousel" gegeben
+        finalHTML += `
+            <div class="brand-section w-full mb-4">
+                ${header}
+                <div class="brand-carousel flex gap-[3vw] overflow-x-auto pb-4 pt-2 snap-x snap-mandatory scroll-smooth px-1">
+                    ${cardsHTML}
+                </div>
+            </div>
+        `;
+    });
+
+    grid.innerHTML = finalHTML;
+
+    // Bestehende Lazy Loading Logik für Bilder triggern
+    if (!imageLazyObserver) initImageLazyLoadObserver();
+    grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
+        img.classList.add('observed');
+        imageLazyObserver.observe(img);
+    });
+
+    // NEU: Horizontale Scroll-Animation für jedes Carousel initialisieren
+    grid.querySelectorAll('.brand-carousel').forEach(carousel => {
+        initBrandScrollAnimation(carousel);
+    });
+}
+
+// NEU: Die ausgelagerte Animations-Funktion für horizontale Listen
+function initBrandScrollAnimation(container) {
+    const cards = container.querySelectorAll('.brand-anim-card');
+
+    const updateScale = () => {
+        const containerRect = container.getBoundingClientRect();
+        const containerCenter = containerRect.left + containerRect.width / 2;
+        const focusZoneHalfWidth = containerRect.width * 0.35;
+
+        cards.forEach(card => {
+            const cardRect = card.getBoundingClientRect();
+            const cardCenter = cardRect.left + cardRect.width / 2;
+            const distanceToCenter = Math.abs(containerCenter - cardCenter);
+
+            let scale = 1.0;
+            let opacity = 1.0;
+
+            if (distanceToCenter > focusZoneHalfWidth) {
+                const distancePastZone = distanceToCenter - focusZoneHalfWidth;
+                let progress = distancePastZone / (containerRect.width * 0.15);
+                if (progress > 1) progress = 1;
+
+                scale = 1.0 - (0.15 * progress); 
+                opacity = 1.0 - (0.6 * progress); 
+            }
+
+            card.style.transform = `scale(${scale})`;
+            card.style.opacity = opacity;
+        });
+    };
+
+    updateScale(); // Initialer Aufruf
+    
+    container.addEventListener('scroll', () => {
+        requestAnimationFrame(updateScale);
+    }, { passive: true });
+}
 
 
 
