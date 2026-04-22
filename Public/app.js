@@ -128,7 +128,7 @@ async function signInWithGoogle() {
     } catch (error) {
         console.error("Google Login Error:", error.message);
         alert("Login-Fehler: " + error.message);
-        
+
         // UI Reset
         btnText.innerText = "Mit Google anmelden";
         btn.disabled = false;
@@ -143,21 +143,21 @@ async function checkUser() {
     try {
         const { data, error } = await supabaseClient.auth.getSession();
         if (error) throw error;
-        
+
         const session = data?.session;
         const overlay = document.getElementById('auth-overlay');
 
         if (session) {
             // NEU: Prüfen ob Username existiert (wichtig für Google Login)
             const hasUsername = session.user.user_metadata?.username;
-            
+
             if (!hasUsername) {
                 const usernameView = document.getElementById('auth-username-view');
                 if (!usernameView) {
                     console.error("HTML Element 'auth-username-view' fehlt in der index.html!");
                     return; // Stoppe Ausführung, um Endlosschleife/Absturz zu verhindern
                 }
-                
+
                 document.getElementById('auth-main-view')?.classList.add('hidden');
                 document.getElementById('auth-verify-view')?.classList.add('hidden');
                 usernameView.classList.remove('hidden');
@@ -438,18 +438,18 @@ let imageLazyObserver = null;
 
 function initImageLazyLoadObserver() {
     if (imageLazyObserver) return;
-    
+
     // rootMargin: 800px = ca. 5 Reihen (1 Reihe ≈ 150-160px) im Voraus laden
     imageLazyObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 const img = entry.target;
                 const src = img.getAttribute('data-src');
-                
+
                 if (src) {
                     const container = img.closest('.dex-image-container');
                     const video = container ? container.querySelector('.dex-placeholder') : null;
-                    
+
                     img.onload = () => {
                         img.classList.remove('opacity-0');
                         if (video) {
@@ -457,7 +457,7 @@ function initImageLazyLoadObserver() {
                             setTimeout(() => video.remove(), 500); // DOM freiräumen für Performance
                         }
                     };
-                    
+
                     img.onerror = () => {
                         img.src = 'https://via.placeholder.com/150/000000/FFFFFF?text=?';
                         img.classList.remove('opacity-0');
@@ -560,12 +560,12 @@ function loadMoreDexItems() {
     grid.insertAdjacentHTML('beforeend', htmlChunk);
 
     if (!imageLazyObserver) initImageLazyLoadObserver();
-        
-        grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
-            img.classList.add('observed');
-            imageLazyObserver.observe(img);
-        });
-        
+
+    grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
+        img.classList.add('observed');
+        imageLazyObserver.observe(img);
+    });
+
     currentDexRenderCount += DEX_CHUNK_SIZE;
     setTimeout(updateDexScale, 50);
 }
@@ -620,12 +620,12 @@ function setupGlobalSwipe() {
         detailStartY = e.touches[0].clientY;
         detailCurrentY = detailStartY;
         isDetailDragging = true;
-        card.style.transition = 'none'; 
+        card.style.transition = 'none';
     }, { passive: true });
 
     card.addEventListener('touchmove', (e) => {
         if (!isDetailDragging) return;
-        
+
         detailCurrentY = e.touches[0].clientY;
         const deltaY = detailCurrentY - detailStartY;
 
@@ -637,7 +637,7 @@ function setupGlobalSwipe() {
     card.addEventListener('touchend', (e) => {
         if (!isDetailDragging) return;
         isDetailDragging = false;
-        
+
         const deltaY = detailCurrentY - detailStartY;
         card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
 
@@ -832,7 +832,7 @@ function showSavedRating() {
         '>': '&gt;',
         "'": '&#39;',
         '"': '&quot;'
-    } [tag])) : '';
+    }[tag])) : '';
 
     const createBar = (label, val, text) => {
         const hasText = text && String(text).trim() !== '';
@@ -866,13 +866,13 @@ function openSnusDetail(id, isFromScan = false) {
     // Sicherstellen, dass die ID eine Zahl ist, falls sie als String kommt
     const snusId = parseInt(id);
     const snus = globalSnusData.find(s => parseInt(s.id) === snusId);
-    
+
     if (!snus) {
         console.error("Snus mit ID " + id + " nicht gefunden!");
         return;
     }
-    
-    currentSelectedSnusId = snusId; 
+
+    currentSelectedSnusId = snusId;
 
     // 2. ELEMENTE SICHER BEFÜLLEN (mit Fallbacks)
     const setText = (id, text) => {
@@ -904,14 +904,14 @@ function openSnusDetail(id, isFromScan = false) {
     if (modalImg) {
         modalImg.src = snus.image ? `${GITHUB_BASE}${snus.image}` : 'placeholder.png';
     }
-    
+
     // 2.5 NACHBESTELLEN LINK DYNAMISCH SETZEN
     // Hier kannst du den Affiliate-Link anpassen:
     const affiliateLink = `https://snuzone.com/search?q=${encodeURIComponent(snus.name)}`;
-    
+
     const orderBtn = document.getElementById('order-snus-btn');
     if (orderBtn) orderBtn.href = affiliateLink;
-    
+
     const orderBtnUncollected = document.getElementById('order-snus-btn-uncollected');
     if (orderBtnUncollected) orderBtnUncollected.href = affiliateLink;
 
@@ -944,7 +944,7 @@ function openSnusDetail(id, isFromScan = false) {
     }
 
     // 4. VIEWS AKTIVIEREN
-    if (typeof showInfoView === "function") showInfoView(); 
+    if (typeof showInfoView === "function") showInfoView();
     if (typeof initRatingWizard === "function") initRatingWizard();
 
     // 5. MODAL ANZEIGEN & ANIMIEREN
@@ -964,7 +964,7 @@ function openSnusDetail(id, isFromScan = false) {
             card.classList.add('translate-y-0');
         }, 10);
     }
-    
+
     if (typeof triggerHapticFeedback === "function") triggerHapticFeedback();
 }
 
@@ -978,20 +978,20 @@ function closeSnusDetail(isDragging = false) {
     // 2. Animation
     card.classList.remove('translate-y-0');
     card.classList.add('translate-y-full');
-    
+
     backdrop.classList.remove('opacity-100');
     backdrop.classList.add('opacity-0');
-    
+
     if (!isDragging) {
         card.style.transform = '';
         card.style.transition = '';
     }
-    
+
     // 3. Reset
     setTimeout(() => {
         document.getElementById('snus-modal').classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
-        
+
         if (isDragging) {
             card.style.transform = '';
             card.style.transition = '';
@@ -1172,7 +1172,7 @@ let dexFilterUnlocked = false;
 function updateDexSortButtonUI() {
     const btn = document.getElementById('dex-sort-btn');
     if (!btn) return;
-    
+
     if (dexSortMode === 'id') {
         btn.innerHTML = `<span class="font-bold text-[16px]">#</span>`;
         btn.classList.add('text-white', 'bg-white/20');
@@ -1186,7 +1186,7 @@ function updateDexSortButtonUI() {
 
 function toggleDexSort() {
     dexSortMode = (dexSortMode === 'id') ? 'alpha' : 'id';
-    
+
     updateDexSortButtonUI();
     filterDex();
 }
@@ -1237,7 +1237,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         allScansCard.addEventListener('touchmove', (e) => {
             if (!isAllScansDragging) return;
-            
+
             const currentY = e.touches[0].clientY;
             const deltaY = currentY - allScansStartY;
 
@@ -1373,7 +1373,7 @@ function getScoreRingColor(score) {
 
 function renderSocialCard(title, snus, ratings, overall, count, countLabel = 'Scans') {
     const rarity = (snus.rarity || 'common').toLowerCase().trim();
-    
+
     const createCircle = (label, val) => `
         <div class="flex flex-col items-center">
             <div class="w-10 h-10 rounded-full border-2 ${getScoreRingColor(val)} flex items-center justify-center bg-black/20 mb-1">
@@ -1577,16 +1577,16 @@ function setupConnectionsSwipe() {
         connCurrentX = connStartX;
         isConnDragging = true;
         isHorizontalIntent = null; // Intent bei jedem neuen Touch zurücksetzen
-        
+
         page.style.transition = 'none'; // Sofortiges Tracking
     }, { passive: true });
 
     page.addEventListener('touchmove', (e) => {
         if (!isConnDragging) return;
-        
+
         connCurrentX = e.touches[0].clientX;
         const currentY = e.touches[0].clientY;
-        
+
         const deltaX = connCurrentX - connStartX;
         const deltaY = currentY - connStartY;
 
@@ -1595,7 +1595,7 @@ function setupConnectionsSwipe() {
             // Wenn die Bewegung nach oben/unten größer ist als nach links/rechts -> abbrechen
             if (Math.abs(deltaY) > Math.abs(deltaX)) {
                 isHorizontalIntent = false;
-                isConnDragging = false; 
+                isConnDragging = false;
                 return;
             } else {
                 isHorizontalIntent = true;
@@ -1614,7 +1614,7 @@ function setupConnectionsSwipe() {
         isConnDragging = false;
 
         const deltaX = connCurrentX - connStartX;
-        
+
         // Die Apple-Bezier-Kurve für das Zurückschnappen
         page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
 
@@ -1646,12 +1646,12 @@ function openConnectionsPage() {
     // 2. Setup (Unsichtbar nach rechts schieben)
     page.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
-    
+
     page.style.transition = 'none';
     page.style.transform = 'translateX(100%)';
 
     // 3. Force Reflow (zwingt den Browser, die Startposition zu übernehmen)
-    page.offsetHeight; 
+    page.offsetHeight;
 
     // 4. Animation abspielen
     page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
@@ -1670,7 +1670,7 @@ function closeConnectionsPage() {
     setTimeout(() => {
         page.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
-        
+
         // Reset Styles für den nächsten Start
         page.style.transform = '';
         page.style.transition = '';
@@ -1688,8 +1688,8 @@ async function loadConnectionsData() {
     const followersList = document.getElementById('followers-list');
     const followingList = document.getElementById('following-list');
 
-        followersList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">Loading...</div>';
-        followingList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">Loading...</div>';
+    followersList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">Loading...</div>';
+    followingList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">Loading...</div>';
 
     // Load Followers
     const {
@@ -1701,16 +1701,16 @@ async function loadConnectionsData() {
         .eq('following_id', user.id);
 
     if (followersError || !followers || followers.length === 0) {
-            followersList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">No one is following you yet.</div>';
+        followersList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">No one is following you yet.</div>';
     } else {
         followersList.innerHTML = '';
-            const sortedFollowers = followers
-                .map(conn => Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles)
-                .filter(p => p)
-                .sort((a, b) => (b.xp || 0) - (a.xp || 0));
+        const sortedFollowers = followers
+            .map(conn => Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles)
+            .filter(p => p)
+            .sort((a, b) => (b.xp || 0) - (a.xp || 0));
 
-            sortedFollowers.forEach((profile, idx) => {
-                followersList.innerHTML += renderConnectionItem(profile, idx);
+        sortedFollowers.forEach((profile, idx) => {
+            followersList.innerHTML += renderConnectionItem(profile, idx);
         });
     }
 
@@ -1724,35 +1724,35 @@ async function loadConnectionsData() {
         .eq('follower_id', user.id);
 
     if (followingError || !following || following.length === 0) {
-            followingList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">You are not following anyone yet.</div>';
+        followingList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">You are not following anyone yet.</div>';
     } else {
         followingList.innerHTML = '';
-            const sortedFollowing = following
-                .map(conn => Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles)
-                .filter(p => p)
-                .sort((a, b) => (b.xp || 0) - (a.xp || 0));
+        const sortedFollowing = following
+            .map(conn => Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles)
+            .filter(p => p)
+            .sort((a, b) => (b.xp || 0) - (a.xp || 0));
 
-            sortedFollowing.forEach((profile, idx) => {
-                followingList.innerHTML += renderConnectionItem(profile, idx);
+        sortedFollowing.forEach((profile, idx) => {
+            followingList.innerHTML += renderConnectionItem(profile, idx);
         });
     }
 }
 
-    function renderConnectionItem(profile, index) {
+function renderConnectionItem(profile, index) {
     const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=random`;
     const xp = profile.xp || 0;
     const level = Math.floor(xp / 300) + 1;
-        const cans = Math.floor(xp / 100);
+    const cans = Math.floor(xp / 100);
 
-        let rankHtml = '';
-        if (index !== undefined) {
-            let rankColor = 'text-[#8E8E93]';
-            if (index === 0) rankColor = 'text-[#FFCC00]';
-            else if (index === 1) rankColor = 'text-[#E5E4E2]';
-            else if (index === 2) rankColor = 'text-[#CD7F32]';
-            
-            rankHtml = `<span class="text-[15px] font-bold ${rankColor} w-5 text-center mr-1 flex-shrink-0">${index + 1}</span>`;
-        }
+    let rankHtml = '';
+    if (index !== undefined) {
+        let rankColor = 'text-[#8E8E93]';
+        if (index === 0) rankColor = 'text-[#FFCC00]';
+        else if (index === 1) rankColor = 'text-[#E5E4E2]';
+        else if (index === 2) rankColor = 'text-[#CD7F32]';
+
+        rankHtml = `<span class="text-[15px] font-bold ${rankColor} w-5 text-center mr-1 flex-shrink-0">${index + 1}</span>`;
+    }
 
     return `
             <div class="flex items-center justify-between p-3 border-b border-white/5 last:border-0 cursor-pointer active:bg-white/5 transition-colors">
@@ -1927,13 +1927,17 @@ async function loadUsageData() {
 async function finishSpecificCan(logId) {
     triggerHapticFeedback();
 
+    const logItem = globalActiveLogs.find(c => c.id === logId);
+    const maxPouches = logItem ? (logItem.pouches_per_can || 20) : 20;
+
     const {
         error
     } = await supabaseClient
         .from('usage_logs')
         .update({
             finished_at: new Date().toISOString(),
-            is_active: false
+            is_active: false,
+            pouches_taken: maxPouches
         })
         .eq('id', logId);
 
@@ -1953,34 +1957,157 @@ function renderActiveCansUI() {
         return;
     }
 
+    const trackingMode = localStorage.getItem('snusTrackingMode') || 'full';
+
     globalActiveLogs.forEach(can => {
         const snusName = can.snus_products ? can.snus_products.name : 'Unknown';
         const snusImg = can.snus_products ? can.snus_products.image : '';
+        const logId = can.id;
 
-        container.innerHTML += `
-            <div class="flex items-center justify-between bg-[#1C1C1E] border border-white/5 rounded-2xl p-3 mb-3 shadow-sm">
-                <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-10 h-10 flex items-center justify-center">
-                        <img src="${GITHUB_BASE}${snusImg}" class="h-full object-contain">
+        if (trackingMode === 'individual') {
+            const pouchesTotal = can.pouches_per_can || 20;
+            const pouchesTaken = can.pouches_taken || 0;
+
+            container.innerHTML += `
+                <div class="flex items-center justify-between bg-[#1C1C1E] border border-white/5 rounded-2xl p-3 mb-3 shadow-sm select-none">
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                            <img src="${GITHUB_BASE}${snusImg}" class="h-full object-contain">
+                        </div>
+                        <div class="min-w-0 flex-1 pr-2">
+                            <h4 class="text-white text-[15px] font-semibold truncate leading-tight">${snusName}</h4>
+                            <p class="text-[11px] text-[#8E8E93] tracking-wider mt-0.5">${pouchesTaken} / ${pouchesTotal} Pouches Taken</p>
+                        </div>
                     </div>
-                    <div class="min-w-0">
-                        <h4 class="text-white text-[15px] font-semibold truncate">${snusName}</h4>
-                        <p class="text-[11px] text-[#8E8E93] tracking-wider">Open since ${new Date(can.opened_at).toLocaleDateString()}</p>
+                    
+                    <div class="relative w-[48px] h-[48px] flex items-center justify-center group flex-shrink-0 touch-none" 
+                         oncontextmenu="return false;"
+                         ontouchstart="startAddPouch('${logId}', ${pouchesTotal}, ${pouchesTaken})" 
+                         ontouchend="stopAddPouch()" 
+                         onmousedown="startAddPouch('${logId}', ${pouchesTotal}, ${pouchesTaken})" 
+                         onmouseup="stopAddPouch()" 
+                         onmouseleave="stopAddPouch()">
+                        
+                        <svg class="absolute inset-0 w-full h-full transform -rotate-90 pointer-events-none" viewBox="0 0 48 48">
+                            <circle cx="24" cy="24" r="22" stroke="rgba(255,255,255,0.1)" stroke-width="4" fill="none" />
+                            <circle id="progress-${logId}" cx="24" cy="24" r="22" stroke="white" stroke-width="4" fill="none" 
+                                    stroke-dasharray="138.2" stroke-dashoffset="138.2" style="transition: none;" />
+                        </svg>
+                        
+                        <div class="w-[36px] h-[36px] bg-white/10 rounded-full flex items-center justify-center group-active:scale-95 transition-transform pointer-events-none">
+                            <svg class="w-5 h-5 text-white pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
-                <button onclick="triggerHapticFeedback(); this.innerText='Emptying...'; this.disabled=true; this.classList.add('opacity-50'); finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-all">
-                    Empty
-                </button>
-            </div>
-        `;
+            `;
+        } else {
+            container.innerHTML += `
+                <div class="flex items-center justify-between bg-[#1C1C1E] border border-white/5 rounded-2xl p-3 mb-3 shadow-sm">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                            <img src="${GITHUB_BASE}${snusImg}" class="h-full object-contain">
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h4 class="text-white text-[15px] font-semibold truncate leading-tight">${snusName}</h4>
+                            <p class="text-[11px] text-[#8E8E93] tracking-wider mt-0.5">Open since ${new Date(can.opened_at).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                    <button onclick="triggerHapticFeedback(); this.innerText='Emptying...'; this.disabled=true; this.classList.add('opacity-50'); finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-all flex-shrink-0">
+                        Empty
+                    </button>
+                </div>
+            `;
+        }
     });
+}
+
+let addPouchTimer = null;
+let addPouchProgress = 0;
+let addPouchLogId = null;
+
+function startAddPouch(logId, maxPouches, currentPouches) {
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('light');
+    addPouchLogId = logId;
+    addPouchProgress = 0;
+    const progressCircle = document.getElementById(`progress-${logId}`);
+    if (progressCircle) {
+        progressCircle.style.transition = 'none';
+        progressCircle.style.strokeDashoffset = '138.2';
+    }
+
+    addPouchTimer = setInterval(() => {
+        addPouchProgress += 2; // 50 updates per second -> 100 in 1 second
+        if (progressCircle) {
+            const offset = 138.2 - (138.2 * (addPouchProgress / 100));
+            progressCircle.style.strokeDashoffset = offset;
+        }
+
+        if (addPouchProgress >= 100) {
+            clearInterval(addPouchTimer);
+            addPouchTimer = null;
+            addPouchProgress = 100;
+            if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('success');
+
+            executeAddPouch(logId, maxPouches, currentPouches + 1);
+        }
+    }, 20);
+}
+
+function stopAddPouch() {
+    if (addPouchTimer) {
+        clearInterval(addPouchTimer);
+        addPouchTimer = null;
+    }
+
+    if (addPouchLogId && addPouchProgress < 100) {
+        const progressCircle = document.getElementById(`progress-${addPouchLogId}`);
+        if (progressCircle) {
+            progressCircle.style.transition = 'stroke-dashoffset 0.3s ease';
+            progressCircle.style.strokeDashoffset = '138.2';
+        }
+    }
+    addPouchLogId = null;
+}
+
+async function executeAddPouch(logId, maxPouches, newCount) {
+    const isFinished = newCount >= maxPouches;
+
+    const updates = { pouches_taken: newCount };
+    if (isFinished) {
+        updates.is_active = false;
+        updates.finished_at = new Date().toISOString();
+    }
+
+    const canIndex = globalActiveLogs.findIndex(c => c.id === logId);
+    if (canIndex > -1) {
+        globalActiveLogs[canIndex].pouches_taken = newCount;
+        if (isFinished) {
+            globalActiveLogs[canIndex].is_active = false;
+            globalActiveLogs[canIndex].finished_at = updates.finished_at;
+            globalActiveLogs.splice(canIndex, 1);
+        }
+    }
+    renderActiveCansUI();
+
+    const { error } = await supabaseClient
+        .from('usage_logs')
+        .update(updates)
+        .eq('id', logId);
+
+    if (error) {
+        console.error("Error updating pouch count:", error);
+    } else {
+        loadUsageData(); 
+    }
 }
 
 function calculateUsageStats(allLogs) {
     const finishedCans = allLogs.filter(log => !log.is_active && log.finished_at);
+    const activeCans = allLogs.filter(log => log.is_active);
 
-    // Fallback, wenn noch keine Dose leer ist
-    if (finishedCans.length === 0) {
+    if (finishedCans.length === 0 && activeCans.length === 0) {
         if (currentDashboardStats.flow !== 0) animateNumber('stat-flow', currentDashboardStats.flow, 0, 1500, " MG", false);
         if (currentDashboardStats.avgPouches !== 0) animateNumber('stat-avg-pouches', currentDashboardStats.avgPouches, 0, 1500, "", true);
         if (currentDashboardStats.avgMg !== 0) animateNumber('stat-avg-mg', currentDashboardStats.avgMg, 0, 1500, " MG", false);
@@ -1997,20 +2124,46 @@ function calculateUsageStats(allLogs) {
     finishedCans.forEach(can => {
         const mgPerPouch = (can.mg_per_gram || 0) / 2;
         const mgPerCan = mgPerPouch * (can.pouches_per_can || 20);
-
         totalMgHistory += mgPerCan;
         totalPouchesHistory += (can.pouches_per_can || 20);
     });
 
-    const firstEverLog = finishedCans[finishedCans.length - 1];
-    const startDate = new Date(firstEverLog.opened_at);
-    const today = new Date();
+    activeCans.forEach(can => {
+        const mgPerPouch = (can.mg_per_gram || 0) / 2;
+        const taken = can.pouches_taken || 0;
+        totalMgHistory += (mgPerPouch * taken);
+        totalPouchesHistory += taken;
+    });
 
+    let startDate = new Date();
+    if (finishedCans.length > 0) {
+        startDate = new Date(finishedCans[finishedCans.length - 1].opened_at);
+    } else if (activeCans.length > 0) {
+        startDate = new Date(activeCans[activeCans.length - 1].opened_at);
+    }
+
+    const today = new Date();
     let totalDaysSpan = (today - startDate) / (1000 * 60 * 60 * 24);
     if (totalDaysSpan < 1) totalDaysSpan = 1;
 
-    const avgMgPerDay = totalMgHistory / totalDaysSpan;
-    const avgPouchesPerDay = totalPouchesHistory / totalDaysSpan;
+    let avgMgPerDay = totalMgHistory / totalDaysSpan;
+    let avgPouchesPerDay = totalPouchesHistory / totalDaysSpan;
+
+    if (activeCans.length === 0) {
+        const sortedFinished = [...finishedCans].sort((a, b) => new Date(b.finished_at) - new Date(a.finished_at));
+        if (sortedFinished.length > 0) {
+            const lastFinishedDate = new Date(sortedFinished[0].finished_at);
+            const todayReset = new Date();
+            todayReset.setHours(0, 0, 0, 0);
+            lastFinishedDate.setHours(0, 0, 0, 0);
+
+            const daysSinceLastFinished = (todayReset - lastFinishedDate) / (1000 * 60 * 60 * 24);
+            if (daysSinceLastFinished >= 1) {
+                avgMgPerDay = 0;
+                avgPouchesPerDay = 0;
+            }
+        }
+    }
 
     if (currentDashboardStats.flow !== totalMgHistory) {
         animateNumber('stat-flow', currentDashboardStats.flow, totalMgHistory, 1500, " MG", false);
@@ -2079,10 +2232,10 @@ async function openScanModal() {
             }
 
             await html5QrCode.start({
-                    facingMode: "environment"
-                }, {
-                    fps: 60,
-                },
+                facingMode: "environment"
+            }, {
+                fps: 60,
+            },
                 (decodedText, decodedResult) => {
                     if (isProcessingScan) return;
                     isProcessingScan = true;
@@ -2099,7 +2252,7 @@ async function openScanModal() {
                         }
                     }, 400);
                 },
-                (errorMessage) => {}
+                (errorMessage) => { }
             );
 
             document.getElementById('camera-loading').classList.add('opacity-0', 'pointer-events-none');
@@ -2264,6 +2417,15 @@ function toggleDefaultSort(element) {
     localStorage.setItem('dexDefaultSort', isActive ? 'alpha' : 'id');
 }
 
+function toggleTrackingMode(element) {
+    toggleSetting(element);
+    const isActive = element.classList.contains('bg-white');
+    localStorage.setItem('snusTrackingMode', isActive ? 'individual' : 'full');
+    const preview = document.getElementById('tracking-mode-preview');
+    if (preview) preview.innerText = isActive ? 'Individual' : 'Full Tracking';
+    renderActiveCansUI();
+}
+
 function openSettingsSubpage(type) {
     const subpage = document.getElementById('settings-subpage');
     const titleObj = document.getElementById('subpage-title');
@@ -2314,13 +2476,13 @@ function openSettingsSubpage(type) {
         `;
     } else if (type === 'Stats') {
         const brandStats = getBrandStats();
-        
+
         let gridHTML = '<div class="grid grid-cols-2 gap-4 pb-6">';
 
         brandStats.forEach(stat => {
             // Berechne den Prozentsatz
             const percentage = stat.total > 0 ? (stat.unlocked / stat.total) : 0;
-            
+
             // SVG Circle Mathematik
             const radius = 24;
             const circumference = 2 * Math.PI * radius; // Umfang
@@ -2357,7 +2519,7 @@ function openSettingsSubpage(type) {
         });
 
         gridHTML += '</div>';
-        
+
         // Füge noch einen Header-Text hinzu für ein runderes Bild
         html = `
             <p class="text-[#8E8E93] text-[15px] mb-6 leading-relaxed">
@@ -2398,6 +2560,24 @@ function openSettingsSubpage(type) {
                 <div class="flex items-center justify-between p-5">
                     <span class="text-white text-[17px]">Share Analytics</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
+                </div>
+            </div>
+        `;
+    } else if (type === 'Tracking') {
+        const trackingMode = localStorage.getItem('snusTrackingMode') || 'full';
+        const isIndividual = trackingMode === 'individual';
+        const trackToggleBg = isIndividual ? 'bg-white' : 'bg-[#3A3A3C]';
+        const trackHandleTransform = isIndividual ? 'translate-x-5' : '';
+        const trackHandleBg = isIndividual ? 'bg-black' : 'bg-white';
+
+        html = `
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
+                <div class="flex items-center justify-between p-5">
+                    <div class="flex flex-col pr-4">
+                        <span class="text-white text-[17px]">Individual Pouch Tracking</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">Tracke jeden einzelnen Pouch anstatt nur die ganze Dose am Ende.</span>
+                    </div>
+                    <div onclick="triggerHapticFeedback(); toggleTrackingMode(this)" class="w-12 h-7 ${trackToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${trackHandleBg} rounded-full transition-transform duration-300 ${trackHandleTransform} shadow-sm"></div></div>
                 </div>
             </div>
         `;
@@ -2682,29 +2862,29 @@ async function loadUserStats(userId) {
 function filterDex() {
     const searchEl = document.getElementById('dex-search');
     if (!searchEl) return;
-    
+
     const term = searchEl.value.toLowerCase().trim();
     const searchWords = term ? term.split(/\s+/) : [];
-    
+
     let filtered = globalSnusData.filter(s => {
         // Filter für freigeschaltete
         if (dexFilterUnlocked && !globalUserCollection[s.id]) {
             return false;
         }
-        
+
         // Text Filter (Suchleiste)
         if (searchWords.length > 0) {
             const searchableText = [
-                s.name, 
-                s.brand, 
+                s.name,
+                s.brand,
                 Array.isArray(s.flavor) ? s.flavor.join(' ') : s.flavor
             ].filter(Boolean).join(' ').toLowerCase();
-            
+
             if (!searchWords.every(word => searchableText.includes(word))) {
                 return false;
             }
         }
-        
+
         return true;
     });
 
@@ -2716,19 +2896,19 @@ function filterDex() {
 
     if (dexSortMode === 'alpha') {
         // --- NEU: Sort by Name (Grouped Layout) ---
-        grid.classList.add('flex', 'flex-col', 'w-full'); 
-        
+        grid.classList.add('flex', 'flex-col', 'w-full');
+
         // Observer für Chunking abschalten, da wir hier horizontales Scrollen nutzen
-        if (dexObserver) dexObserver.disconnect(); 
-        
+        if (dexObserver) dexObserver.disconnect();
+
         const groupedData = groupAndSortByBrand(filtered);
         renderDexGrouped(groupedData);
-        
+
     } else {
         // --- BESTEHEND: Sort by ID (Grid Layout) ---
         const cols = localStorage.getItem('dexColumns') || '3';
         grid.classList.add('grid', cols === '2' ? 'grid-cols-2' : 'grid-cols-3', 'gap-3');
-        
+
         filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
         renderDexGrid(filtered); // Lädt Chunks & triggert Observer neu
     }
@@ -2754,7 +2934,7 @@ function previewProfileImage(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             document.getElementById('edit-profile-image-preview').src = e.target.result;
         }
         reader.readAsDataURL(file);
@@ -2907,7 +3087,7 @@ function animateNumber(elementId, startValue, endValue, duration = 1500, suffix 
 // ==========================================
 // 11. DEBUGGING & DEV COMMANDS
 // ==========================================
-window.unlock = function(id) {
+window.unlock = function (id) {
     const foundSnus = globalSnusData.find(s => s.id === id);
     if (foundSnus) {
         console.log(`[Dev] Unlocking Snus #${id}: ${foundSnus.name} for rating...`);
@@ -3065,20 +3245,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             allScansStartY = e.touches[0].clientY;
             isAllScansDragging = true;
-            
+
             allScansCard.style.transition = 'transform 0s';
             allScansCard.style.willChange = 'transform';
         }, { passive: true });
 
         allScansCard.addEventListener('touchmove', (e) => {
             if (!isAllScansDragging) return;
-            
+
             const currentY = e.touches[0].clientY;
             const deltaY = currentY - allScansStartY;
 
             if (deltaY > 0 && allScansScrollArea.scrollTop <= 0) {
                 if (e.cancelable) e.preventDefault();
-                
+
                 // Fix: Untergeordneten Container vom Scrollen abhalten
                 allScansScrollArea.style.overflowY = 'hidden';
 
@@ -3096,7 +3276,7 @@ document.addEventListener('DOMContentLoaded', () => {
         allScansCard.addEventListener('touchend', (e) => {
             if (!isAllScansDragging) return;
             isAllScansDragging = false;
-            
+
             if (allScansRafId) cancelAnimationFrame(allScansRafId);
 
             const deltaY = e.changedTouches[0].clientY - allScansStartY;
@@ -3106,9 +3286,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (deltaY > 100) {
                 allScansCard.style.transform = 'translate3d(0, 100%, 0)';
                 closeAllScansModal(true); // Haptik!
-                
-                setTimeout(() => { 
-                    allScansScrollArea.style.overflowY = 'auto'; 
+
+                setTimeout(() => {
+                    allScansScrollArea.style.overflowY = 'auto';
                 }, 400);
             } else {
                 allScansCard.style.transform = 'translate3d(0, 0px, 0)';
@@ -3201,8 +3381,8 @@ function initSuggestionsScrollAnimation() {
                 let progress = distancePastZone / (containerRect.width * 0.15);
                 if (progress > 1) progress = 1;
 
-                scale = 1.0 - (0.15 * progress); 
-                opacity = 1.0 - (0.6 * progress); 
+                scale = 1.0 - (0.15 * progress);
+                opacity = 1.0 - (0.6 * progress);
             }
 
             card.style.transform = `scale(${scale})`;
@@ -3223,31 +3403,31 @@ function initSuggestionsScrollAnimation() {
 // GITHUB COMMIT FETCH (App-Version + Time)
 // ==========================================
 async function loadLatestGitHubCommit() {
-    const repoOwner = 'HazeCCS'; 
+    const repoOwner = 'HazeCCS';
     const repoName = 'Snusdex';
-    
+
     try {
         const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/commits?per_page=1`);
-        
+
         if (!response.ok) throw new Error('Repo ist privat oder API Rate Limit erreicht');
-        
+
         const data = await response.json();
-        
+
         if (data && data.length > 0) {
             const fullMessage = data[0].commit.message;
-            let shortMsg = fullMessage.split('\n')[0]; 
+            let shortMsg = fullMessage.split('\n')[0];
             if (shortMsg.length > 25) {
                 shortMsg = shortMsg.substring(0, 25) + '...';
             }
-            
+
             const commitDate = new Date(data[0].commit.committer.date);
             const now = new Date();
             const diffMs = now - commitDate;
-            
+
             const diffMins = Math.floor(diffMs / 60000);
             const diffHours = Math.floor(diffMins / 60);
             const diffDays = Math.floor(diffHours / 24);
-            
+
             let timeString = "";
             if (diffDays > 0) {
                 timeString = `vor ${diffDays} Tag${diffDays > 1 ? 'en' : ''}`;
@@ -3258,7 +3438,7 @@ async function loadLatestGitHubCommit() {
             } else {
                 timeString = `Gerade eben`;
             }
-            
+
             const msgElement = document.getElementById('latest-commit-msg');
             if (msgElement) {
                 msgElement.innerHTML = `${shortMsg} <span class="text-white/40 text-[11px] ml-1 tracking-wide">${timeString}</span>`;
@@ -3280,7 +3460,7 @@ let dexScrollRafId = null;
 let lastHapticScrollY = 0;
 // Der "Zahnabstand" deines Rades in Pixeln. 
 // Ändere diesen Wert (z.B. 40 für fein, 80 für grob), um das Gefühl anzupassen!
-const HAPTIC_PIXEL_THRESHOLD = 55; 
+const HAPTIC_PIXEL_THRESHOLD = 55;
 
 function updateDexScale() {
     if (typeof dexSortMode !== 'undefined' && dexSortMode === 'alpha') return;
@@ -3289,7 +3469,7 @@ function updateDexScale() {
     if (!grid || grid.children.length === 0) return;
 
     const viewportCenter = window.innerHeight / 2;
-    const focusZoneHalfHeight = window.innerHeight * 0.25; 
+    const focusZoneHalfHeight = window.innerHeight * 0.25;
     const cards = grid.querySelectorAll('.dex-anim-card');
 
     cards.forEach((card) => {
@@ -3306,8 +3486,8 @@ function updateDexScale() {
             let progress = distancePastZone / (window.innerHeight * 0.2);
             if (progress > 1) progress = 1;
 
-            scale = 1.0 - (0.15 * progress);  
-            opacity = 1.0 - (0.6 * progress); 
+            scale = 1.0 - (0.15 * progress);
+            opacity = 1.0 - (0.6 * progress);
         }
 
         card.style.transform = `scale(${scale})`;
@@ -3322,7 +3502,7 @@ function initDexScrollAnimation() {
     window.addEventListener('scroll', () => {
         const activeTab = document.getElementById('tab-dex');
         if (activeTab && !activeTab.classList.contains('hidden')) {
-            
+
             // 1. Visuelle Animation (60fps)
             if (dexScrollRafId) cancelAnimationFrame(dexScrollRafId);
             dexScrollRafId = requestAnimationFrame(updateDexScale);
@@ -3333,12 +3513,12 @@ function initDexScrollAnimation() {
 
             // Sobald wir die Schwelle von X Pixeln überschritten haben...
             if (scrollDelta >= HAPTIC_PIXEL_THRESHOLD) {
-                
+
                 // Einen sauberen, leichten Tick feuern
                 if (typeof triggerLightHapticFeedback === 'function') {
                     triggerLightHapticFeedback();
                 }
-                
+
                 // Den Ankerpunkt neu setzen, aber überschüssige Pixel (Modulo) mitnehmen!
                 // Dadurch verlierst du bei extrem schnellem Wischen keine Präzision.
                 const sign = currentScrollY > lastHapticScrollY ? 1 : -1;
@@ -3362,7 +3542,7 @@ function triggerLightHapticFeedback() {
 
 function groupAndSortByBrand(items) {
     const groups = {};
-    
+
     // 1. Gruppieren nach Marke
     items.forEach(snus => {
         const brand = snus.brand || 'Unbekannt';
@@ -3376,15 +3556,15 @@ function groupAndSortByBrand(items) {
     const result = [];
     sortedBrands.forEach(brand => {
         const brandItems = groups[brand];
-        
+
         // 3. Innerhalb der Marke sortieren: Freigeschaltet zuerst, dann nach ID
         brandItems.sort((a, b) => {
             const aUnlocked = !!globalUserCollection[a.id];
             const bUnlocked = !!globalUserCollection[b.id];
-            
+
             if (aUnlocked && !bUnlocked) return -1;
             if (!aUnlocked && bUnlocked) return 1;
-            
+
             return parseInt(a.id) - parseInt(b.id);
         });
 
@@ -3397,7 +3577,7 @@ function groupAndSortByBrand(items) {
             unlockedCount: unlockedCount
         });
     });
-    
+
     return result;
 }
 
@@ -3440,7 +3620,7 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
 function renderDexGrouped(groupedData) {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
-    
+
     grid.innerHTML = '';
     const glowActive = localStorage.getItem('dexGlow') === 'true';
     let finalHTML = '';
@@ -3501,8 +3681,8 @@ function initBrandScrollAnimation(container) {
                 let progress = distancePastZone / (containerRect.width * 0.15);
                 if (progress > 1) progress = 1;
 
-                scale = 1.0 - (0.15 * progress); 
-                opacity = 1.0 - (0.6 * progress); 
+                scale = 1.0 - (0.15 * progress);
+                opacity = 1.0 - (0.6 * progress);
             }
 
             card.style.transform = `scale(${scale})`;
@@ -3511,7 +3691,7 @@ function initBrandScrollAnimation(container) {
     };
 
     updateScale(); // Initialer Aufruf
-    
+
     container.addEventListener('scroll', () => {
         requestAnimationFrame(updateScale);
     }, { passive: true });
@@ -3522,15 +3702,15 @@ function initBrandScrollAnimation(container) {
 // ==========================================
 function getBrandStats() {
     const stats = {};
-    
+
     // Daten aggregieren
     globalSnusData.forEach(snus => {
         const brand = snus.brand || 'Unbekannt';
-        
+
         if (!stats[brand]) {
             stats[brand] = { total: 0, unlocked: 0 };
         }
-        
+
         stats[brand].total++;
         if (globalUserCollection[snus.id]) {
             stats[brand].unlocked++;
