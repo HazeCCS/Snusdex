@@ -2099,7 +2099,7 @@ async function executeAddPouch(logId, maxPouches, newCount) {
     if (error) {
         console.error("Error updating pouch count:", error);
     } else {
-        loadUsageData(); 
+        loadUsageData();
     }
 }
 
@@ -3416,8 +3416,8 @@ async function loadLatestGitHubCommit() {
         if (data && data.length > 0) {
             const fullMessage = data[0].commit.message;
             let shortMsg = fullMessage.split('\n')[0];
-            if (shortMsg.length > 25) {
-                shortMsg = shortMsg.substring(0, 25) + '...';
+            if (shortMsg.length > 50) { // Du kannst das Limit hier auch erhöhen, da es jetzt umbricht!
+                shortMsg = shortMsg.substring(0, 50) + '...';
             }
 
             const commitDate = new Date(data[0].commit.committer.date);
@@ -3439,16 +3439,27 @@ async function loadLatestGitHubCommit() {
                 timeString = `Gerade eben`;
             }
 
+            // --- HIER IST DIE WICHTIGE ÄNDERUNG ---
             const msgElement = document.getElementById('latest-commit-msg');
+            const timeElement = document.getElementById('latest-commit-time');
+
             if (msgElement) {
-                msgElement.innerHTML = `${shortMsg} <span class="text-white/40 text-[11px] ml-1 tracking-wide">${timeString}</span>`;
+                msgElement.innerText = shortMsg; // Setzt nur den reinen Text
+            }
+            if (timeElement) {
+                timeElement.innerText = timeString; // Setzt die Zeit in das graue Feld darunter
             }
         }
     } catch (error) {
         console.warn('GitHub Commit Log:', error.message);
         const msgElement = document.getElementById('latest-commit-msg');
+        const timeElement = document.getElementById('latest-commit-time');
+
         if (msgElement) {
             msgElement.innerText = 'Unavailable';
+        }
+        if (timeElement) {
+            timeElement.innerText = '';
         }
     }
 }
