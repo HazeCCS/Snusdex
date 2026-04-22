@@ -488,7 +488,11 @@ function initDexObserver() {
     // Beobachter der auslöst sobald der Bereich ca. 800px vor dem Sichtfeld ist (ca. 5 Reihen)
     dexObserver = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting) {
-            loadMoreDexItems();
+            if (dexSortMode === 'alpha') {
+                loadMoreGroupedBrands();
+            } else {
+                loadMoreDexItems();
+            }
         }
     }, {
         rootMargin: '800px'
@@ -2898,9 +2902,6 @@ function filterDex() {
         // --- NEU: Sort by Name (Grouped Layout) ---
         grid.classList.add('flex', 'flex-col', 'w-full');
 
-        // Observer für Chunking abschalten, da wir hier horizontales Scrollen nutzen
-        if (dexObserver) dexObserver.disconnect();
-
         const groupedData = groupAndSortByBrand(filtered);
         renderDexGrouped(groupedData);
 
@@ -3628,15 +3629,31 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
     `;
 }
 
+let currentGroupedBrands = [];
+let currentGroupedRenderCount = 0;
+const GROUPED_CHUNK_SIZE = 5;
+
 function renderDexGrouped(groupedData) {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
 
     grid.innerHTML = '';
-    const glowActive = localStorage.getItem('dexGlow') === 'true';
-    let finalHTML = '';
+    currentGroupedBrands = groupedData;
+    currentGroupedRenderCount = 0;
 
-    groupedData.forEach(brandData => {
+    loadMoreGroupedBrands();
+    initDexObserver(); // Connect sentinel observer
+}
+
+function loadMoreGroupedBrands() {
+    const grid = document.getElementById('dex-grid');
+    if (!grid || currentGroupedRenderCount >= currentGroupedBrands.length) return;
+
+    const nextChunk = currentGroupedBrands.slice(currentGroupedRenderCount, currentGroupedRenderCount + GROUPED_CHUNK_SIZE);
+    let finalHTML = '';
+    const glowActive = localStorage.getItem('dexGlow') === 'true';
+
+    nextChunk.forEach(brandData => {
         const header = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
         let cardsHTML = '';
         brandData.items.forEach(snus => {
@@ -3644,7 +3661,6 @@ function renderDexGrouped(groupedData) {
             cardsHTML += createHorizontalCardHTML(snus, isUnlocked, glowActive);
         });
 
-        // NEU: Dem Container die Klasse "brand-carousel" gegeben
         finalHTML += `
             <div class="brand-section w-full mb-4">
                 ${header}
@@ -3655,26 +3671,45 @@ function renderDexGrouped(groupedData) {
         `;
     });
 
-    grid.innerHTML = finalHTML;
+    grid.insertAdjacentHTML('beforeend', finalHTML);
 
-    // Bestehende Lazy Loading Logik für Bilder triggern
     if (!imageLazyObserver) initImageLazyLoadObserver();
     grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
         img.classList.add('observed');
         imageLazyObserver.observe(img);
     });
 
-    // NEU: Horizontale Scroll-Animation für jedes Carousel initialisieren
-    grid.querySelectorAll('.brand-carousel').forEach(carousel => {
+    const allCarousels = grid.querySelectorAll('.brand-carousel');
+    const newCarousels = Array.from(allCarousels).slice(-nextChunk.length);
+    newCarousels.forEach(carousel => {
         initBrandScrollAnimation(carousel);
     });
+
+    currentGroupedRenderCount += GROUPED_CHUNK_SIZE;
 }
+
+let brandCarouselObserver = null;
 
 // NEU: Die ausgelagerte Animations-Funktion für horizontale Listen
 function initBrandScrollAnimation(container) {
+    if (!brandCarouselObserver) {
+        brandCarouselObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const target = entry.target;
+                if (entry.isIntersecting) {
+                    if (target._updateScale) target._updateScale();
+                    target.addEventListener('scroll', target._scrollHandler, { passive: true });
+                } else {
+                    target.removeEventListener('scroll', target._scrollHandler);
+                }
+            });
+        }, { rootMargin: '100px' });
+    }
+
     const cards = container.querySelectorAll('.brand-anim-card');
 
     const updateScale = () => {
+        if (cards.length === 0) return;
         const containerRect = container.getBoundingClientRect();
         const containerCenter = containerRect.left + containerRect.width / 2;
         const focusZoneHalfWidth = containerRect.width * 0.35;
@@ -3701,11 +3736,10 @@ function initBrandScrollAnimation(container) {
         });
     };
 
-    updateScale(); // Initialer Aufruf
+    container._updateScale = updateScale;
+    container._scrollHandler = () => requestAnimationFrame(updateScale);
 
-    container.addEventListener('scroll', () => {
-        requestAnimationFrame(updateScale);
-    }, { passive: true });
+    brandCarouselObserver.observe(container);
 }
 
 // ==========================================
@@ -3782,4 +3816,4 @@ function getBrandStats() {
 //░░██░░░░░░░▄▄█░░░░░▀▀▀▀░▐▄▄█▀░░░░░░░░░░░
 //░░░▀▀▀▀▀▀▀▀░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 //░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
-// ==========================================
+// ===========================================
