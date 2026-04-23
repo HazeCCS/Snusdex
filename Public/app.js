@@ -571,6 +571,12 @@ function loadMoreDexItems() {
     });
 
     currentDexRenderCount += DEX_CHUNK_SIZE;
+    
+    if (grid.children.length > 0) {
+        const newThreshold = grid.children[0].offsetHeight + 16;
+        if (newThreshold > 50) HAPTIC_PIXEL_THRESHOLD = newThreshold;
+    }
+
     setTimeout(updateDexScale, 50);
 }
 
@@ -3494,8 +3500,8 @@ async function loadLatestGitHubCommit() {
 let dexScrollRafId = null;
 let lastHapticScrollY = 0;
 // Der "Zahnabstand" deines Rades in Pixeln. 
-// Ändere diesen Wert (z.B. 40 für fein, 80 für grob), um das Gefühl anzupassen!
-const HAPTIC_PIXEL_THRESHOLD = 55;
+// Wird nun dynamisch anhand der Kartenhöhe berechnet!
+let HAPTIC_PIXEL_THRESHOLD = 140;
 
 function updateDexScale() {
     if (typeof dexSortMode !== 'undefined' && dexSortMode === 'alpha') return;
@@ -3553,16 +3559,20 @@ function initDexScrollAnimation() {
                 const currentScrollY = window.scrollY;
                 const scrollDelta = Math.abs(currentScrollY - lastHapticScrollY);
 
-                // Sobald wir die Schwelle von X Pixeln überschritten haben...
+                // Sobald wir eine neue Zeile erreichen...
                 if (scrollDelta >= HAPTIC_PIXEL_THRESHOLD) {
+                    const timesToTrigger = Math.floor(scrollDelta / HAPTIC_PIXEL_THRESHOLD);
+                    const cappedTimes = Math.min(timesToTrigger, 10); // Begrenze auf 10 bei extremen Scroll-Sprüngen
 
-                    // Einen sauberen, leichten Tick feuern
-                    if (typeof triggerLightHapticFeedback === 'function') {
-                        triggerLightHapticFeedback();
+                    for (let i = 0; i < cappedTimes; i++) {
+                        setTimeout(() => {
+                            if (typeof triggerLightHapticFeedback === 'function') {
+                                triggerLightHapticFeedback();
+                            }
+                        }, i * 20); // 20ms Delay für den Apple Watch Crown Effekt
                     }
 
                     // Den Ankerpunkt neu setzen, aber überschüssige Pixel (Modulo) mitnehmen!
-                    // Dadurch verlierst du bei extrem schnellem Wischen keine Präzision.
                     const sign = currentScrollY > lastHapticScrollY ? 1 : -1;
                     lastHapticScrollY = currentScrollY - (scrollDelta % HAPTIC_PIXEL_THRESHOLD) * sign;
                 }
