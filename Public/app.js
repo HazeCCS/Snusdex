@@ -222,7 +222,11 @@ async function saveSetupUsername() {
     }
 }
 
-async function handleLogout() {
+async function handleLogout(btn) {
+    if (btn) {
+        btn.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-[#FF3B30]/10 flex items-center justify-center"><svg class="animate-spin h-4 w-4 text-[#FF3B30]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div><span class="text-[#FF3B30] text-[17px] font-medium">Signing Out</span></div>`;
+        btn.disabled = true;
+    }
     const {
         error
     } = await supabaseClient.auth.signOut();
@@ -281,7 +285,7 @@ async function handleLoginWrapper() {
 
     // Button deaktivieren während er lädt
     mainBtn.disabled = true;
-    mainBtn.innerText = "Lädt...";
+    mainBtn.innerHTML = `<div class="flex items-center justify-center h-[26px]"><svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`;
 
     if (isLoginMode) {
         // --- DEIN ORIGINALER LOGIN CODE ---
@@ -596,7 +600,7 @@ function renderActiveCansUI() {
                         <p class="text-[11px] text-[#8E8E93] tracking-wider">Open since ${new Date(can.opened_at).toLocaleDateString()}</p>
                     </div>
                 </div>
-                <button onclick="triggerHapticFeedback(); this.innerText='Emptying...'; this.disabled=true; this.classList.add('opacity-50'); finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-all">
+                <button onclick="triggerHapticFeedback(); this.innerHTML='<div class=\\'flex items-center justify-center w-[34px] h-[16px]\\'><svg class=\\'animate-spin h-3.5 w-3.5 text-black\\' xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\'><circle class=\\'opacity-25\\' cx=\\'12\\' cy=\\'12\\' r=\\'10\\' stroke=\\'currentColor\\' stroke-width=\\'4\\'></circle><path class=\\'opacity-75\\' fill=\\'currentColor\\' d=\\'M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z\\'></path></svg></div>'; this.disabled=true; this.classList.add('opacity-50'); finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-all">
                     Empty
                 </button>
             </div>
@@ -2014,7 +2018,7 @@ function renderActiveCansUI() {
                             <p class="text-[11px] text-[#8E8E93] tracking-wider mt-0.5">Open since ${new Date(can.opened_at).toLocaleDateString()}</p>
                         </div>
                     </div>
-                    <button onclick="triggerHapticFeedback(); this.innerText='Emptying...'; this.disabled=true; this.classList.add('opacity-50'); finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-all flex-shrink-0">
+                    <button onclick="triggerHapticFeedback(); this.innerHTML='<div class=\\'flex items-center justify-center w-[34px] h-[16px]\\'><svg class=\\'animate-spin h-3.5 w-3.5 text-black\\' xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\'><circle class=\\'opacity-25\\' cx=\\'12\\' cy=\\'12\\' r=\\'10\\' stroke=\\'currentColor\\' stroke-width=\\'4\\'></circle><path class=\\'opacity-75\\' fill=\\'currentColor\\' d=\\'M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z\\'></path></svg></div>'; this.disabled=true; this.classList.add('opacity-50'); finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-all flex-shrink-0">
                         Empty
                     </button>
                 </div>
@@ -2620,12 +2624,15 @@ function openSettingsSubpage(type) {
 
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
-                <div class="flex items-center justify-between p-5">
-                    <div class="flex flex-col pr-4">
-                        <span class="text-white text-[17px]">Nach Marke starten</span>
-                        <span class="text-[#8E8E93] text-[13px] mt-0.5">Dex ist beim App-Start nach Name statt ID sortiert</span>
+                <div class="flex flex-col p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex flex-col pr-4">
+                            <span class="text-white text-[17px]">Standard-Sortierung: Marke</span>
+                            <span class="text-[#8E8E93] text-[13px] mt-0.5">Startet den Dex nach Marke statt ID sortiert.</span>
+                        </div>
+                        <div onclick="triggerHapticFeedback(); toggleDefaultSort(this)" class="w-12 h-7 ${sortToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${sortHandleBg} rounded-full transition-transform duration-300 ${sortHandleTransform} shadow-sm"></div></div>
                     </div>
-                    <div onclick="triggerHapticFeedback(); toggleDefaultSort(this)" class="w-12 h-7 ${sortToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${sortHandleBg} rounded-full transition-transform duration-300 ${sortHandleTransform} shadow-sm"></div></div>
+                    <p class="text-[12px] text-[#FF3B30] font-semibold leading-tight">⚠️ Vorsicht beim Aktivieren: Dieses Feature verursacht Lags und könnte zu Abstürzen führen. Bitte nur auf eigenes Risiko verwenden.</p>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
 
