@@ -170,8 +170,6 @@ async function checkUser() {
             setTimeout(() => overlay.classList.add('hidden'), 500);
 
             setupProfile(session.user);
-            // Badge Engine initialisieren
-            BadgeEngine.init(session.user.id).catch(e => console.warn('[BadgeEngine] init failed:', e));
 
             loadDex();
             loadUsageData();
@@ -490,11 +488,7 @@ function initDexObserver() {
     // Beobachter der auslöst sobald der Bereich ca. 800px vor dem Sichtfeld ist (ca. 5 Reihen)
     dexObserver = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting) {
-            if (dexSortMode === 'alpha') {
-                loadMoreGroupedBrands();
-            } else {
-                loadMoreDexItems();
-            }
+            loadMoreDexItems();
         }
     }, {
         rootMargin: '800px'
@@ -1078,9 +1072,6 @@ async function collectCurrentSnus() {
         if (!isUpdate) {
             await startNewCan(currentSelectedSnusId);
             await loadUserStats(user.id);
-            // Badge-Check nach neuer Freischaltung
-            const newUnlockedCount = Object.keys(globalUserCollection).length;
-            BadgeEngine.checkAndAwardBadges(user.id, newUnlockedCount).catch(e => console.warn('[BadgeEngine]', e));
             updateLivePerformance();
         }
         renderDexGrid(globalSnusData);
@@ -2907,6 +2898,9 @@ function filterDex() {
         // --- NEU: Sort by Name (Grouped Layout) ---
         grid.classList.add('flex', 'flex-col', 'w-full');
 
+        // Observer für Chunking abschalten, da wir hier horizontales Scrollen nutzen
+        if (dexObserver) dexObserver.disconnect();
+
         const groupedData = groupAndSortByBrand(filtered);
         renderDexGrouped(groupedData);
 
@@ -2985,24 +2979,14 @@ let displayedXp = null;
 let actualXp = null;
 
 async function loadUserStats(userId) {
-    // 1. Anzahl freigeschalteter Dosen (Collection XP)
-    const { count } = await supabaseClient
-        .from('user_collections')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
+    const {
+        count
+    } = await supabaseClient.from('user_collections').select('*', {
+        count: 'exact',
+        head: true
+    }).eq('user_id', userId);
 
-    const collectionXp = (count || 0) * 100;
-
-    // 2. Badge XP aus profiles lesen
-    let badgeXp = 0;
-    const { data: profileData } = await supabaseClient
-        .from('profiles')
-        .select('badge_xp')
-        .eq('id', userId)
-        .single();
-    if (profileData?.badge_xp) badgeXp = profileData.badge_xp;
-
-    const xp = collectionXp + badgeXp;
+    const xp = (count || 0) * 100;
     const level = Math.floor(xp / 300) + 1;
 
     actualXp = xp;
@@ -3020,15 +3004,8 @@ async function loadUserStats(userId) {
         if (homeLevelEl) homeLevelEl.innerText = `LVL ${level}`;
     } else if (displayedXp !== actualXp) {
         const homeTab = document.getElementById('tab-home');
-        if (homeTab && !homeTab.classList.contains('hidden')) {
+        if (!homeTab.classList.contains('hidden')) {
             animateXp(displayedXp, actualXp, level);
-        } else {
-            // Wenn Home-Tab nicht aktiv: Wert direkt setzen ohne Animation
-            displayedXp = xp;
-            const scoreEl = document.getElementById('score');
-            const homeLevelEl = document.getElementById('home-level');
-            if (scoreEl) scoreEl.innerHTML = `${xp} <span class="font-medium text-[20px] text-white/50">XP</span>`;
-            if (homeLevelEl) homeLevelEl.innerText = `LVL ${level}`;
         }
     }
 }
@@ -3541,22 +3518,26 @@ function initDexScrollAnimation() {
             if (dexScrollRafId) cancelAnimationFrame(dexScrollRafId);
             dexScrollRafId = requestAnimationFrame(updateDexScale);
 
-            // 2. Distanzbasierte Haptik (Pixelgenau)
-            const currentScrollY = window.scrollY;
-            const scrollDelta = Math.abs(currentScrollY - lastHapticScrollY);
+            // 2. Distanzbasierte Haptik (Pixelgenau) - NUR IM ID MODUS
+            if (dexSortMode === 'id') {
+                const currentScrollY = window.scrollY;
+                const scrollDelta = Math.abs(currentScrollY - lastHapticScrollY);
 
-            // Sobald wir die Schwelle von X Pixeln überschritten haben...
-            if (scrollDelta >= HAPTIC_PIXEL_THRESHOLD) {
+                // Sobald wir die Schwelle von X Pixeln überschritten haben...
+                if (scrollDelta >= HAPTIC_PIXEL_THRESHOLD) {
 
-                // Einen sauberen, leichten Tick feuern
-                if (typeof triggerLightHapticFeedback === 'function') {
-                    triggerLightHapticFeedback();
+                    // Einen sauberen, leichten Tick feuern
+                    if (typeof triggerLightHapticFeedback === 'function') {
+                        triggerLightHapticFeedback();
+                    }
+
+                    // Den Ankerpunkt neu setzen, aber überschüssige Pixel (Modulo) mitnehmen!
+                    // Dadurch verlierst du bei extrem schnellem Wischen keine Präzision.
+                    const sign = currentScrollY > lastHapticScrollY ? 1 : -1;
+                    lastHapticScrollY = currentScrollY - (scrollDelta % HAPTIC_PIXEL_THRESHOLD) * sign;
                 }
-
-                // Den Ankerpunkt neu setzen, aber überschüssige Pixel (Modulo) mitnehmen!
-                // Dadurch verlierst du bei extrem schnellem Wischen keine Präzision.
-                const sign = currentScrollY > lastHapticScrollY ? 1 : -1;
-                lastHapticScrollY = currentScrollY - (scrollDelta % HAPTIC_PIXEL_THRESHOLD) * sign;
+            } else {
+                lastHapticScrollY = window.scrollY;
             }
         }
     }, { passive: true });
@@ -3584,8 +3565,19 @@ function groupAndSortByBrand(items) {
         groups[brand].push(snus);
     });
 
-    // 2. Marken alphabetisch sortieren
-    const sortedBrands = Object.keys(groups).sort();
+    // 2. Marken alphabetisch und nach Favoriten sortieren
+    let favoriteBrands = [];
+    try {
+        favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]');
+    } catch (e) {}
+
+    const sortedBrands = Object.keys(groups).sort((a, b) => {
+        const aFav = favoriteBrands.includes(a);
+        const bFav = favoriteBrands.includes(b);
+        if (aFav && !bFav) return -1;
+        if (!aFav && bFav) return 1;
+        return a.localeCompare(b);
+    });
 
     const result = [];
     sortedBrands.forEach(brand => {
@@ -3615,10 +3607,99 @@ function groupAndSortByBrand(items) {
     return result;
 }
 
+let brandToRemove = null;
+
+window.handleFavoriteClick = function(brandName) {
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
+    let favoriteBrands = [];
+    try {
+        favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]');
+    } catch (e) {}
+    
+    if (favoriteBrands.includes(brandName)) {
+        showRemoveFavoriteModal(brandName);
+    } else {
+        favoriteBrands.push(brandName);
+        localStorage.setItem('dexFavoriteBrands', JSON.stringify(favoriteBrands));
+        filterDex();
+    }
+};
+
+window.showRemoveFavoriteModal = function(brandName) {
+    brandToRemove = brandName;
+    const modal = document.getElementById('remove-favorite-modal');
+    const backdrop = document.getElementById('remove-favorite-backdrop');
+    const card = document.getElementById('remove-favorite-card');
+    const nameEl = document.getElementById('remove-favorite-brand-name');
+    
+    if (nameEl) nameEl.innerText = brandName;
+    
+    if (modal && backdrop && card) {
+        modal.classList.remove('hidden');
+        // Force reflow
+        void modal.offsetWidth;
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100');
+        card.classList.remove('scale-95', 'opacity-0');
+        card.classList.add('scale-100', 'opacity-100');
+    }
+};
+
+window.closeRemoveFavoriteModal = function() {
+    const modal = document.getElementById('remove-favorite-modal');
+    const backdrop = document.getElementById('remove-favorite-backdrop');
+    const card = document.getElementById('remove-favorite-card');
+    
+    if (modal && backdrop && card) {
+        backdrop.classList.remove('opacity-100');
+        backdrop.classList.add('opacity-0');
+        card.classList.remove('scale-100', 'opacity-100');
+        card.classList.add('scale-95', 'opacity-0');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            brandToRemove = null;
+        }, 300);
+    }
+};
+
+window.confirmRemoveFavorite = function() {
+    if (brandToRemove) {
+        let favoriteBrands = [];
+        try {
+            favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]');
+        } catch (e) {}
+        
+        favoriteBrands = favoriteBrands.filter(b => b !== brandToRemove);
+        localStorage.setItem('dexFavoriteBrands', JSON.stringify(favoriteBrands));
+        
+        closeRemoveFavoriteModal();
+        filterDex();
+    }
+};
+
 function createBrandHeaderHTML(brandName, unlockedCount, totalCount) {
+    let favoriteBrands = [];
+    try {
+        favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]');
+    } catch (e) {}
+    
+    const isFav = favoriteBrands.includes(brandName);
+    
+    const starIcon = isFav 
+        ? `<svg class="w-4 h-4 text-yellow-500 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`
+        : `<svg class="w-4 h-4 text-[#8E8E93]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>`;
+
+    const safeBrandName = brandName.replace(/'/g, "\\'");
+
     return `
         <div class="flex justify-between items-end mb-3 px-1 mt-6 first:mt-2">
-            <h2 class="text-[20px] font-semibold text-white tracking-tight">${brandName}</h2>
+            <div class="flex items-center gap-2">
+                <h2 class="text-[20px] font-semibold text-white tracking-tight">${brandName}</h2>
+                <button onclick="handleFavoriteClick('${safeBrandName}')" class="w-7 h-7 flex items-center justify-center rounded-full bg-white/10 border border-white/5 text-[#8E8E93] transition-all duration-200 active:scale-90 shadow-sm mb-0.5">
+                    ${starIcon}
+                </button>
+            </div>
             <span class="text-[13px] font-medium text-[#8E8E93] bg-white/10 px-2.5 py-1 rounded-full border border-white/5">
                 ${unlockedCount} / ${totalCount}
             </span>
@@ -3651,31 +3732,15 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
     `;
 }
 
-let currentGroupedBrands = [];
-let currentGroupedRenderCount = 0;
-const GROUPED_CHUNK_SIZE = 5;
-
 function renderDexGrouped(groupedData) {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
 
     grid.innerHTML = '';
-    currentGroupedBrands = groupedData;
-    currentGroupedRenderCount = 0;
-
-    loadMoreGroupedBrands();
-    initDexObserver(); // Connect sentinel observer
-}
-
-function loadMoreGroupedBrands() {
-    const grid = document.getElementById('dex-grid');
-    if (!grid || currentGroupedRenderCount >= currentGroupedBrands.length) return;
-
-    const nextChunk = currentGroupedBrands.slice(currentGroupedRenderCount, currentGroupedRenderCount + GROUPED_CHUNK_SIZE);
-    let finalHTML = '';
     const glowActive = localStorage.getItem('dexGlow') === 'true';
+    let finalHTML = '';
 
-    nextChunk.forEach(brandData => {
+    groupedData.forEach(brandData => {
         const header = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
         let cardsHTML = '';
         brandData.items.forEach(snus => {
@@ -3693,45 +3758,26 @@ function loadMoreGroupedBrands() {
         `;
     });
 
-    grid.insertAdjacentHTML('beforeend', finalHTML);
+    grid.innerHTML = finalHTML;
 
+    // Bestehende Lazy Loading Logik für Bilder triggern
     if (!imageLazyObserver) initImageLazyLoadObserver();
     grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
         img.classList.add('observed');
         imageLazyObserver.observe(img);
     });
 
-    const allCarousels = grid.querySelectorAll('.brand-carousel');
-    const newCarousels = Array.from(allCarousels).slice(-nextChunk.length);
-    newCarousels.forEach(carousel => {
+    // NEU: Horizontale Scroll-Animation für jedes Carousel initialisieren
+    grid.querySelectorAll('.brand-carousel').forEach(carousel => {
         initBrandScrollAnimation(carousel);
     });
-
-    currentGroupedRenderCount += GROUPED_CHUNK_SIZE;
 }
-
-let brandCarouselObserver = null;
 
 // NEU: Die ausgelagerte Animations-Funktion für horizontale Listen
 function initBrandScrollAnimation(container) {
-    if (!brandCarouselObserver) {
-        brandCarouselObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                const target = entry.target;
-                if (entry.isIntersecting) {
-                    if (target._updateScale) target._updateScale();
-                    target.addEventListener('scroll', target._scrollHandler, { passive: true });
-                } else {
-                    target.removeEventListener('scroll', target._scrollHandler);
-                }
-            });
-        }, { rootMargin: '100px' });
-    }
-
     const cards = container.querySelectorAll('.brand-anim-card');
 
     const updateScale = () => {
-        if (cards.length === 0) return;
         const containerRect = container.getBoundingClientRect();
         const containerCenter = containerRect.left + containerRect.width / 2;
         const focusZoneHalfWidth = containerRect.width * 0.35;
@@ -3758,10 +3804,11 @@ function initBrandScrollAnimation(container) {
         });
     };
 
-    container._updateScale = updateScale;
-    container._scrollHandler = () => requestAnimationFrame(updateScale);
+    updateScale(); // Initialer Aufruf
 
-    brandCarouselObserver.observe(container);
+    container.addEventListener('scroll', () => {
+        requestAnimationFrame(updateScale);
+    }, { passive: true });
 }
 
 // ==========================================
@@ -3808,373 +3855,6 @@ function getBrandStats() {
 
 
 
-// ==========================================
-// 13. BADGE ENGINE (Modular)
-// ==========================================
-
-/**
- * BadgeEngine
- * -----------
- * Modulares System für alle Badge-Typen in SnusDex.
- * Um einen neuen Badge-Typ hinzuzufügen:
- *   1. Trage den Badge in die `badges`-Tabelle in Supabase ein (name, description, image_url, category, level, required_count).
- *   2. Füge ggf. einen neuen Checker in `checkAndAwardBadges` hinzu.
- * 
- * Die Collector-Badges (category='collector') werden automatisch anhand
- * der Anzahl freigeschalteter Snusdosen vergeben.
- */
-const BadgeEngine = (() => {
-
-    // ---- State ----
-    let allBadges = [];         // Alle Badges aus der DB
-    let userBadgeIds = new Set(); // IDs bereits vergebener Badges des Users
-    let isAnimating = false;
-
-    // ---- GITHUB BASE für Badge-Bilder (anpassbar) ----
-    // Wenn deine Badges in GitHub Assets liegen, nutze GITHUB_BASE.
-    // Ansonsten werden image_url-Felder direkt genutzt.
-    const getBadgeImageUrl = (imageUrl) => {
-        if (!imageUrl) return '';
-        // Falls relative Pfad → mit GITHUB_BASE prefixen
-        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
-        return GITHUB_BASE + imageUrl;
-    };
-
-    // ---- Laden aller Badges + User-Badges ----
-    async function init(userId) {
-        try {
-            // Alle verfügbaren Badges laden
-            const { data: badgesData, error: badgesError } = await supabaseClient
-                .from('badges')
-                .select('*')
-                .order('category', { ascending: true })
-                .order('level', { ascending: true });
-
-            if (badgesError) throw badgesError;
-            allBadges = badgesData || [];
-
-            // Vom User bereits verdiente Badges laden
-            const { data: userBadgesData, error: ubError } = await supabaseClient
-                .from('user_badges')
-                .select('badge_id')
-                .eq('user_id', userId);
-
-            if (ubError) throw ubError;
-            userBadgeIds = new Set((userBadgesData || []).map(r => r.badge_id));
-
-            // UI aktualisieren
-            renderBadgesStrip();
-
-        } catch (err) {
-            console.warn('[BadgeEngine] Init error:', err.message);
-        }
-    }
-
-    // ---- Badge-Prüfung und Vergabe ----
-    /**
-     * Prüft nach jeder neuen Freischaltung, welche Badges neu vergeben werden sollen.
-     * Aktuell unterstützte Kategorien: 'collector' (basierend auf Anzahl freigeschalteter Dosen).
-     * 
-     * @param {string} userId
-     * @param {number} unlockedCount - Aktuelle Anzahl freigeschalteter Snusdosen
-     */
-    async function checkAndAwardBadges(userId, unlockedCount) {
-        if (!allBadges.length) await init(userId);
-
-        // --- Collector Badges (category='collector') ---
-        const collectorBadges = allBadges
-            .filter(b => b.category === 'collector')
-            .sort((a, b) => a.required_count - b.required_count);
-
-        for (const badge of collectorBadges) {
-            if (!userBadgeIds.has(badge.id) && unlockedCount >= badge.required_count) {
-                await awardBadge(userId, badge);
-            }
-        }
-    }
-
-    // ---- Badge vergeben + Animation auslösen ----
-    async function awardBadge(userId, badge) {
-        try {
-            const { error } = await supabaseClient
-                .from('user_badges')
-                .insert([{ user_id: userId, badge_id: badge.id }]);
-
-            if (error) {
-                // Falls bereits vorhanden (Race-Condition), ignorieren
-                if (error.code === '23505') return;
-                throw error;
-            }
-
-            // XP berechnen: Level 1 = 250, Level N>=2 = N*200
-            const xpReward = badge.level === 1 ? 250 : badge.level * 200;
-
-            // XP in profiles.badge_xp speichern (inkrementieren)
-            await supabaseClient.rpc('increment_badge_xp', {
-                uid: userId,
-                xp_amount: xpReward
-            }).then(({ error: rpcError }) => {
-                if (rpcError) {
-                    // Fallback: direktes Update wenn RPC nicht existiert
-                    return supabaseClient
-                        .from('profiles')
-                        .select('badge_xp')
-                        .eq('id', userId)
-                        .single()
-                        .then(({ data }) => {
-                            const currentBadgeXp = data?.badge_xp || 0;
-                            return supabaseClient
-                                .from('profiles')
-                                .update({ badge_xp: currentBadgeXp + xpReward })
-                                .eq('id', userId);
-                        });
-                }
-            });
-
-            userBadgeIds.add(badge.id);
-            renderBadgesStrip(); // UI sofort aktualisieren
-
-            // XP-Animation auf Home-Karte triggern
-            if (typeof loadUserStats === 'function') {
-                loadUserStats(userId);
-            }
-
-            showBadgeUnlockAnimation(badge, xpReward);
-
-        } catch (err) {
-            console.warn('[BadgeEngine] awardBadge error:', err.message);
-        }
-    }
-
-    // ---- Fullscreen Unlock Animation ----
-    function showBadgeUnlockAnimation(badge, xpReward = 0) {
-        const overlay = document.getElementById('badge-unlock-overlay');
-        const img = document.getElementById('badge-unlock-img');
-        const nameEl = document.getElementById('badge-unlock-name');
-        const xpEl = document.getElementById('badge-unlock-xp');
-
-        if (!overlay || !img || !nameEl) return;
-
-        // Warten falls gerade schon eine Animation läuft
-        if (isAnimating) {
-            setTimeout(() => showBadgeUnlockAnimation(badge, xpReward), 3400);
-            return;
-        }
-        isAnimating = true;
-
-        // Inhalt setzen
-        img.src = getBadgeImageUrl(badge.image_url);
-        img.alt = badge.name;
-        nameEl.textContent = badge.name;
-        if (xpEl) {
-            xpEl.textContent = xpReward > 0 ? `+${xpReward} XP` : '';
-            xpEl.style.display = xpReward > 0 ? 'block' : 'none';
-        }
-
-        // Animationsklassen neu starten (durch Entfernen + Reflow + Hinzufügen)
-        img.classList.remove('badge-pop-anim');
-        nameEl.classList.remove('badge-text-anim');
-        if (xpEl) xpEl.classList.remove('badge-text-anim');
-        void img.offsetWidth; // Reflow
-        img.classList.add('badge-pop-anim');
-        nameEl.classList.add('badge-text-anim');
-        if (xpEl) xpEl.classList.add('badge-text-anim');
-
-        // WICHTIG: 'hidden' Klasse entfernen (hat display:none !important)
-        overlay.classList.remove('hidden');
-        overlay.style.display = 'flex';
-        overlay.style.opacity = '0';
-        overlay.style.transition = 'opacity 0.4s ease';
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => { // Doppelter RAF für zuverlässigen Reflow
-                overlay.style.opacity = '1';
-            });
-        });
-
-        // Haptic
-        if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
-
-        // Tap zum Schließen
-        const closeOnTap = () => {
-            hideBadgeUnlockAnimation();
-            overlay.removeEventListener('click', closeOnTap);
-        };
-        overlay.addEventListener('click', closeOnTap);
-
-        // Auto-close nach 3.5 Sekunden
-        setTimeout(() => {
-            hideBadgeUnlockAnimation();
-            overlay.removeEventListener('click', closeOnTap);
-        }, 3500);
-    }
-
-    function hideBadgeUnlockAnimation() {
-        const overlay = document.getElementById('badge-unlock-overlay');
-        if (!overlay) return;
-
-        overlay.style.transition = 'opacity 0.4s ease';
-        overlay.style.opacity = '0';
-
-        setTimeout(() => {
-            overlay.style.display = 'none';
-            overlay.classList.add('hidden'); // 'hidden' wieder setzen für nächsten Start
-            isAnimating = false;
-        }, 400);
-    }
-
-    // ---- Badge Strip (Social-Tab, horizontal scrollbar) ----
-    function renderBadgesStrip() {
-        const strip = document.getElementById('badges-strip');
-        if (!strip) return;
-
-        const earnedBadges = allBadges.filter(b => userBadgeIds.has(b.id));
-
-        if (earnedBadges.length === 0) {
-            strip.innerHTML = `
-                <div class="flex items-center gap-2 py-2">
-                    <div class="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-5 h-5 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-4.5M12 3v9m0 0l-3-3m3 3l3-3"/>
-                        </svg>
-                    </div>
-                    <p class="text-[13px] text-[#8E8E93] whitespace-nowrap">Schalte 5 Dosen frei für dein erstes Badge.</p>
-                </div>
-            `;
-            return;
-        }
-
-        strip.innerHTML = earnedBadges.map(badge => `
-            <button onclick="triggerHapticFeedback(); openBadgesGrid()" class="flex-shrink-0 w-[56px] h-[56px] rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center active:scale-90 transition-transform overflow-hidden shadow-md" title="${badge.name}">
-                <img src="${getBadgeImageUrl(badge.image_url)}" alt="${badge.name}" class="w-full h-full object-contain p-1" loading="lazy" onerror="this.parentElement.innerHTML='<span class=\'text-[10px] text-white font-bold\'>B${badge.level}</span>'">
-            </button>
-        `).join('');
-    }
-
-    // ---- Badge Grid Page ----
-    function renderBadgesGrid() {
-        const container = document.getElementById('badges-grid-content');
-        if (!container || !allBadges.length) return;
-
-        container.innerHTML = allBadges.map(badge => {
-            const isEarned = userBadgeIds.has(badge.id);
-            const imgSrc = getBadgeImageUrl(badge.image_url);
-
-            // Zirkel-Progress für Collector-Badges
-            let progressHTML = '';
-            if (badge.category === 'collector') {
-                const unlockedCount = Object.keys(globalUserCollection || {}).length;
-                const percentage = isEarned ? 1 : Math.min(unlockedCount / badge.required_count, 1);
-                const radius = 24;
-                const circumference = 2 * Math.PI * radius;
-                const offset = circumference - (percentage * circumference);
-                const strokeColor = isEarned ? '#34C759' : '#FFFFFF';
-
-                progressHTML = `
-                    <div class="relative w-[64px] h-[64px] mb-3 flex items-center justify-center">
-                        <svg class="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 64 64">
-                            <circle cx="32" cy="32" r="${radius}" stroke="rgba(255,255,255,0.06)" stroke-width="5" fill="none"/>
-                            <circle cx="32" cy="32" r="${radius}" stroke="${strokeColor}" stroke-width="5" fill="none"
-                                stroke-dasharray="${circumference}"
-                                stroke-dashoffset="${offset}"
-                                stroke-linecap="round"
-                                class="transition-all duration-1000 ease-out"/>
-                        </svg>
-                        <img src="${imgSrc}" alt="${badge.name}" class="w-[44px] h-[44px] object-contain ${isEarned ? '' : 'grayscale opacity-40'}" loading="lazy" onerror="this.style.display='none'">
-                    </div>
-                `;
-            } else {
-                progressHTML = `
-                    <div class="w-[64px] h-[64px] mb-3 flex items-center justify-center">
-                        <img src="${imgSrc}" alt="${badge.name}" class="w-full h-full object-contain ${isEarned ? '' : 'grayscale opacity-40'}" loading="lazy" onerror="this.style.display='none'">
-                    </div>
-                `;
-            }
-
-            return `
-                <div class="bg-[#1C1C1E] rounded-[24px] p-5 border ${isEarned ? 'border-white/10' : 'border-white/5'} flex flex-col items-center text-center shadow-sm relative overflow-hidden">
-                    ${isEarned ? '<div class="absolute top-3 right-3 w-5 h-5 bg-[#34C759]/20 rounded-full flex items-center justify-center"><div class="w-2 h-2 rounded-full bg-[#34C759]"></div></div>' : ''}
-                    ${progressHTML}
-                    <h3 class="text-[15px] font-semibold ${isEarned ? 'text-white' : 'text-[#8E8E93]'} tracking-tight leading-tight line-clamp-1 w-full mb-1">${badge.name}</h3>
-                    <p class="text-[11px] text-[#8E8E93] leading-snug line-clamp-2">${badge.description || ''}</p>
-                    ${badge.category === 'collector' ? `<p class="text-[10px] text-[#8E8E93]/60 mt-1.5 uppercase tracking-wider font-medium">${isEarned ? 'Freigeschaltet ✓' : badge.required_count + ' Dosen'}</p>` : ''}
-                </div>
-            `;
-        }).join('');
-    }
-
-    // ---- Public API ----
-    return { init, checkAndAwardBadges, renderBadgesStrip, renderBadgesGrid };
-
-})(); // BadgeEngine
-
-// ---- Badge Grid Page öffnen/schließen ----
-function openBadgesGrid() {
-    const page = document.getElementById('badges-grid-page');
-    if (!page) return;
-
-    BadgeEngine.renderBadgesGrid();
-
-    page.classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
-
-    page.style.transition = 'none';
-    page.style.transform = 'translateX(100%)';
-    page.offsetHeight; // Reflow
-    page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
-    page.style.transform = 'translateX(0)';
-}
-
-function closeBadgesGrid() {
-    const page = document.getElementById('badges-grid-page');
-    if (!page) return;
-
-    page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
-    page.style.transform = 'translateX(100%)';
-
-    setTimeout(() => {
-        page.classList.add('hidden');
-        document.body.classList.remove('overflow-hidden');
-        page.style.transform = '';
-        page.style.transition = '';
-    }, 350);
-}
-
-// Swipe-to-close für Badge Grid Page
-document.addEventListener('DOMContentLoaded', () => {
-    const page = document.getElementById('badges-grid-page');
-    if (!page) return;
-
-    let touchStartX = 0;
-    let isSwiping = false;
-
-    page.addEventListener('touchstart', (e) => {
-        touchStartX = e.touches[0].clientX;
-        isSwiping = false;
-    }, { passive: true });
-
-    page.addEventListener('touchmove', (e) => {
-        const diffX = e.touches[0].clientX - touchStartX;
-        const diffY = Math.abs(e.touches[0].clientY - (e.touches[0].clientY));
-        if (diffX > 10) {
-            isSwiping = true;
-            page.style.transition = 'none';
-            page.style.transform = `translateX(${Math.max(0, diffX)}px)`;
-        }
-    }, { passive: true });
-
-    page.addEventListener('touchend', (e) => {
-        if (!isSwiping) return;
-        const diffX = e.changedTouches[0].clientX - touchStartX;
-        page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
-        if (diffX > 100) {
-            closeBadgesGrid();
-        } else {
-            page.style.transform = 'translateX(0)';
-        }
-        isSwiping = false;
-    });
-});
-
 //░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 //░░░░░████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 //░░░░█░░░██░░░██████░░░░░░░░░░░░░░░░░░░░░
@@ -4205,4 +3885,4 @@ document.addEventListener('DOMContentLoaded', () => {
 //░░██░░░░░░░▄▄█░░░░░▀▀▀▀░▐▄▄█▀░░░░░░░░░░░
 //░░░▀▀▀▀▀▀▀▀░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 //░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
-// ===========================================
+// ==========================================
