@@ -3925,6 +3925,15 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
     const rarity = (snus.rarity || 'common').toLowerCase().trim();
     const boxShadow = glowActive ? `box-shadow: 0 0px 20px -8px var(--${rarity}, var(--common));` : '';
     const rarityIndicator = `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
+    const imgUrl = GITHUB_BASE + snus.image;
+    const isCached = dexImageCache.has(imgUrl);
+
+    const placeholderHTML = isCached ? '' :
+        `<video class="dex-placeholder absolute inset-0 w-[60%] h-[60%] m-auto object-contain z-0 transition-opacity duration-300 opacity-50 pointer-events-none" muted playsinline loop autoplay src="SnusDexLoadingSlot.mp4"></video>`;
+    const imgClass = isCached
+        ? `dex-img-cached w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10`
+        : `dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-500`;
+    const imgSrcAttr = isCached ? `src="${imgUrl}"` : `data-src="${imgUrl}"`;
 
     return `
         <div onclick="openSnusDetail(${snus.id})" class="brand-anim-card cursor-pointer group flex-shrink-0 w-[28vw] max-w-[120px] snap-center transition-all duration-200 ease-out origin-center will-change-transform">
@@ -3934,8 +3943,8 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
                     ${rarityIndicator}
                 </div>
                 <div class="dex-image-container w-full aspect-square flex items-center justify-center relative mt-1">
-                    <video class="dex-placeholder absolute inset-0 w-[60%] h-[60%] m-auto object-contain z-0 transition-opacity duration-300 opacity-50 pointer-events-none" muted playsinline loop autoplay src="SnusDexLoadingSlot.mp4"></video>
-                    <img data-src="${GITHUB_BASE}${snus.image}" class="dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-500">
+                    ${placeholderHTML}
+                    <img ${imgSrcAttr} class="${imgClass}">
                 </div>
                 <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
                     <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
@@ -3945,79 +3954,110 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
     `;
 }
 
+// Tracked scroll listener refs so we can remove them on re-render
+let _brandScrollListeners = [];
+
 function renderDexGrouped(groupedData) {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
 
+    // Bestehende Carousel-Scroll-Listener aufräumen
+    _brandScrollListeners.forEach(({ el, fn }) => el.removeEventListener('scroll', fn));
+    _brandScrollListeners = [];
+
     grid.innerHTML = '';
     const glowActive = localStorage.getItem('dexGlow') === 'true';
-    let finalHTML = '';
 
-    groupedData.forEach(brandData => {
-        const header = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
-        let cardsHTML = '';
-        brandData.items.forEach(snus => {
-            const isUnlocked = !!globalUserCollection[snus.id];
-            cardsHTML += createHorizontalCardHTML(snus, isUnlocked, glowActive);
-        });
+    if (!imageLazyObserver) initImageLazyLoadObserver();
 
-        finalHTML += `
-            <div class="brand-section w-full mb-4">
+    // Chunked async rendering – verhindert Main-Thread-Blocking
+    const BRAND_CHUNK = 5; // Marken pro Frame
+    let brandIndex = 0;
+
+    function renderNextBrandChunk() {
+        const chunk = groupedData.slice(brandIndex, brandIndex + BRAND_CHUNK);
+        if (chunk.length === 0) return;
+
+        const fragment = document.createDocumentFragment();
+
+        chunk.forEach(brandData => {
+            const section = document.createElement('div');
+            section.className = 'brand-section w-full mb-4';
+
+            const header = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
+            let cardsHTML = '';
+            brandData.items.forEach(snus => {
+                const isUnlocked = !!globalUserCollection[snus.id];
+                cardsHTML += createHorizontalCardHTML(snus, isUnlocked, glowActive);
+            });
+
+            section.innerHTML = `
                 ${header}
                 <div class="brand-carousel flex gap-[3vw] overflow-x-auto pb-4 pt-2 snap-x snap-mandatory scroll-smooth px-1">
                     ${cardsHTML}
                 </div>
-            </div>
-        `;
-    });
+            `;
+            fragment.appendChild(section);
+        });
 
-    grid.innerHTML = finalHTML;
+        grid.appendChild(fragment);
 
-    // Bestehende Lazy Loading Logik für Bilder triggern
-    if (!imageLazyObserver) initImageLazyLoadObserver();
-    grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
-        img.classList.add('observed');
-        imageLazyObserver.observe(img);
-    });
+        // Lazy-Loading für neue Bilder registrieren
+        grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
+            img.classList.add('observed');
+            imageLazyObserver.observe(img);
+        });
 
-    // NEU: Horizontale Scroll-Animation für jedes Carousel initialisieren
-    grid.querySelectorAll('.brand-carousel').forEach(carousel => {
-        initBrandScrollAnimation(carousel);
-    });
+        // Scroll-Animation für neue Carousels registrieren
+        const newCarousels = grid.querySelectorAll('.brand-carousel:not(.anim-init)');
+        newCarousels.forEach(carousel => {
+            carousel.classList.add('anim-init');
+            initBrandScrollAnimation(carousel);
+        });
+
+        brandIndex += BRAND_CHUNK;
+
+        if (brandIndex < groupedData.length) {
+            requestAnimationFrame(renderNextBrandChunk);
+        }
+    }
+
+    renderNextBrandChunk();
 }
 
-// NEU: Die ausgelagerte Animations-Funktion für horizontale Listen
+// Horizontale Scroll-Animation für Brand-Carousels
+// Throttled mit RAF – ein Listener pro Carousel, kein Thrashing
 function initBrandScrollAnimation(container) {
-    const cards = container.querySelectorAll('.brand-anim-card');
+    const cards = Array.from(container.querySelectorAll('.brand-anim-card'));
+    if (cards.length === 0) return;
+
+    let rafPending = false;
 
     const updateScale = () => {
+        rafPending = false;
         const containerRect = container.getBoundingClientRect();
         const containerCenter = containerRect.left + containerRect.width / 2;
         const focusZoneHalfWidth = containerRect.width * 0.35;
+        const fadeZoneWidth = containerRect.width * 0.15;
 
-        // 1. DOM Reads
-        const updates = Array.from(cards).map(card => {
-            const cardRect = card.getBoundingClientRect();
-            const cardCenter = cardRect.left + cardRect.width / 2;
+        // Alle Rects auf einmal lesen
+        const rects = cards.map(card => card.getBoundingClientRect());
+
+        // Dann alle Styles schreiben
+        cards.forEach((card, i) => {
+            const cardCenter = rects[i].left + rects[i].width / 2;
             const distanceToCenter = Math.abs(containerCenter - cardCenter);
 
             let scale = 1.0;
             let opacity = 1.0;
 
             if (distanceToCenter > focusZoneHalfWidth) {
-                const distancePastZone = distanceToCenter - focusZoneHalfWidth;
-                let progress = distancePastZone / (containerRect.width * 0.15);
+                let progress = (distanceToCenter - focusZoneHalfWidth) / fadeZoneWidth;
                 if (progress > 1) progress = 1;
-
                 scale = 1.0 - (0.15 * progress);
                 opacity = 1.0 - (0.6 * progress);
             }
 
-            return { card, scale, opacity };
-        });
-
-        // 2. DOM Writes
-        updates.forEach(({ card, scale, opacity }) => {
             card.style.transform = `scale(${scale})`;
             card.style.opacity = opacity;
         });
@@ -4025,9 +4065,16 @@ function initBrandScrollAnimation(container) {
 
     updateScale(); // Initialer Aufruf
 
-    container.addEventListener('scroll', () => {
-        requestAnimationFrame(updateScale);
-    }, { passive: true });
+    const onScroll = () => {
+        if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(updateScale);
+        }
+    };
+
+    container.addEventListener('scroll', onScroll, { passive: true });
+    // Für späteres Cleanup tracken
+    _brandScrollListeners.push({ el: container, fn: onScroll });
 }
 
 // ==========================================
