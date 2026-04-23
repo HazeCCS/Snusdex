@@ -376,6 +376,10 @@ function switchTab(tabId) {
     if (isDexTarget) {
         // Dex einblenden: Layout war immer da, nur Sichtbarkeit ändert sich
         dexTab.classList.remove('tab-dex-hidden');
+        // Animation neu starten (identisch zu allen anderen Tabs)
+        dexTab.style.animation = 'none';
+        void dexTab.offsetWidth; // Force reflow → Animation-Reset
+        dexTab.style.animation = '';
     } else {
         // Dex ausblenden: Layout BLEIBT berechnet → kein Reflow beim nächsten Switch
         dexTab.classList.add('tab-dex-hidden');
@@ -2111,21 +2115,32 @@ function renderActiveCansUI() {
                             <p class="text-[11px] text-[#8E8E93] tracking-wider mt-0.5">Open since ${new Date(can.opened_at).toLocaleDateString()}</p>
                         </div>
                     </div>
-                    <div id="empty-container-${can.id}" class="relative flex items-center justify-center group flex-shrink-0 cursor-pointer ml-3"
+                    <div id="empty-container-${can.id}" class="relative flex-shrink-0 cursor-pointer ml-3"
                         ontouchstart="startEmptyCan('${can.id}')"
                         ontouchend="stopEmptyCan()"
                         onmousedown="startEmptyCan('${can.id}')"
                         onmouseup="stopEmptyCan()"
                         onmouseleave="stopEmptyCan()"
                         style="user-select: none; -webkit-user-select: none;">
-                        
-                        <svg class="absolute inset-[-4px] w-[calc(100%+8px)] h-[calc(100%+8px)] pointer-events-none">
-                            <rect x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)" rx="16" stroke="rgba(255,255,255,0.1)" stroke-width="3" fill="none" />
-                            <rect id="empty-progress-${can.id}" x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)" rx="16" stroke="white" stroke-width="3" fill="none" 
-                                  pathLength="100" stroke-dasharray="100" stroke-dashoffset="100" style="transition: none;" />
+
+                        <!-- Ring: 8px Abstand, rx = button-rx + 8, perfekt konzentrisch -->
+                        <svg class="absolute pointer-events-none"
+                             style="inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px);"
+                             viewBox="0 0 88 50">
+                            <!-- Track -->
+                            <path d="M44,4 H64 A21,21 0 1,1 64,46 H24 A21,21 0 1,1 24,4 H44 Z"
+                                stroke="rgba(255,255,255,0.15)" stroke-width="3" fill="none"
+                                stroke-linecap="round" />
+                            <!-- Progress — von Mitte oben, Uhrzeigersinn -->
+                            <path id="empty-progress-${can.id}"
+                                d="M44,4 H64 A21,21 0 1,1 64,46 H24 A21,21 0 1,1 24,4 H44 Z"
+                                stroke="white" stroke-width="3" fill="none"
+                                stroke-linecap="round"
+                                pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"
+                                style="transition: none;" />
                         </svg>
 
-                        <div id="empty-btn-${can.id}" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full group-active:scale-95 transition-transform pointer-events-none">
+                        <div id="empty-btn-${can.id}" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-transform pointer-events-none select-none whitespace-nowrap">
                             Empty
                         </div>
                     </div>
