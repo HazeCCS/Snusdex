@@ -382,7 +382,9 @@ function switchTab(tabId) {
     }
 
     if (tabId === 'dex') {
-        setTimeout(updateDexScale, 50);
+        // requestAnimationFrame warten bis Browser das Tab neu layoutet,
+        // dann erst Scale-Berechnung anstoßen – verhindert den "1-Sekunden-Freeze"
+        requestAnimationFrame(() => requestAnimationFrame(updateDexScale));
     }
 }
 
@@ -447,21 +449,31 @@ let imageLazyObserver = null;
 // Key: URL-String, Value: 'loaded' | 'error'
 const dexImageCache = new Map();
 
-// Lädt alle Bilder im Hintergrund, sobald der Dex initialisiert ist.
+// Lädt alle Bilder im Hintergrund mit einer geordneten Queue.
+// Max. 6 parallele Downloads – kein setTimeout-Spam, kein Browser-Überlastung.
 function preloadAllDexImages(items) {
-    // Priorität: zuerst die aktuell sichtbaren Items (bereits im DOM), dann den Rest
-    items.forEach((snus, index) => {
-        const url = GITHUB_BASE + snus.image;
-        if (dexImageCache.has(url)) return; // Bereits gecacht, überspringen
+    const queue = items
+        .map(snus => GITHUB_BASE + snus.image)
+        .filter(url => !dexImageCache.has(url));
 
-        // Verzögert starten, damit sichtbare Elemente Vorrang haben
-        setTimeout(() => {
+    if (queue.length === 0) return;
+
+    const MAX_CONCURRENT = 6;
+    let active = 0;
+
+    function loadNext() {
+        while (active < MAX_CONCURRENT && queue.length > 0) {
+            const url = queue.shift();
+            active++;
             const img = new Image();
-            img.onload = () => dexImageCache.set(url, 'loaded');
-            img.onerror = () => dexImageCache.set(url, 'error');
+            img.onload = () => { dexImageCache.set(url, 'loaded'); active--; loadNext(); };
+            img.onerror = () => { dexImageCache.set(url, 'error'); active--; loadNext(); };
             img.src = url;
-        }, index * 15); // 15ms Abstand pro Bild um den Browser nicht zu überlasten
-    });
+        }
+    }
+
+    // Erst nach nächstem Frame starten, damit sichtbare DOM-Bilder Vorrang haben
+    requestAnimationFrame(loadNext);
 }
 
 function initImageLazyLoadObserver() {
@@ -476,16 +488,12 @@ function initImageLazyLoadObserver() {
 
                 if (src) {
                     const container = img.closest('.dex-image-container');
-                    const video = container ? container.querySelector('.dex-placeholder') : null;
+                    const shimmer = container ? container.querySelector('.dex-placeholder') : null;
 
                     const showImage = () => {
                         img.classList.remove('opacity-0');
-                        // Sofort aus dem Cache cachen, kein Fade nötig
                         dexImageCache.set(src, 'loaded');
-                        if (video) {
-                            video.style.opacity = '0';
-                            setTimeout(() => video.remove(), 400);
-                        }
+                        if (shimmer) shimmer.remove();
                     };
 
                     img.onload = showImage;
@@ -494,10 +502,7 @@ function initImageLazyLoadObserver() {
                         img.src = 'https://via.placeholder.com/150/000000/FFFFFF?text=?';
                         dexImageCache.set(src, 'error');
                         img.classList.remove('opacity-0');
-                        if (video) {
-                            video.style.opacity = '0';
-                            setTimeout(() => video.remove(), 400);
-                        }
+                        if (shimmer) shimmer.remove();
                     };
 
                     img.src = src;
@@ -570,9 +575,11 @@ function loadMoreDexItems() {
             `<span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>` :
             `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
 
-        // Loading-Placeholder nur wenn Bild noch nicht im Cache
+        // Loading-Placeholder: CSS-Shimmer statt Video (kein RAM/CPU-Overhead)
         const placeholderHTML = isCached ? '' :
-            `<video class="dex-placeholder absolute inset-0 w-[60%] h-[60%] m-auto object-contain z-0 transition-opacity duration-300 opacity-50 pointer-events-none" muted playsinline loop autoplay src="SnusDexLoadingSlot.mp4"></video>`;
+            `<div class="dex-placeholder absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div class="w-[60%] h-[60%] rounded-xl bg-white/5 animate-pulse"></div>
+            </div>`;
 
         // Wenn gecacht → sofort sichtbar (kein opacity-0, kein lazy loading nötig)
         const imgClass = isCached
@@ -3928,8 +3935,11 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
     const imgUrl = GITHUB_BASE + snus.image;
     const isCached = dexImageCache.has(imgUrl);
 
-    const placeholderHTML = isCached ? '' :
-        `<video class="dex-placeholder absolute inset-0 w-[60%] h-[60%] m-auto object-contain z-0 transition-opacity duration-300 opacity-50 pointer-events-none" muted playsinline loop autoplay src="SnusDexLoadingSlot.mp4"></video>`;
+        // Loading-Placeholder: CSS-Shimmer statt Video (kein RAM/CPU-Overhead)
+        const placeholderHTML = isCached ? '' :
+            `<div class="dex-placeholder absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div class="w-[60%] h-[60%] rounded-xl bg-white/5 animate-pulse"></div>
+            </div>`;
     const imgClass = isCached
         ? `dex-img-cached w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10`
         : `dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-500`;
@@ -3970,8 +3980,13 @@ function renderDexGrouped(groupedData) {
 
     if (!imageLazyObserver) initImageLazyLoadObserver();
 
+    // Alle Bilder im Hintergrund vorladen (für Alpha-Sort genauso wichtig wie für ID-Sort)
+    // Flache Liste aller Items aus den Brand-Gruppen erstellen
+    const allAlphaItems = groupedData.flatMap(b => b.items);
+    preloadAllDexImages(allAlphaItems);
+
     // Chunked async rendering – verhindert Main-Thread-Blocking
-    const BRAND_CHUNK = 5; // Marken pro Frame
+    const BRAND_CHUNK = 4; // Marken pro Frame
     let brandIndex = 0;
 
     function renderNextBrandChunk() {
@@ -3983,6 +3998,9 @@ function renderDexGrouped(groupedData) {
         chunk.forEach(brandData => {
             const section = document.createElement('div');
             section.className = 'brand-section w-full mb-4';
+            // Dem Browser erlauben, Off-Screen-Sections zu überspringen (reduziert Reflow-Kosten)
+            section.style.contentVisibility = 'auto';
+            section.style.containIntrinsicSize = '0 200px';
 
             const header = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
             let cardsHTML = '';
