@@ -2985,14 +2985,24 @@ let displayedXp = null;
 let actualXp = null;
 
 async function loadUserStats(userId) {
-    const {
-        count
-    } = await supabaseClient.from('user_collections').select('*', {
-        count: 'exact',
-        head: true
-    }).eq('user_id', userId);
+    // 1. Anzahl freigeschalteter Dosen (Collection XP)
+    const { count } = await supabaseClient
+        .from('user_collections')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
 
-    const xp = (count || 0) * 100;
+    const collectionXp = (count || 0) * 100;
+
+    // 2. Badge XP aus profiles lesen
+    let badgeXp = 0;
+    const { data: profileData } = await supabaseClient
+        .from('profiles')
+        .select('badge_xp')
+        .eq('id', userId)
+        .single();
+    if (profileData?.badge_xp) badgeXp = profileData.badge_xp;
+
+    const xp = collectionXp + badgeXp;
     const level = Math.floor(xp / 300) + 1;
 
     actualXp = xp;
@@ -3010,8 +3020,15 @@ async function loadUserStats(userId) {
         if (homeLevelEl) homeLevelEl.innerText = `LVL ${level}`;
     } else if (displayedXp !== actualXp) {
         const homeTab = document.getElementById('tab-home');
-        if (!homeTab.classList.contains('hidden')) {
+        if (homeTab && !homeTab.classList.contains('hidden')) {
             animateXp(displayedXp, actualXp, level);
+        } else {
+            // Wenn Home-Tab nicht aktiv: Wert direkt setzen ohne Animation
+            displayedXp = xp;
+            const scoreEl = document.getElementById('score');
+            const homeLevelEl = document.getElementById('home-level');
+            if (scoreEl) scoreEl.innerHTML = `${xp} <span class="font-medium text-[20px] text-white/50">XP</span>`;
+            if (homeLevelEl) homeLevelEl.innerText = `LVL ${level}`;
         }
     }
 }
@@ -3889,9 +3906,40 @@ const BadgeEngine = (() => {
                 throw error;
             }
 
+            // XP berechnen: Level 1 = 250, Level N>=2 = N*200
+            const xpReward = badge.level === 1 ? 250 : badge.level * 200;
+
+            // XP in profiles.badge_xp speichern (inkrementieren)
+            await supabaseClient.rpc('increment_badge_xp', {
+                uid: userId,
+                xp_amount: xpReward
+            }).then(({ error: rpcError }) => {
+                if (rpcError) {
+                    // Fallback: direktes Update wenn RPC nicht existiert
+                    return supabaseClient
+                        .from('profiles')
+                        .select('badge_xp')
+                        .eq('id', userId)
+                        .single()
+                        .then(({ data }) => {
+                            const currentBadgeXp = data?.badge_xp || 0;
+                            return supabaseClient
+                                .from('profiles')
+                                .update({ badge_xp: currentBadgeXp + xpReward })
+                                .eq('id', userId);
+                        });
+                }
+            });
+
             userBadgeIds.add(badge.id);
             renderBadgesStrip(); // UI sofort aktualisieren
-            showBadgeUnlockAnimation(badge);
+
+            // XP-Animation auf Home-Karte triggern
+            if (typeof loadUserStats === 'function') {
+                loadUserStats(userId);
+            }
+
+            showBadgeUnlockAnimation(badge, xpReward);
 
         } catch (err) {
             console.warn('[BadgeEngine] awardBadge error:', err.message);
@@ -3899,16 +3947,17 @@ const BadgeEngine = (() => {
     }
 
     // ---- Fullscreen Unlock Animation ----
-    function showBadgeUnlockAnimation(badge) {
+    function showBadgeUnlockAnimation(badge, xpReward = 0) {
         const overlay = document.getElementById('badge-unlock-overlay');
         const img = document.getElementById('badge-unlock-img');
         const nameEl = document.getElementById('badge-unlock-name');
+        const xpEl = document.getElementById('badge-unlock-xp');
 
         if (!overlay || !img || !nameEl) return;
 
         // Warten falls gerade schon eine Animation läuft
         if (isAnimating) {
-            setTimeout(() => showBadgeUnlockAnimation(badge), 3200);
+            setTimeout(() => showBadgeUnlockAnimation(badge, xpReward), 3400);
             return;
         }
         isAnimating = true;
@@ -3917,20 +3966,29 @@ const BadgeEngine = (() => {
         img.src = getBadgeImageUrl(badge.image_url);
         img.alt = badge.name;
         nameEl.textContent = badge.name;
+        if (xpEl) {
+            xpEl.textContent = xpReward > 0 ? `+${xpReward} XP` : '';
+            xpEl.style.display = xpReward > 0 ? 'block' : 'none';
+        }
 
         // Animationsklassen neu starten (durch Entfernen + Reflow + Hinzufügen)
         img.classList.remove('badge-pop-anim');
         nameEl.classList.remove('badge-text-anim');
+        if (xpEl) xpEl.classList.remove('badge-text-anim');
         void img.offsetWidth; // Reflow
         img.classList.add('badge-pop-anim');
         nameEl.classList.add('badge-text-anim');
+        if (xpEl) xpEl.classList.add('badge-text-anim');
 
-        // Overlay einblenden
+        // WICHTIG: 'hidden' Klasse entfernen (hat display:none !important)
+        overlay.classList.remove('hidden');
         overlay.style.display = 'flex';
         overlay.style.opacity = '0';
         overlay.style.transition = 'opacity 0.4s ease';
         requestAnimationFrame(() => {
-            overlay.style.opacity = '1';
+            requestAnimationFrame(() => { // Doppelter RAF für zuverlässigen Reflow
+                overlay.style.opacity = '1';
+            });
         });
 
         // Haptic
@@ -3943,11 +4001,11 @@ const BadgeEngine = (() => {
         };
         overlay.addEventListener('click', closeOnTap);
 
-        // Auto-close nach 3 Sekunden
+        // Auto-close nach 3.5 Sekunden
         setTimeout(() => {
             hideBadgeUnlockAnimation();
             overlay.removeEventListener('click', closeOnTap);
-        }, 3000);
+        }, 3500);
     }
 
     function hideBadgeUnlockAnimation() {
@@ -3959,6 +4017,7 @@ const BadgeEngine = (() => {
 
         setTimeout(() => {
             overlay.style.display = 'none';
+            overlay.classList.add('hidden'); // 'hidden' wieder setzen für nächsten Start
             isAnimating = false;
         }, 400);
     }

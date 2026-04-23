@@ -68,3 +68,35 @@ ON CONFLICT DO NOTHING;
 --
 -- Das JS-BadgeEngine wird automatisch Badges der Kategorie 'collector' prüfen.
 -- Für andere Kategorien musst du einen neuen Checker in checkAndAwardBadges() ergänzen.
+
+-- ==========================================
+-- BADGE XP SYSTEM
+-- ==========================================
+-- XP-Belohnungen pro Badge-Level:
+--   Level 1  →  250 XP
+--   Level 2  →  400 XP
+--   Level 3  →  600 XP
+--   Level 4  →  800 XP
+--   Level 5  → 1000 XP
+--   Level 6  → 1200 XP
+--   Level 7  → 1400 XP
+--   Level 8  → 1600 XP
+--   Level 9  → 1800 XP
+--   Level 10 → 2000 XP
+
+-- 5. badge_xp Spalte in profiles hinzufügen
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS badge_xp INT NOT NULL DEFAULT 0;
+
+-- 6. Atomare RPC-Funktion zum Inkrementieren (verhindert Race-Conditions)
+CREATE OR REPLACE FUNCTION increment_badge_xp(uid UUID, xp_amount INT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    UPDATE profiles
+    SET badge_xp = COALESCE(badge_xp, 0) + xp_amount
+    WHERE id = uid;
+END;
+$$;
+
