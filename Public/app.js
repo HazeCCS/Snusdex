@@ -1887,7 +1887,8 @@ async function startNewCanFromModal() {
     // Button visuell blockieren, damit der User nicht 5x klickt
     const btn = document.getElementById('open-can-btn');
     if (btn) {
-        btn.innerText = "Processing...";
+        btn.innerHTML = '<div class="flex items-center justify-center w-[34px] h-[25px] mx-auto"><svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>';
+        btn.classList.add('opacity-80');
         btn.disabled = true;
     }
 
@@ -1902,7 +1903,8 @@ async function startNewCanFromModal() {
     }
 
     if (btn) {
-        btn.innerText = "Open New Can";
+        btn.innerHTML = "Neue Dose öffnen";
+        btn.classList.remove('opacity-80');
         btn.disabled = false;
     }
 }
@@ -2027,9 +2029,24 @@ function renderActiveCansUI() {
                             <p class="text-[11px] text-[#8E8E93] tracking-wider mt-0.5">Open since ${new Date(can.opened_at).toLocaleDateString()}</p>
                         </div>
                     </div>
-                    <button onclick="triggerHapticFeedback(); this.innerHTML='<div class=\\'flex items-center justify-center w-[34px] h-[16px]\\'><svg class=\\'animate-spin h-3.5 w-3.5 text-black\\' xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\'><circle class=\\'opacity-25\\' cx=\\'12\\' cy=\\'12\\' r=\\'10\\' stroke=\\'currentColor\\' stroke-width=\\'4\\'></circle><path class=\\'opacity-75\\' fill=\\'currentColor\\' d=\\'M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z\\'></path></svg></div>'; this.disabled=true; this.classList.add('opacity-50'); finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-all flex-shrink-0">
-                        Empty
-                    </button>
+                    <div id="empty-container-${can.id}" class="relative flex items-center justify-center group flex-shrink-0 cursor-pointer ml-3"
+                        ontouchstart="startEmptyCan('${can.id}')"
+                        ontouchend="stopEmptyCan()"
+                        onmousedown="startEmptyCan('${can.id}')"
+                        onmouseup="stopEmptyCan()"
+                        onmouseleave="stopEmptyCan()"
+                        style="user-select: none; -webkit-user-select: none;">
+                        
+                        <svg class="absolute inset-[-4px] w-[calc(100%+8px)] h-[calc(100%+8px)] pointer-events-none">
+                            <rect x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)" rx="16" stroke="rgba(255,255,255,0.1)" stroke-width="3" fill="none" />
+                            <rect id="empty-progress-${can.id}" x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)" rx="16" stroke="white" stroke-width="3" fill="none" 
+                                  pathLength="100" stroke-dasharray="100" stroke-dashoffset="100" style="transition: none;" />
+                        </svg>
+
+                        <div id="empty-btn-${can.id}" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full group-active:scale-95 transition-transform pointer-events-none">
+                            Empty
+                        </div>
+                    </div>
                 </div>
             `;
         }
@@ -2039,6 +2056,65 @@ function renderActiveCansUI() {
 let addPouchTimer = null;
 let addPouchProgress = 0;
 let addPouchLogId = null;
+
+let emptyCanTimer = null;
+let emptyCanProgress = 0;
+let emptyCanLogId = null;
+
+function startEmptyCan(logId) {
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('light');
+    emptyCanLogId = logId;
+    emptyCanProgress = 0;
+    
+    const progressRect = document.getElementById(`empty-progress-${logId}`);
+    if (progressRect) {
+        progressRect.style.transition = 'none';
+        progressRect.style.strokeDashoffset = '100';
+    }
+
+    emptyCanTimer = setInterval(() => {
+        emptyCanProgress += 2;
+        
+        if (progressRect) {
+            progressRect.style.strokeDashoffset = 100 - emptyCanProgress;
+        }
+
+        if (emptyCanProgress >= 100) {
+            clearInterval(emptyCanTimer);
+            emptyCanTimer = null;
+            emptyCanProgress = 100;
+            if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('success');
+
+            const btn = document.getElementById(`empty-btn-${logId}`);
+            if (btn) {
+                btn.innerHTML = '<div class="flex items-center justify-center w-[34px] h-[16px]"><svg class="animate-spin h-3.5 w-3.5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>';
+                btn.classList.add('opacity-50');
+            }
+
+            const container = document.getElementById(`empty-container-${logId}`);
+            if (container) {
+                container.style.pointerEvents = 'none';
+            }
+
+            finishSpecificCan(logId);
+        }
+    }, 20);
+}
+
+function stopEmptyCan() {
+    if (emptyCanTimer) {
+        clearInterval(emptyCanTimer);
+        emptyCanTimer = null;
+    }
+
+    if (emptyCanLogId && emptyCanProgress < 100) {
+        const progressRect = document.getElementById(`empty-progress-${emptyCanLogId}`);
+        if (progressRect) {
+            progressRect.style.transition = 'stroke-dashoffset 0.3s ease';
+            progressRect.style.strokeDashoffset = '100';
+        }
+    }
+}
 
 function startAddPouch(logId, maxPouches, currentPouches) {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('light');
