@@ -1842,6 +1842,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 
 let globalActiveLogs = []; // Array für alle aktuell offenen Dosen
+let globalInactiveLogs = []; // Array für alle geschlossenen Dosen
 
 async function startNewCan(snusId) {
     const {
@@ -1928,9 +1929,11 @@ async function loadUsageData() {
 
     if (!error && logs) {
         globalActiveLogs = logs.filter(l => l.is_active === true);
+        globalInactiveLogs = logs.filter(l => l.is_active === false);
 
         renderActiveCansUI();
         calculateUsageStats(logs);
+        updateLivePerformance();
     }
 }
 
@@ -3133,13 +3136,18 @@ window.unlock = function (id) {
 // 12. RECENT SCANS & ALL SCANS MODAL LOGIK
 // ==========================================
 
-function createScanListItemHTML(snus, fromModal = false) {
-    const dateObj = new Date(globalUserCollection[snus.id].date);
-    const dateStr = dateObj.toLocaleDateString('de-DE', {
-        day: '2-digit',
-        month: '2-digit',
-        year: '2-digit'
-    });
+function createScanListItemHTML(snus, fromModal = false, customDateStr = null) {
+    let dateStr = "";
+    if (customDateStr) {
+        dateStr = customDateStr;
+    } else {
+        const dateObj = new Date(globalUserCollection[snus.id].date);
+        dateStr = dateObj.toLocaleDateString('de-DE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit'
+        });
+    }
 
     const clickAction = fromModal ?
         `closeAllScansModal(); setTimeout(() => openSnusDetail(${snus.id}), 300);` :
@@ -3182,22 +3190,31 @@ function updateLivePerformance() {
 
     listEl.innerHTML = '';
 
-    if (collectedItems.length === 0) {
-        listEl.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">Keine gefundenden Dosen.</div>';
+    if (globalInactiveLogs.length === 0) {
+        listEl.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">Noch keine Dosen geschlossen.</div>';
         if (showMoreBtn) showMoreBtn.classList.add('hidden');
         return;
     }
 
     if (showMoreBtn) {
-        if (collectedItems.length > 4) {
+        if (globalInactiveLogs.length > 4) {
             showMoreBtn.classList.remove('hidden');
         } else {
             showMoreBtn.classList.add('hidden');
         }
     }
 
-    collectedItems.slice(0, 4).forEach(snus => {
-        listEl.innerHTML += createScanListItemHTML(snus, false);
+    globalInactiveLogs.slice(0, 4).forEach(log => {
+        const snus = globalSnusData.find(s => s.id === log.snus_id);
+        if (snus) {
+            const dateObj = new Date(log.finished_at || log.opened_at);
+            const customDateStr = dateObj.toLocaleDateString('de-DE', {
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit'
+            });
+            listEl.innerHTML += createScanListItemHTML(snus, false, customDateStr);
+        }
     });
 }
 
@@ -3207,12 +3224,18 @@ function openAllScansModal() {
     const card = document.getElementById('all-scans-card');
     const listContainer = document.getElementById('all-scans-list-container');
 
-    const collectedItems = globalSnusData.filter(snus => !!globalUserCollection[snus.id]);
-    collectedItems.sort((a, b) => new Date(globalUserCollection[b.id].date) - new Date(globalUserCollection[a.id].date));
-
     listContainer.innerHTML = '';
-    collectedItems.forEach(snus => {
-        listContainer.innerHTML += createScanListItemHTML(snus, true);
+    globalInactiveLogs.forEach(log => {
+        const snus = globalSnusData.find(s => s.id === log.snus_id);
+        if (snus) {
+            const dateObj = new Date(log.finished_at || log.opened_at);
+            const customDateStr = dateObj.toLocaleDateString('de-DE', {
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit'
+            });
+            listContainer.innerHTML += createScanListItemHTML(snus, true, customDateStr);
+        }
     });
 
     modal.classList.remove('hidden');
