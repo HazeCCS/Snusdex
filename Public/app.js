@@ -356,11 +356,31 @@ async function handleLoginWrapper() {
 // ==========================================
 
 function switchTab(tabId) {
-    const activeTab = document.getElementById(`tab-${tabId}`);
-    if (!activeTab || !activeTab.classList.contains('hidden')) return;
+    const dexTab = document.getElementById('tab-dex');
+    const isDexTarget = tabId === 'dex';
 
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
-    activeTab.classList.remove('hidden');
+    // Früh-Abbruch: Tab schon aktiv?
+    if (isDexTarget) {
+        if (!dexTab.classList.contains('tab-dex-hidden')) return;
+    } else {
+        const activeTab = document.getElementById(`tab-${tabId}`);
+        if (!activeTab || !activeTab.classList.contains('hidden')) return;
+    }
+
+    // Alle NICHT-Dex-Tabs per display:none verstecken
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        if (tab.id === 'tab-dex') return; // Dex niemals mit display:none anfassen!
+        tab.classList.add('hidden');
+    });
+
+    if (isDexTarget) {
+        // Dex einblenden: Layout war immer da, nur Sichtbarkeit ändert sich
+        dexTab.classList.remove('tab-dex-hidden');
+    } else {
+        // Dex ausblenden: Layout BLEIBT berechnet → kein Reflow beim nächsten Switch
+        dexTab.classList.add('tab-dex-hidden');
+        document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+    }
 
     document.querySelectorAll('.nav-btn').forEach(btn => {
         const isActive = btn.id === `btn-${tabId}`;
@@ -368,7 +388,7 @@ function switchTab(tabId) {
         btn.classList.toggle('text-[#8E8E93]', !isActive);
     });
 
-    // scrollTo NACH dem ersten Paint – verhindert erzwungenen Reflow vor dem Render
+    // scrollTo nach erstem Paint
     requestAnimationFrame(() => window.scrollTo(0, 0));
 
     if (tabId === 'home' && displayedXp !== null && actualXp !== null && displayedXp !== actualXp) {
@@ -383,10 +403,11 @@ function switchTab(tabId) {
     }
 
     if (tabId === 'dex') {
-        // Zwei rAF-Frames: Tab muss erst layouten, dann erst Scale berechnen
-        requestAnimationFrame(() => requestAnimationFrame(updateDexScale));
+        // Kein Reflow nötig (Layout immer da) → direkt in nächstem Frame updaten
+        requestAnimationFrame(updateDexScale);
     }
 }
+
 
 // ==========================================
 // 4. DATEN LADEN & RENDERN

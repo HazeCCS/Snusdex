@@ -82,6 +82,17 @@
             display: none !important;
         }
 
+        /* Dex-Tab: Layout-erhaltende Versteckung (kein display:none → kein Reflow) */
+        .tab-dex-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            position: absolute !important;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: -1;
+        }
+
         * {
             -ms-overflow-style: none;
             scrollbar-width: none;
@@ -623,7 +634,7 @@
         </div>
     </main>
 
-    <main id="tab-dex" class="tab-content hidden pt-12">
+    <main id="tab-dex" class="tab-content tab-dex-hidden pt-12">
         <div class="px-5">
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-[34px] font-bold tracking-tight">Dex</h1>
