@@ -61,18 +61,13 @@ ON CONFLICT DO NOTHING;
 -- ==========================================
 -- WIE NEUE BADGES HINZUGEFÜGT WERDEN
 -- ==========================================
--- Füge einfach einen neuen INSERT hinzu, z.B. für einen "Streak"-Badge:
 --
 -- INSERT INTO badges (name, description, image_url, category, level, required_count) VALUES
 --     ('Streak Master', '7 Tage in Folge Dosen geöffnet.', 'badges/streak_1.png', 'streak', 1, 7);
---
--- Das JS-BadgeEngine wird automatisch Badges der Kategorie 'collector' prüfen.
--- Für andere Kategorien musst du einen neuen Checker in checkAndAwardBadges() ergänzen.
 
 -- ==========================================
 -- BADGE XP SYSTEM
 -- ==========================================
--- XP-Belohnungen pro Badge-Level:
 --   Level 1  →  250 XP
 --   Level 2  →  400 XP
 --   Level 3  →  600 XP
@@ -84,10 +79,8 @@ ON CONFLICT DO NOTHING;
 --   Level 9  → 1800 XP
 --   Level 10 → 2000 XP
 
--- 5. badge_xp Spalte in profiles hinzufügen
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS badge_xp INT NOT NULL DEFAULT 0;
 
--- 6. Atomare RPC-Funktion zum Inkrementieren (verhindert Race-Conditions)
 CREATE OR REPLACE FUNCTION increment_badge_xp(uid UUID, xp_amount INT)
 RETURNS void
 LANGUAGE plpgsql

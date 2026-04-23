@@ -2484,47 +2484,64 @@ function openSettingsSubpage(type) {
         let gridHTML = '<div class="grid grid-cols-2 gap-4 pb-6">';
 
         brandStats.forEach(stat => {
-            // Berechne den Prozentsatz
             const percentage = stat.total > 0 ? (stat.unlocked / stat.total) : 0;
+            const radius = 32;
+            const circumference = 2 * Math.PI * radius;
+            const offset = circumference - (percentage * circumference);
 
-            // SVG Circle Mathematik
-            const radius = 24;
-            const circumference = 2 * Math.PI * radius; // Umfang
-            const offset = circumference - (percentage * circumference); // Füllstand
+            let favoriteBrands = [];
+            try { favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]'); } catch (e) {}
+            const isFav = favoriteBrands.includes(stat.name);
+            const safeBrandName = stat.name.replace(/'/g, "\\'");
 
-            // Farbe: Grün wenn komplett, sonst Weiß/Grau
-            const isCompleted = stat.unlocked === stat.total;
-            const strokeColor = isCompleted ? '#34C759' : '#FFFFFF';
+            const starIcon = isFav 
+                ? `<svg class="w-4 h-4 text-yellow-500 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`
+                : `<svg class="w-4 h-4 text-[#8E8E93]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>`;
 
+            const strokeColor = `var(--${stat.dominantRarity}, var(--common))`;
+            
             gridHTML += `
-                <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 flex flex-col items-center text-center shadow-sm relative">
-                    <div class="relative w-[64px] h-[64px] mb-4 flex items-center justify-center">
+                <div class="bg-[#1C1C1E] rounded-[24px] p-4 border border-white/10 flex flex-col items-center text-center shadow-sm relative transition-all duration-300 hover:scale-[1.02]">
+                    <!-- Name & Star Header -->
+                    <div class="flex items-center justify-between w-full mb-4 px-1 gap-2">
+                        <h3 class="text-[15px] font-bold text-white tracking-tight leading-tight line-clamp-1 text-left flex-1">
+                            ${stat.name}
+                        </h3>
+                        <button onclick="handleStatsFavoriteClick('${safeBrandName}')" class="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/5 text-[#8E8E93] transition-all duration-200 active:scale-90 shadow-sm flex-shrink-0">
+                            ${starIcon}
+                        </button>
+                    </div>
+
+                    <!-- Circular Chart -->
+                    <div class="relative w-[80px] h-[80px] mb-3 flex items-center justify-center">
                         <svg class="absolute inset-0 w-full h-full transform -rotate-90">
-                            <circle cx="32" cy="32" r="${radius}" stroke="rgba(255,255,255,0.05)" stroke-width="5" fill="none" />
-                            <circle cx="32" cy="32" r="${radius}" stroke="${strokeColor}" stroke-width="5" fill="none" 
+                            <circle cx="40" cy="40" r="${radius}" stroke="${strokeColor}" opacity="0.15" stroke-width="6" fill="none" />
+                            <circle cx="40" cy="40" r="${radius}" stroke="${strokeColor}" stroke-width="6" fill="none" 
                                 stroke-dasharray="${circumference}" 
                                 stroke-dashoffset="${offset}" 
                                 stroke-linecap="round" 
                                 class="transition-all duration-1000 ease-out" />
                         </svg>
-                        <span class="text-[13px] font-bold ${isCompleted ? 'text-[#34C759]' : 'text-white'} absolute">
-                            ${Math.round(percentage * 100)}%
-                        </span>
+                        <div class="flex flex-col items-center justify-center absolute">
+                            <span class="text-[14px] font-bold text-white">
+                                ${Math.round(percentage * 100)}%
+                            </span>
+                        </div>
                     </div>
                     
-                    <h3 class="text-[16px] font-semibold text-white tracking-tight leading-tight line-clamp-1 w-full mb-1">
-                        ${stat.name}
-                    </h3>
-                    <p class="text-[13px] font-medium text-[#8E8E93]">
-                        <span class="${isCompleted ? 'text-[#34C759]' : 'text-white'}">${stat.unlocked}</span> / ${stat.total}
-                    </p>
+                    <!-- Footer Info -->
+                    <div class="w-full bg-white/5 rounded-xl py-1.5 px-3 flex justify-between items-center mt-auto">
+                        <span class="text-[11px] font-medium text-[#8E8E93] uppercase tracking-wider">Collected</span>
+                        <span class="text-[13px] font-semibold text-white">
+                            ${stat.unlocked} <span class="text-[#8E8E93] font-normal">/ ${stat.total}</span>
+                        </span>
+                    </div>
                 </div>
             `;
         });
 
         gridHTML += '</div>';
 
-        // Füge noch einen Header-Text hinzu für ein runderes Bild
         html = `
             <p class="text-[#8E8E93] text-[15px] mb-6 leading-relaxed">
                 Verfolge deinen Sammler-Fortschritt sortiert nach Snus-Marken.
@@ -3638,6 +3655,23 @@ window.handleFavoriteClick = function(brandName) {
     }
 };
 
+window.handleStatsFavoriteClick = function(brandName) {
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
+    let favoriteBrands = [];
+    try {
+        favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]');
+    } catch (e) {}
+    
+    if (favoriteBrands.includes(brandName)) {
+        showRemoveFavoriteModal(brandName);
+    } else {
+        favoriteBrands.push(brandName);
+        localStorage.setItem('dexFavoriteBrands', JSON.stringify(favoriteBrands));
+        filterDex();
+        openSettingsSubpage('Stats');
+    }
+};
+
 window.showRemoveFavoriteModal = function(brandName) {
     brandToRemove = brandName;
     const modal = document.getElementById('remove-favorite-modal');
@@ -3648,6 +3682,7 @@ window.showRemoveFavoriteModal = function(brandName) {
     if (nameEl) nameEl.innerText = brandName;
     
     if (modal && backdrop && card) {
+        document.body.classList.add('overflow-hidden');
         modal.classList.remove('hidden');
         // Force reflow
         void modal.offsetWidth;
@@ -3672,6 +3707,11 @@ window.closeRemoveFavoriteModal = function() {
         setTimeout(() => {
             modal.classList.add('hidden');
             brandToRemove = null;
+            // Restore scroll if not in settings subpage (which also controls overflow)
+            const subpage = document.getElementById('settings-subpage');
+            if (!subpage || subpage.classList.contains('translate-x-full')) {
+                document.body.classList.remove('overflow-hidden');
+            }
         }, 300);
     }
 };
@@ -3688,6 +3728,12 @@ window.confirmRemoveFavorite = function() {
         
         closeRemoveFavoriteModal();
         filterDex();
+        
+        const subpage = document.getElementById('settings-subpage');
+        const titleEl = document.getElementById('subpage-title');
+        if (titleEl && titleEl.innerText === 'Stats' && subpage && !subpage.classList.contains('translate-x-full')) {
+            openSettingsSubpage('Stats');
+        }
     }
 };
 
@@ -3839,23 +3885,51 @@ function getBrandStats() {
     // Daten aggregieren
     globalSnusData.forEach(snus => {
         const brand = snus.brand || 'Unbekannt';
+        const rarity = (snus.rarity || 'common').toLowerCase().trim();
 
         if (!stats[brand]) {
-            stats[brand] = { total: 0, unlocked: 0 };
+            stats[brand] = { total: 0, unlocked: 0, rarities: {} };
         }
 
         stats[brand].total++;
         if (globalUserCollection[snus.id]) {
             stats[brand].unlocked++;
         }
+        
+        if (!stats[brand].rarities[rarity]) {
+            stats[brand].rarities[rarity] = 0;
+        }
+        stats[brand].rarities[rarity]++;
     });
 
-    // In Array umwandeln und alphabetisch sortieren
-    return Object.keys(stats).map(brand => ({
-        name: brand,
-        total: stats[brand].total,
-        unlocked: stats[brand].unlocked
-    })).sort((a, b) => a.name.localeCompare(b.name));
+    // In Array umwandeln und alphabetisch sortieren (Favoriten zuerst)
+    let favoriteBrands = [];
+    try { favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]'); } catch (e) {}
+
+    return Object.keys(stats).map(brand => {
+        // Find dominant rarity
+        let dominantRarity = 'common';
+        let maxCount = 0;
+        for (const [r, count] of Object.entries(stats[brand].rarities)) {
+            if (count > maxCount) {
+                maxCount = count;
+                dominantRarity = r;
+            }
+        }
+
+        return {
+            name: brand,
+            total: stats[brand].total,
+            unlocked: stats[brand].unlocked,
+            dominantRarity: dominantRarity
+        };
+    }).sort((a, b) => {
+        const aFav = favoriteBrands.includes(a.name);
+        const bFav = favoriteBrands.includes(b.name);
+        if (aFav && !bFav) return -1;
+        if (!aFav && bFav) return 1;
+        return a.name.localeCompare(b.name);
+    });
 }
 
 
