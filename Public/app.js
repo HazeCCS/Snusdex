@@ -3483,7 +3483,8 @@ function updateDexScale() {
     const focusZoneHalfHeight = window.innerHeight * 0.25;
     const cards = grid.querySelectorAll('.dex-anim-card');
 
-    cards.forEach((card) => {
+    // 1. DOM Reads - Alle Layout-Infos holen
+    const updates = Array.from(cards).map((card) => {
         const rect = card.getBoundingClientRect();
         const cardCenter = rect.top + rect.height / 2;
         const distanceToCenter = Math.abs(viewportCenter - cardCenter);
@@ -3501,6 +3502,11 @@ function updateDexScale() {
             opacity = 1.0 - (0.6 * progress);
         }
 
+        return { card, scale, opacity };
+    });
+
+    // 2. DOM Writes - Alle Styles setzen (verhindert Layout Thrashing)
+    updates.forEach(({ card, scale, opacity }) => {
         card.style.transform = `scale(${scale})`;
         card.style.opacity = opacity;
     });
@@ -3782,7 +3788,8 @@ function initBrandScrollAnimation(container) {
         const containerCenter = containerRect.left + containerRect.width / 2;
         const focusZoneHalfWidth = containerRect.width * 0.35;
 
-        cards.forEach(card => {
+        // 1. DOM Reads
+        const updates = Array.from(cards).map(card => {
             const cardRect = card.getBoundingClientRect();
             const cardCenter = cardRect.left + cardRect.width / 2;
             const distanceToCenter = Math.abs(containerCenter - cardCenter);
@@ -3799,6 +3806,11 @@ function initBrandScrollAnimation(container) {
                 opacity = 1.0 - (0.6 * progress);
             }
 
+            return { card, scale, opacity };
+        });
+
+        // 2. DOM Writes
+        updates.forEach(({ card, scale, opacity }) => {
             card.style.transform = `scale(${scale})`;
             card.style.opacity = opacity;
         });
