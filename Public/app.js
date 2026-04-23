@@ -440,10 +440,34 @@ const DEX_CHUNK_SIZE = 30; // Erhöht für einen durchgängigeren Aufbau
 let dexObserver = null;
 let imageLazyObserver = null;
 
+// ==========================================
+// GLOBALER IMAGE CACHE (Session-persistent)
+// ==========================================
+// Speichert fertig geladene Image-Objekte für die Dauer der App-Session.
+// Key: URL-String, Value: 'loaded' | 'error'
+const dexImageCache = new Map();
+
+// Lädt alle Bilder im Hintergrund, sobald der Dex initialisiert ist.
+function preloadAllDexImages(items) {
+    // Priorität: zuerst die aktuell sichtbaren Items (bereits im DOM), dann den Rest
+    items.forEach((snus, index) => {
+        const url = GITHUB_BASE + snus.image;
+        if (dexImageCache.has(url)) return; // Bereits gecacht, überspringen
+
+        // Verzögert starten, damit sichtbare Elemente Vorrang haben
+        setTimeout(() => {
+            const img = new Image();
+            img.onload = () => dexImageCache.set(url, 'loaded');
+            img.onerror = () => dexImageCache.set(url, 'error');
+            img.src = url;
+        }, index * 15); // 15ms Abstand pro Bild um den Browser nicht zu überlasten
+    });
+}
+
 function initImageLazyLoadObserver() {
     if (imageLazyObserver) return;
 
-    // rootMargin: 800px = ca. 5 Reihen (1 Reihe ≈ 150-160px) im Voraus laden
+    // rootMargin: 1200px = weit voraus laden für smoothes Scrollen
     imageLazyObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -454,31 +478,36 @@ function initImageLazyLoadObserver() {
                     const container = img.closest('.dex-image-container');
                     const video = container ? container.querySelector('.dex-placeholder') : null;
 
-                    img.onload = () => {
+                    const showImage = () => {
                         img.classList.remove('opacity-0');
+                        // Sofort aus dem Cache cachen, kein Fade nötig
+                        dexImageCache.set(src, 'loaded');
                         if (video) {
                             video.style.opacity = '0';
-                            setTimeout(() => video.remove(), 500); // DOM freiräumen für Performance
+                            setTimeout(() => video.remove(), 400);
                         }
                     };
+
+                    img.onload = showImage;
 
                     img.onerror = () => {
                         img.src = 'https://via.placeholder.com/150/000000/FFFFFF?text=?';
+                        dexImageCache.set(src, 'error');
                         img.classList.remove('opacity-0');
                         if (video) {
                             video.style.opacity = '0';
-                            setTimeout(() => video.remove(), 500);
+                            setTimeout(() => video.remove(), 400);
                         }
                     };
 
-                    img.src = src; // Trigger Request
+                    img.src = src;
                     img.removeAttribute('data-src');
-                    observer.unobserve(img); // Nur einmal auslösen
+                    observer.unobserve(img);
                 }
             }
         });
     }, {
-        rootMargin: '0px 0px 800px 0px'
+        rootMargin: '0px 0px 1200px 0px'
     });
 }
 
@@ -511,6 +540,9 @@ function renderDexGrid(items) {
 
     loadMoreDexItems();
     initDexObserver();
+
+    // Alle Bilder im Hintergrund vorausladen (nicht-blockierend)
+    preloadAllDexImages(items);
 }
 
 function loadMoreDexItems() {
@@ -518,66 +550,74 @@ function loadMoreDexItems() {
     if (!grid || currentDexRenderCount >= currentDexItems.length) return;
 
     const nextChunk = currentDexItems.slice(currentDexRenderCount, currentDexRenderCount + DEX_CHUNK_SIZE);
-    let htmlChunk = '';
 
     const cols = localStorage.getItem('dexColumns') || '3';
     const is2Cols = cols === '2';
     const glowActive = localStorage.getItem('dexGlow') === 'true';
 
+    // DocumentFragment für performantes Batch-Insert
+    const fragment = document.createDocumentFragment();
+
     nextChunk.forEach(snus => {
         const isUnlocked = !!globalUserCollection[snus.id];
-
         const formattedId = '#' + String(snus.id).padStart(3, '0');
         const rarity = (snus.rarity || 'common').toLowerCase().trim();
-
         const boxShadow = glowActive ? `box-shadow: 0 0px 20px -8px var(--${rarity}, var(--common));` : '';
+        const imgUrl = GITHUB_BASE + snus.image;
+        const isCached = dexImageCache.has(imgUrl);
 
         const rarityIndicator = is2Cols ?
             `<span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>` :
             `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
 
-        // w-full hinzugefügt, damit das Grid richtig gefüllt wird
-        // NEU: Klassen für die Scroll-Animation hinzugefügt (dex-anim-card, transition-all, duration-200, origin-center)
-        htmlChunk += `
+        // Loading-Placeholder nur wenn Bild noch nicht im Cache
+        const placeholderHTML = isCached ? '' :
+            `<video class="dex-placeholder absolute inset-0 w-[60%] h-[60%] m-auto object-contain z-0 transition-opacity duration-300 opacity-50 pointer-events-none" muted playsinline loop autoplay src="SnusDexLoadingSlot.mp4"></video>`;
+
+        // Wenn gecacht → sofort sichtbar (kein opacity-0, kein lazy loading nötig)
+        const imgClass = isCached
+            ? `dex-img-cached w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10`
+            : `dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-500`;
+        const imgSrcAttr = isCached ? `src="${imgUrl}"` : `data-src="${imgUrl}"`;
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = `
             <div onclick="openSnusDetail(${snus.id})" class="dex-anim-card cursor-pointer group h-full w-full transition-all duration-200 ease-out origin-center will-change-transform">
                 <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] transition-all group-active:scale-95 shadow-md overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale' : ''}" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
-                    
                     <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
                         <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
                         ${rarityIndicator}
                     </div>
-
                     <div class="dex-image-container w-full aspect-square flex items-center justify-center relative mt-1">
-                            <video class="dex-placeholder absolute inset-0 w-[60%] h-[60%] m-auto object-contain z-0 transition-opacity duration-300 opacity-50 pointer-events-none" muted playsinline loop autoplay src="SnusDexLoadingSlot.mp4"></video>
-                            <img data-src="${GITHUB_BASE}${snus.image}" class="dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-500">
+                        ${placeholderHTML}
+                        <img ${imgSrcAttr} class="${imgClass}">
                     </div>
-
                     <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
                         <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
                     </div>
-                    
                 </div>
             </div>
-        `;
+        `.trim();
+        fragment.appendChild(wrapper.firstChild);
     });
 
-    grid.insertAdjacentHTML('beforeend', htmlChunk);
+    grid.appendChild(fragment);
 
+    // Lazy Observer für nicht-gecachte Bilder registrieren
     if (!imageLazyObserver) initImageLazyLoadObserver();
-
     grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
         img.classList.add('observed');
         imageLazyObserver.observe(img);
     });
 
     currentDexRenderCount += DEX_CHUNK_SIZE;
-    
+
     if (grid.children.length > 0) {
         const newThreshold = grid.children[0].offsetHeight + 16;
         if (newThreshold > 50) HAPTIC_PIXEL_THRESHOLD = newThreshold;
     }
 
-    setTimeout(updateDexScale, 50);
+    requestAnimationFrame(updateDexScale);
 }
 
 function renderActiveCansUI() {
@@ -3610,32 +3650,37 @@ function updateDexScale() {
 
     const viewportCenter = window.innerHeight / 2;
     const focusZoneHalfHeight = window.innerHeight * 0.25;
+    const fadeZoneHeight = window.innerHeight * 0.2;
+    // Nur Karten in einem erweiterten Viewport prüfen (Culling)
+    const cullMargin = window.innerHeight * 1.5;
     const cards = grid.querySelectorAll('.dex-anim-card');
 
-    // 1. DOM Reads - Alle Layout-Infos holen
-    const updates = Array.from(cards).map((card) => {
-        const rect = card.getBoundingClientRect();
-        const cardCenter = rect.top + rect.height / 2;
-        const distanceToCenter = Math.abs(viewportCenter - cardCenter);
+    // 1. DOM Reads - alle rects auf einmal lesen (kein thrashing)
+    const rects = Array.from(cards).map(card => ({
+        card,
+        rect: card.getBoundingClientRect()
+    }));
 
+    // 2. DOM Writes - gebatcht, nur für Karten im erweiterten Viewport
+    rects.forEach(({ card, rect }) => {
+        const cardCenter = rect.top + rect.height / 2;
+
+        // Culling: Karten weit außerhalb nicht anfassen
+        if (rect.bottom < -cullMargin || rect.top > window.innerHeight + cullMargin) {
+            return;
+        }
+
+        const distanceToCenter = Math.abs(viewportCenter - cardCenter);
         let scale = 1.0;
         let opacity = 1.0;
 
-        // Visuelle Skalierung
         if (distanceToCenter > focusZoneHalfHeight) {
-            const distancePastZone = distanceToCenter - focusZoneHalfHeight;
-            let progress = distancePastZone / (window.innerHeight * 0.2);
+            let progress = (distanceToCenter - focusZoneHalfHeight) / fadeZoneHeight;
             if (progress > 1) progress = 1;
-
             scale = 1.0 - (0.15 * progress);
             opacity = 1.0 - (0.6 * progress);
         }
 
-        return { card, scale, opacity };
-    });
-
-    // 2. DOM Writes - Alle Styles setzen (verhindert Layout Thrashing)
-    updates.forEach(({ card, scale, opacity }) => {
         card.style.transform = `scale(${scale})`;
         card.style.opacity = opacity;
     });
