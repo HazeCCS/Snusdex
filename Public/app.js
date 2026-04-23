@@ -2501,7 +2501,7 @@ function openSettingsSubpage(type) {
             const strokeColor = `var(--${stat.dominantRarity}, var(--common))`;
             
             gridHTML += `
-                <div class="bg-[#1C1C1E] rounded-[24px] p-4 border border-white/10 flex flex-col items-center text-center shadow-sm relative transition-all duration-300 hover:scale-[1.02]">
+                <div class="bg-[#1C1C1E] rounded-[24px] p-4 border border-white/10 flex flex-col items-center text-center shadow-sm relative">
                     <!-- Name & Star Header -->
                     <div class="flex items-center justify-between w-full mb-4 px-1 gap-2">
                         <h3 class="text-[15px] font-bold text-white tracking-tight leading-tight line-clamp-1 text-left flex-1">
