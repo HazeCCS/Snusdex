@@ -170,6 +170,8 @@ async function checkUser() {
             setTimeout(() => overlay.classList.add('hidden'), 500);
 
             setupProfile(session.user);
+            // Badge Engine initialisieren
+            BadgeEngine.init(session.user.id).catch(e => console.warn('[BadgeEngine] init failed:', e));
 
             loadDex();
             loadUsageData();
@@ -1076,6 +1078,9 @@ async function collectCurrentSnus() {
         if (!isUpdate) {
             await startNewCan(currentSelectedSnusId);
             await loadUserStats(user.id);
+            // Badge-Check nach neuer Freischaltung
+            const newUnlockedCount = Object.keys(globalUserCollection).length;
+            BadgeEngine.checkAndAwardBadges(user.id, newUnlockedCount).catch(e => console.warn('[BadgeEngine]', e));
             updateLivePerformance();
         }
         renderDexGrid(globalSnusData);
@@ -3785,6 +3790,331 @@ function getBrandStats() {
 
 
 
+
+// ==========================================
+// 13. BADGE ENGINE (Modular)
+// ==========================================
+
+/**
+ * BadgeEngine
+ * -----------
+ * Modulares System für alle Badge-Typen in SnusDex.
+ * Um einen neuen Badge-Typ hinzuzufügen:
+ *   1. Trage den Badge in die `badges`-Tabelle in Supabase ein (name, description, image_url, category, level, required_count).
+ *   2. Füge ggf. einen neuen Checker in `checkAndAwardBadges` hinzu.
+ * 
+ * Die Collector-Badges (category='collector') werden automatisch anhand
+ * der Anzahl freigeschalteter Snusdosen vergeben.
+ */
+const BadgeEngine = (() => {
+
+    // ---- State ----
+    let allBadges = [];         // Alle Badges aus der DB
+    let userBadgeIds = new Set(); // IDs bereits vergebener Badges des Users
+    let isAnimating = false;
+
+    // ---- GITHUB BASE für Badge-Bilder (anpassbar) ----
+    // Wenn deine Badges in GitHub Assets liegen, nutze GITHUB_BASE.
+    // Ansonsten werden image_url-Felder direkt genutzt.
+    const getBadgeImageUrl = (imageUrl) => {
+        if (!imageUrl) return '';
+        // Falls relative Pfad → mit GITHUB_BASE prefixen
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
+        return GITHUB_BASE + imageUrl;
+    };
+
+    // ---- Laden aller Badges + User-Badges ----
+    async function init(userId) {
+        try {
+            // Alle verfügbaren Badges laden
+            const { data: badgesData, error: badgesError } = await supabaseClient
+                .from('badges')
+                .select('*')
+                .order('category', { ascending: true })
+                .order('level', { ascending: true });
+
+            if (badgesError) throw badgesError;
+            allBadges = badgesData || [];
+
+            // Vom User bereits verdiente Badges laden
+            const { data: userBadgesData, error: ubError } = await supabaseClient
+                .from('user_badges')
+                .select('badge_id')
+                .eq('user_id', userId);
+
+            if (ubError) throw ubError;
+            userBadgeIds = new Set((userBadgesData || []).map(r => r.badge_id));
+
+            // UI aktualisieren
+            renderBadgesStrip();
+
+        } catch (err) {
+            console.warn('[BadgeEngine] Init error:', err.message);
+        }
+    }
+
+    // ---- Badge-Prüfung und Vergabe ----
+    /**
+     * Prüft nach jeder neuen Freischaltung, welche Badges neu vergeben werden sollen.
+     * Aktuell unterstützte Kategorien: 'collector' (basierend auf Anzahl freigeschalteter Dosen).
+     * 
+     * @param {string} userId
+     * @param {number} unlockedCount - Aktuelle Anzahl freigeschalteter Snusdosen
+     */
+    async function checkAndAwardBadges(userId, unlockedCount) {
+        if (!allBadges.length) await init(userId);
+
+        // --- Collector Badges (category='collector') ---
+        const collectorBadges = allBadges
+            .filter(b => b.category === 'collector')
+            .sort((a, b) => a.required_count - b.required_count);
+
+        for (const badge of collectorBadges) {
+            if (!userBadgeIds.has(badge.id) && unlockedCount >= badge.required_count) {
+                await awardBadge(userId, badge);
+            }
+        }
+    }
+
+    // ---- Badge vergeben + Animation auslösen ----
+    async function awardBadge(userId, badge) {
+        try {
+            const { error } = await supabaseClient
+                .from('user_badges')
+                .insert([{ user_id: userId, badge_id: badge.id }]);
+
+            if (error) {
+                // Falls bereits vorhanden (Race-Condition), ignorieren
+                if (error.code === '23505') return;
+                throw error;
+            }
+
+            userBadgeIds.add(badge.id);
+            renderBadgesStrip(); // UI sofort aktualisieren
+            showBadgeUnlockAnimation(badge);
+
+        } catch (err) {
+            console.warn('[BadgeEngine] awardBadge error:', err.message);
+        }
+    }
+
+    // ---- Fullscreen Unlock Animation ----
+    function showBadgeUnlockAnimation(badge) {
+        const overlay = document.getElementById('badge-unlock-overlay');
+        const img = document.getElementById('badge-unlock-img');
+        const nameEl = document.getElementById('badge-unlock-name');
+
+        if (!overlay || !img || !nameEl) return;
+
+        // Warten falls gerade schon eine Animation läuft
+        if (isAnimating) {
+            setTimeout(() => showBadgeUnlockAnimation(badge), 3200);
+            return;
+        }
+        isAnimating = true;
+
+        // Inhalt setzen
+        img.src = getBadgeImageUrl(badge.image_url);
+        img.alt = badge.name;
+        nameEl.textContent = badge.name;
+
+        // Animationsklassen neu starten (durch Entfernen + Reflow + Hinzufügen)
+        img.classList.remove('badge-pop-anim');
+        nameEl.classList.remove('badge-text-anim');
+        void img.offsetWidth; // Reflow
+        img.classList.add('badge-pop-anim');
+        nameEl.classList.add('badge-text-anim');
+
+        // Overlay einblenden
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 0.4s ease';
+        requestAnimationFrame(() => {
+            overlay.style.opacity = '1';
+        });
+
+        // Haptic
+        if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
+
+        // Tap zum Schließen
+        const closeOnTap = () => {
+            hideBadgeUnlockAnimation();
+            overlay.removeEventListener('click', closeOnTap);
+        };
+        overlay.addEventListener('click', closeOnTap);
+
+        // Auto-close nach 3 Sekunden
+        setTimeout(() => {
+            hideBadgeUnlockAnimation();
+            overlay.removeEventListener('click', closeOnTap);
+        }, 3000);
+    }
+
+    function hideBadgeUnlockAnimation() {
+        const overlay = document.getElementById('badge-unlock-overlay');
+        if (!overlay) return;
+
+        overlay.style.transition = 'opacity 0.4s ease';
+        overlay.style.opacity = '0';
+
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            isAnimating = false;
+        }, 400);
+    }
+
+    // ---- Badge Strip (Social-Tab, horizontal scrollbar) ----
+    function renderBadgesStrip() {
+        const strip = document.getElementById('badges-strip');
+        if (!strip) return;
+
+        const earnedBadges = allBadges.filter(b => userBadgeIds.has(b.id));
+
+        if (earnedBadges.length === 0) {
+            strip.innerHTML = `
+                <div class="flex items-center gap-2 py-2">
+                    <div class="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-4.5M12 3v9m0 0l-3-3m3 3l3-3"/>
+                        </svg>
+                    </div>
+                    <p class="text-[13px] text-[#8E8E93] whitespace-nowrap">Schalte 5 Dosen frei für dein erstes Badge.</p>
+                </div>
+            `;
+            return;
+        }
+
+        strip.innerHTML = earnedBadges.map(badge => `
+            <button onclick="triggerHapticFeedback(); openBadgesGrid()" class="flex-shrink-0 w-[56px] h-[56px] rounded-full bg-[#1C1C1E] border border-white/10 flex items-center justify-center active:scale-90 transition-transform overflow-hidden shadow-md" title="${badge.name}">
+                <img src="${getBadgeImageUrl(badge.image_url)}" alt="${badge.name}" class="w-full h-full object-contain p-1" loading="lazy" onerror="this.parentElement.innerHTML='<span class=\'text-[10px] text-white font-bold\'>B${badge.level}</span>'">
+            </button>
+        `).join('');
+    }
+
+    // ---- Badge Grid Page ----
+    function renderBadgesGrid() {
+        const container = document.getElementById('badges-grid-content');
+        if (!container || !allBadges.length) return;
+
+        container.innerHTML = allBadges.map(badge => {
+            const isEarned = userBadgeIds.has(badge.id);
+            const imgSrc = getBadgeImageUrl(badge.image_url);
+
+            // Zirkel-Progress für Collector-Badges
+            let progressHTML = '';
+            if (badge.category === 'collector') {
+                const unlockedCount = Object.keys(globalUserCollection || {}).length;
+                const percentage = isEarned ? 1 : Math.min(unlockedCount / badge.required_count, 1);
+                const radius = 24;
+                const circumference = 2 * Math.PI * radius;
+                const offset = circumference - (percentage * circumference);
+                const strokeColor = isEarned ? '#34C759' : '#FFFFFF';
+
+                progressHTML = `
+                    <div class="relative w-[64px] h-[64px] mb-3 flex items-center justify-center">
+                        <svg class="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 64 64">
+                            <circle cx="32" cy="32" r="${radius}" stroke="rgba(255,255,255,0.06)" stroke-width="5" fill="none"/>
+                            <circle cx="32" cy="32" r="${radius}" stroke="${strokeColor}" stroke-width="5" fill="none"
+                                stroke-dasharray="${circumference}"
+                                stroke-dashoffset="${offset}"
+                                stroke-linecap="round"
+                                class="transition-all duration-1000 ease-out"/>
+                        </svg>
+                        <img src="${imgSrc}" alt="${badge.name}" class="w-[44px] h-[44px] object-contain ${isEarned ? '' : 'grayscale opacity-40'}" loading="lazy" onerror="this.style.display='none'">
+                    </div>
+                `;
+            } else {
+                progressHTML = `
+                    <div class="w-[64px] h-[64px] mb-3 flex items-center justify-center">
+                        <img src="${imgSrc}" alt="${badge.name}" class="w-full h-full object-contain ${isEarned ? '' : 'grayscale opacity-40'}" loading="lazy" onerror="this.style.display='none'">
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="bg-[#1C1C1E] rounded-[24px] p-5 border ${isEarned ? 'border-white/10' : 'border-white/5'} flex flex-col items-center text-center shadow-sm relative overflow-hidden">
+                    ${isEarned ? '<div class="absolute top-3 right-3 w-5 h-5 bg-[#34C759]/20 rounded-full flex items-center justify-center"><div class="w-2 h-2 rounded-full bg-[#34C759]"></div></div>' : ''}
+                    ${progressHTML}
+                    <h3 class="text-[15px] font-semibold ${isEarned ? 'text-white' : 'text-[#8E8E93]'} tracking-tight leading-tight line-clamp-1 w-full mb-1">${badge.name}</h3>
+                    <p class="text-[11px] text-[#8E8E93] leading-snug line-clamp-2">${badge.description || ''}</p>
+                    ${badge.category === 'collector' ? `<p class="text-[10px] text-[#8E8E93]/60 mt-1.5 uppercase tracking-wider font-medium">${isEarned ? 'Freigeschaltet ✓' : badge.required_count + ' Dosen'}</p>` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ---- Public API ----
+    return { init, checkAndAwardBadges, renderBadgesStrip, renderBadgesGrid };
+
+})(); // BadgeEngine
+
+// ---- Badge Grid Page öffnen/schließen ----
+function openBadgesGrid() {
+    const page = document.getElementById('badges-grid-page');
+    if (!page) return;
+
+    BadgeEngine.renderBadgesGrid();
+
+    page.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+
+    page.style.transition = 'none';
+    page.style.transform = 'translateX(100%)';
+    page.offsetHeight; // Reflow
+    page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+    page.style.transform = 'translateX(0)';
+}
+
+function closeBadgesGrid() {
+    const page = document.getElementById('badges-grid-page');
+    if (!page) return;
+
+    page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+    page.style.transform = 'translateX(100%)';
+
+    setTimeout(() => {
+        page.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+        page.style.transform = '';
+        page.style.transition = '';
+    }, 350);
+}
+
+// Swipe-to-close für Badge Grid Page
+document.addEventListener('DOMContentLoaded', () => {
+    const page = document.getElementById('badges-grid-page');
+    if (!page) return;
+
+    let touchStartX = 0;
+    let isSwiping = false;
+
+    page.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        isSwiping = false;
+    }, { passive: true });
+
+    page.addEventListener('touchmove', (e) => {
+        const diffX = e.touches[0].clientX - touchStartX;
+        const diffY = Math.abs(e.touches[0].clientY - (e.touches[0].clientY));
+        if (diffX > 10) {
+            isSwiping = true;
+            page.style.transition = 'none';
+            page.style.transform = `translateX(${Math.max(0, diffX)}px)`;
+        }
+    }, { passive: true });
+
+    page.addEventListener('touchend', (e) => {
+        if (!isSwiping) return;
+        const diffX = e.changedTouches[0].clientX - touchStartX;
+        page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+        if (diffX > 100) {
+            closeBadgesGrid();
+        } else {
+            page.style.transform = 'translateX(0)';
+        }
+        isSwiping = false;
+    });
+});
 
 //░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 //░░░░░████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░

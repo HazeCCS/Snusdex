@@ -124,6 +124,29 @@
             animation: loadingBar 1.5s infinite ease-in-out;
         }
 
+        /* Badge Unlock Animation */
+        @keyframes badgePop {
+            0%   { opacity: 0; transform: scale(0.75); }
+            60%  { opacity: 1; transform: scale(1.04); }
+            100% { opacity: 1; transform: scale(1.0); }
+        }
+        @keyframes badgeTextFade {
+            0%   { opacity: 0; transform: translateY(12px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .badge-pop-anim {
+            animation: badgePop 0.6s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+        }
+        .badge-text-anim {
+            animation: badgeTextFade 0.5s 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+            opacity: 0;
+        }
+        .badge-unlock-bg {
+            background: rgba(0,0,0,0.82);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
         .metal-card-container {
         padding: 20px;
     }
@@ -471,6 +494,22 @@
                     </svg>
                 </button>
             </div>
+
+            <!-- Badge Strip -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="text-[13px] text-[#8E8E93] font-semibold uppercase tracking-wider">Badges</span>
+                    <button id="badges-strip-expand-btn" onclick="triggerHapticFeedback(); openBadgesGrid()" class="w-7 h-7 bg-white/10 border border-white/10 rounded-full flex items-center justify-center active:scale-90 transition-transform">
+                        <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="badges-strip" class="flex gap-3 overflow-x-auto pb-1" style="-ms-overflow-style:none;scrollbar-width:none;">
+                    <div class="text-[13px] text-[#8E8E93] py-2">Lade Badges...</div>
+                </div>
+            </div>
+
             <div id="top-snus-container"></div>
         </div>
     </main>
@@ -924,6 +963,38 @@
 
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- BADGE UNLOCK ANIMATION OVERLAY             -->
+    <!-- ========================================== -->
+    <div id="badge-unlock-overlay" class="fixed inset-0 z-[3000] hidden flex-col items-center justify-center badge-unlock-bg" style="display:none;">
+        <div id="badge-unlock-content" class="flex flex-col items-center justify-center px-8">
+            <div id="badge-unlock-img-wrap" class="w-[260px] h-[260px] flex items-center justify-center mb-6">
+                <img id="badge-unlock-img" src="" alt="Badge" class="w-full h-full object-contain badge-pop-anim drop-shadow-2xl" style="filter: drop-shadow(0 0 40px rgba(255,255,255,0.15));">
+            </div>
+            <h2 id="badge-unlock-name" class="text-[26px] font-bold text-white text-center tracking-tight mb-2 badge-text-anim"></h2>
+            <p class="text-[15px] text-[#8E8E93] text-center badge-text-anim" style="animation-delay: 0.55s;">wurde freigeschaltet</p>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- BADGES GRID PAGE                           -->
+    <!-- ========================================== -->
+    <div id="badges-grid-page" class="fixed inset-0 z-[200] bg-[#000000] flex flex-col transition-transform duration-300 translate-x-full hidden">
+        <div class="px-5 pt-14 pb-2 flex justify-between items-center z-10 bg-gradient-to-b from-black to-transparent flex-shrink-0">
+            <button onclick="triggerHapticFeedback(); closeBadgesGrid()" class="w-10 h-10 bg-[#1C1C1E] rounded-full flex items-center justify-center active:scale-95 transition-transform border border-white/10 shadow-sm">
+                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <h1 class="text-[20px] font-semibold text-white tracking-tight">Deine Badges</h1>
+            <div class="w-10"></div>
+        </div>
+        <div class="flex-1 overflow-y-auto px-5 py-4 pb-24">
+            <p class="text-[#8E8E93] text-[15px] mb-6 leading-relaxed">Deine gesammelten Errungenschaften.</p>
+            <div id="badges-grid-content" class="grid grid-cols-2 gap-4 pb-6"></div>
         </div>
     </div>
 
