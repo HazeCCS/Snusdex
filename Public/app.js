@@ -367,10 +367,11 @@ function switchTab(tabId) {
         btn.classList.toggle('text-white', isActive);
         btn.classList.toggle('text-[#8E8E93]', !isActive);
     });
-    window.scrollTo(0, 0);
+
+    // scrollTo NACH dem ersten Paint – verhindert erzwungenen Reflow vor dem Render
+    requestAnimationFrame(() => window.scrollTo(0, 0));
 
     if (tabId === 'home' && displayedXp !== null && actualXp !== null && displayedXp !== actualXp) {
-        // Wir warten 200ms, damit die Fade-In Animation vom Tab fertig ist, bevor die Zahlen hochrollen
         setTimeout(() => {
             const level = Math.floor(actualXp / 300) + 1;
             animateXp(displayedXp, actualXp, level);
@@ -382,8 +383,7 @@ function switchTab(tabId) {
     }
 
     if (tabId === 'dex') {
-        // requestAnimationFrame warten bis Browser das Tab neu layoutet,
-        // dann erst Scale-Berechnung anstoßen – verhindert den "1-Sekunden-Freeze"
+        // Zwei rAF-Frames: Tab muss erst layouten, dann erst Scale berechnen
         requestAnimationFrame(() => requestAnimationFrame(updateDexScale));
     }
 }
@@ -535,6 +535,9 @@ function initDexObserver() {
     dexObserver.observe(sentinel);
 }
 
+// Anzahl Items für den ersten sichtbaren Screen (3-Spalten-Grid à 3 Reihen = 9)
+const DEX_FIRST_CHUNK = 9;
+
 function renderDexGrid(items) {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
@@ -543,18 +546,26 @@ function renderDexGrid(items) {
     currentDexItems = items;
     currentDexRenderCount = 0;
 
-    loadMoreDexItems();
+    // Erster Chunk (sichtbarer Bereich) sofort rendern
+    loadMoreDexItems(DEX_FIRST_CHUNK);
     initDexObserver();
 
-    // Alle Bilder im Hintergrund vorausladen (nicht-blockierend)
-    preloadAllDexImages(items);
+    // Hintergrund-Preload + Rest-Rendering nach erstem Paint starten
+    requestAnimationFrame(() => {
+        preloadAllDexImages(items);
+        // Nächsten Chunk sofort bereitstellen, damit Scrollen sofort klappt
+        if (currentDexRenderCount < currentDexItems.length) {
+            loadMoreDexItems(); // Normal-Chunk (30 Items) nach erstem Paint
+        }
+    });
 }
 
-function loadMoreDexItems() {
+function loadMoreDexItems(chunkOverride) {
     const grid = document.getElementById('dex-grid');
     if (!grid || currentDexRenderCount >= currentDexItems.length) return;
 
-    const nextChunk = currentDexItems.slice(currentDexRenderCount, currentDexRenderCount + DEX_CHUNK_SIZE);
+    const chunkSize = chunkOverride || DEX_CHUNK_SIZE;
+    const nextChunk = currentDexItems.slice(currentDexRenderCount, currentDexRenderCount + chunkSize);
 
     const cols = localStorage.getItem('dexColumns') || '3';
     const is2Cols = cols === '2';
@@ -609,22 +620,25 @@ function loadMoreDexItems() {
     });
 
     grid.appendChild(fragment);
+    currentDexRenderCount += chunkSize;
 
-    // Lazy Observer für nicht-gecachte Bilder registrieren
+    // Layout-Reads + Observer-Setup nach dem Paint (kein erzwungener Reflow)
     if (!imageLazyObserver) initImageLazyLoadObserver();
-    grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
-        img.classList.add('observed');
-        imageLazyObserver.observe(img);
+    requestAnimationFrame(() => {
+        // Haptic-Schwellwert einmalig bestimmen
+        if (grid.children.length > 0 && currentDexRenderCount <= chunkSize + DEX_CHUNK_SIZE) {
+            const newThreshold = grid.children[0].offsetHeight + 16;
+            if (newThreshold > 50) HAPTIC_PIXEL_THRESHOLD = newThreshold;
+        }
+
+        // Lazy-Observer für neue Bilder registrieren
+        grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
+            img.classList.add('observed');
+            imageLazyObserver.observe(img);
+        });
+
+        updateDexScale();
     });
-
-    currentDexRenderCount += DEX_CHUNK_SIZE;
-
-    if (grid.children.length > 0) {
-        const newThreshold = grid.children[0].offsetHeight + 16;
-        if (newThreshold > 50) HAPTIC_PIXEL_THRESHOLD = newThreshold;
-    }
-
-    requestAnimationFrame(updateDexScale);
 }
 
 function renderActiveCansUI() {
@@ -2590,7 +2604,7 @@ function openSettingsSubpage(type) {
             <div class="bg-[#1C1C1E] rounded-[24px] p-5 space-y-4 border border-white/10 mb-8 shadow-sm w-full max-w-full">
                 <div class="flex flex-col gap-1.5 w-full">
                     <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Username</label>
-                    <input type="text" id="edit-username" value="Collector69" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all">
+                    <input type="text" id="edit-username" value="Test User" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all">
                 </div>
                 
                 <div class="flex flex-col gap-1.5 w-full">
@@ -3983,10 +3997,11 @@ function renderDexGrouped(groupedData) {
     // Alle Bilder im Hintergrund vorladen (für Alpha-Sort genauso wichtig wie für ID-Sort)
     // Flache Liste aller Items aus den Brand-Gruppen erstellen
     const allAlphaItems = groupedData.flatMap(b => b.items);
-    preloadAllDexImages(allAlphaItems);
+    // Nach erstem Paint starten, damit erste Brands sofort gezeigt werden
+    requestAnimationFrame(() => preloadAllDexImages(allAlphaItems));
 
-    // Chunked async rendering – verhindert Main-Thread-Blocking
-    const BRAND_CHUNK = 4; // Marken pro Frame
+    // Chunked async rendering – 2 Brands pro Frame für maximal smooth Progressive Reveal
+    const BRAND_CHUNK = 2;
     let brandIndex = 0;
 
     function renderNextBrandChunk() {
