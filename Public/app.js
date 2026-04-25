@@ -3812,7 +3812,7 @@ function renderSuggestions() {
         const rarityIndicator = `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
 
         container.innerHTML += `
-            <div onclick="openSnusDetail(${snus.id})"class="suggestion-card cursor-pointer group flex-shrink-0 w-[28vw] snap-center transition-transform duration-200 ease-out origin-center">
+            <div onclick="openSnusDetail(${snus.id})" class="suggestion-card cursor-pointer group flex-shrink-0 w-[28vw] snap-center transition-transform duration-200 ease-out origin-center" style="touch-action: pan-x;">
                 <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] shadow-md overflow-hidden" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
                     
                     <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
