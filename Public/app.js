@@ -1030,6 +1030,48 @@ function openSnusDetail(id, isFromScan = false) {
             const dateObj = new Date(isUnlocked.date);
             dateEl.innerText = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
         }
+
+        // Live-Daten aus usage_logs laden (parallel für Performance)
+        const openedCountEl = document.getElementById('modal-opened-count');
+        if (openedCountEl) openedCountEl.innerText = '…';
+
+        supabaseClient.auth.getUser().then(({ data: { user } }) => {
+            if (!user) return;
+
+            Promise.all([
+                // 1. Anzahl Öffnungen (alle Einträge für diese Snus, egal ob aktiv oder fertig)
+                supabaseClient
+                    .from('usage_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id)
+                    .eq('snus_id', snusId),
+
+                // 2. Frühester opened_at = wann zum ersten Mal geöffnet
+                supabaseClient
+                    .from('usage_logs')
+                    .select('opened_at')
+                    .eq('user_id', user.id)
+                    .eq('snus_id', snusId)
+                    .order('opened_at', { ascending: true })
+                    .limit(1)
+            ]).then(([countResult, firstResult]) => {
+                // Öffnungsanzahl updaten
+                if (openedCountEl) {
+                    const count = countResult.count ?? 0;
+                    openedCountEl.innerText = count > 0 ? `${count}x` : '0x';
+                }
+
+                // "Unlocked at" mit dem echten ersten opened_at überschreiben
+                if (dateEl && firstResult.data && firstResult.data.length > 0) {
+                    const firstOpen = new Date(firstResult.data[0].opened_at);
+                    dateEl.innerText = firstOpen.toLocaleDateString('de-DE', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: '2-digit'
+                    });
+                }
+            });
+        });
     } else {
         // Fall: Noch nicht gesammelt
         if (isFromScan) {
@@ -2162,7 +2204,7 @@ function startEmptyCan(logId) {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('light');
     emptyCanLogId = logId;
     emptyCanProgress = 0;
-    
+
     const progressRect = document.getElementById(`empty-progress-${logId}`);
     if (progressRect) {
         progressRect.style.transition = 'none';
@@ -2171,7 +2213,7 @@ function startEmptyCan(logId) {
 
     emptyCanTimer = setInterval(() => {
         emptyCanProgress += 2;
-        
+
         if (progressRect) {
             progressRect.style.strokeDashoffset = 100 - emptyCanProgress;
         }
@@ -2626,7 +2668,7 @@ function openSettingsSubpage(type) {
                 <div class="relative">
                     <input type="file" id="profile-image-upload" accept="image/*" class="hidden" onchange="previewProfileImage(event)">
                     <div class="w-24 h-24 rounded-full flex-shrink-0 shadow-lg border-2 border-white/5 overflow-hidden bg-zinc-800">
-                        <img id="edit-profile-image-preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238E8E93'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>" alt="Profilbild" class="w-full h-full object-cover p-3">
+                        <img id="edit-profile-image-preview" src="https://i.pravatar.cc/150?img=11" alt="Profilbild" class="w-full h-full object-cover">
                     </div>
                     <button onclick="triggerHapticFeedback(); document.getElementById('profile-image-upload').click()" class="absolute bottom-0 right-0 w-8 h-8 bg-[#1C1C1E] border border-white/20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform z-10">
                         <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -2672,16 +2714,16 @@ function openSettingsSubpage(type) {
             const offset = circumference - (percentage * circumference);
 
             let favoriteBrands = [];
-            try { favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]'); } catch (e) {}
+            try { favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]'); } catch (e) { }
             const isFav = favoriteBrands.includes(stat.name);
             const safeBrandName = stat.name.replace(/'/g, "\\'");
 
-            const starIcon = isFav 
+            const starIcon = isFav
                 ? `<svg class="w-4 h-4 text-yellow-500 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`
                 : `<svg class="w-4 h-4 text-[#8E8E93]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>`;
 
             const strokeColor = `var(--${stat.dominantRarity}, var(--common))`;
-            
+
             gridHTML += `
                 <div class="bg-[#1C1C1E] rounded-[24px] p-4 border border-white/10 flex flex-col items-center text-center shadow-sm relative">
                     <!-- Name & Star Header -->
@@ -3810,7 +3852,7 @@ function groupAndSortByBrand(items) {
     let favoriteBrands = [];
     try {
         favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]');
-    } catch (e) {}
+    } catch (e) { }
 
     const sortedBrands = Object.keys(groups).sort((a, b) => {
         const aFav = favoriteBrands.includes(a);
@@ -3850,13 +3892,13 @@ function groupAndSortByBrand(items) {
 
 let brandToRemove = null;
 
-window.handleFavoriteClick = function(brandName) {
+window.handleFavoriteClick = function (brandName) {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
     let favoriteBrands = [];
     try {
         favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]');
-    } catch (e) {}
-    
+    } catch (e) { }
+
     if (favoriteBrands.includes(brandName)) {
         showRemoveFavoriteModal(brandName);
     } else {
@@ -3866,13 +3908,13 @@ window.handleFavoriteClick = function(brandName) {
     }
 };
 
-window.handleStatsFavoriteClick = function(brandName) {
+window.handleStatsFavoriteClick = function (brandName) {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
     let favoriteBrands = [];
     try {
         favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]');
-    } catch (e) {}
-    
+    } catch (e) { }
+
     if (favoriteBrands.includes(brandName)) {
         showRemoveFavoriteModal(brandName);
     } else {
@@ -3883,15 +3925,15 @@ window.handleStatsFavoriteClick = function(brandName) {
     }
 };
 
-window.showRemoveFavoriteModal = function(brandName) {
+window.showRemoveFavoriteModal = function (brandName) {
     brandToRemove = brandName;
     const modal = document.getElementById('remove-favorite-modal');
     const backdrop = document.getElementById('remove-favorite-backdrop');
     const card = document.getElementById('remove-favorite-card');
     const nameEl = document.getElementById('remove-favorite-brand-name');
-    
+
     if (nameEl) nameEl.innerText = brandName;
-    
+
     if (modal && backdrop && card) {
         document.body.classList.add('overflow-hidden');
         modal.classList.remove('hidden');
@@ -3904,17 +3946,17 @@ window.showRemoveFavoriteModal = function(brandName) {
     }
 };
 
-window.closeRemoveFavoriteModal = function() {
+window.closeRemoveFavoriteModal = function () {
     const modal = document.getElementById('remove-favorite-modal');
     const backdrop = document.getElementById('remove-favorite-backdrop');
     const card = document.getElementById('remove-favorite-card');
-    
+
     if (modal && backdrop && card) {
         backdrop.classList.remove('opacity-100');
         backdrop.classList.add('opacity-0');
         card.classList.remove('scale-100', 'opacity-100');
         card.classList.add('scale-95', 'opacity-0');
-        
+
         setTimeout(() => {
             modal.classList.add('hidden');
             brandToRemove = null;
@@ -3927,19 +3969,19 @@ window.closeRemoveFavoriteModal = function() {
     }
 };
 
-window.confirmRemoveFavorite = function() {
+window.confirmRemoveFavorite = function () {
     if (brandToRemove) {
         let favoriteBrands = [];
         try {
             favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]');
-        } catch (e) {}
-        
+        } catch (e) { }
+
         favoriteBrands = favoriteBrands.filter(b => b !== brandToRemove);
         localStorage.setItem('dexFavoriteBrands', JSON.stringify(favoriteBrands));
-        
+
         closeRemoveFavoriteModal();
         filterDex();
-        
+
         const subpage = document.getElementById('settings-subpage');
         const titleEl = document.getElementById('subpage-title');
         if (titleEl && titleEl.innerText === 'Stats' && subpage && !subpage.classList.contains('translate-x-full')) {
@@ -3952,11 +3994,11 @@ function createBrandHeaderHTML(brandName, unlockedCount, totalCount) {
     let favoriteBrands = [];
     try {
         favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]');
-    } catch (e) {}
-    
+    } catch (e) { }
+
     const isFav = favoriteBrands.includes(brandName);
-    
-    const starIcon = isFav 
+
+    const starIcon = isFav
         ? `<svg class="w-4 h-4 text-yellow-500 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`
         : `<svg class="w-4 h-4 text-[#8E8E93]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>`;
 
@@ -3985,9 +4027,9 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
     const imgUrl = GITHUB_BASE + snus.image;
     const isCached = dexImageCache.has(imgUrl);
 
-        // Loading-Placeholder: CSS-Shimmer statt Video (kein RAM/CPU-Overhead)
-        const placeholderHTML = isCached ? '' :
-            `<div class="dex-placeholder absolute inset-0 flex items-center justify-center pointer-events-none">
+    // Loading-Placeholder: CSS-Shimmer statt Video (kein RAM/CPU-Overhead)
+    const placeholderHTML = isCached ? '' :
+        `<div class="dex-placeholder absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div class="w-[60%] h-[60%] rounded-xl bg-white/5 animate-pulse"></div>
             </div>`;
     const imgClass = isCached
@@ -4165,7 +4207,7 @@ function getBrandStats() {
         if (globalUserCollection[snus.id]) {
             stats[brand].unlocked++;
         }
-        
+
         if (!stats[brand].rarities[rarity]) {
             stats[brand].rarities[rarity] = 0;
         }
@@ -4174,7 +4216,7 @@ function getBrandStats() {
 
     // In Array umwandeln und alphabetisch sortieren (Favoriten zuerst)
     let favoriteBrands = [];
-    try { favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]'); } catch (e) {}
+    try { favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]'); } catch (e) { }
 
     return Object.keys(stats).map(brand => {
         // Find dominant rarity
