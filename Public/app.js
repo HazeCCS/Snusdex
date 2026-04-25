@@ -145,6 +145,9 @@ async function checkUser() {
             overlay.classList.add('opacity-0');
             setTimeout(() => overlay.classList.add('hidden'), 500);
 
+            // Scroll home to top after login
+            window.scrollTo(0, 0);
+
             setupProfile(session.user);
 
             loadDex();
@@ -3917,32 +3920,33 @@ function initDexScrollAnimation() {
     lastHapticScrollY = window.scrollY;
 
     window.addEventListener('scroll', () => {
-        const activeTab = document.getElementById('tab-dex');
-        if (activeTab && !activeTab.classList.contains('hidden')) {
+        const dexTab = document.getElementById('tab-dex');
+        // Dex is active when it does NOT have the tab-dex-hidden class
+        const dexIsActive = dexTab && !dexTab.classList.contains('tab-dex-hidden');
 
-            // 1. Visuelle Animation (60fps)
+        if (dexIsActive) {
+            // 1. Visual scale animation (60fps)
             if (dexScrollRafId) cancelAnimationFrame(dexScrollRafId);
             dexScrollRafId = requestAnimationFrame(updateDexScale);
 
-            // 2. Distanzbasierte Haptik (Pixelgenau) - NUR IM ID MODUS
+            // 2. Row-based haptics – ONLY in ID sort mode
             if (dexSortMode === 'id') {
                 const currentScrollY = window.scrollY;
                 const scrollDelta = Math.abs(currentScrollY - lastHapticScrollY);
 
-                // Sobald wir eine neue Zeile erreichen...
                 if (scrollDelta >= HAPTIC_PIXEL_THRESHOLD) {
-                    const timesToTrigger = Math.floor(scrollDelta / HAPTIC_PIXEL_THRESHOLD);
-                    const cappedTimes = Math.min(timesToTrigger, 10); // Begrenze auf 10 bei extremen Scroll-Sprüngen
+                    const timesToTrigger = Math.min(
+                        Math.floor(scrollDelta / HAPTIC_PIXEL_THRESHOLD),
+                        10 // safety cap for extreme flick-scrolls
+                    );
 
-                    for (let i = 0; i < cappedTimes; i++) {
-                        setTimeout(() => {
-                            if (typeof triggerLightHapticFeedback === 'function') {
-                                triggerLightHapticFeedback();
-                            }
-                        }, i * 20); // 20ms Delay für den Apple Watch Crown Effekt
+                    // Fire all haptics immediately – no setTimeout delay
+                    // so rapid flick scrolling fires bam-bam-bam without lag
+                    for (let i = 0; i < timesToTrigger; i++) {
+                        triggerLightHapticFeedback();
                     }
 
-                    // Den Ankerpunkt neu setzen, aber überschüssige Pixel (Modulo) mitnehmen!
+                    // Carry over the remainder so no pixel is "lost" between events
                     const sign = currentScrollY > lastHapticScrollY ? 1 : -1;
                     lastHapticScrollY = currentScrollY - (scrollDelta % HAPTIC_PIXEL_THRESHOLD) * sign;
                 }
