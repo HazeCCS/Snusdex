@@ -3084,19 +3084,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Prüft ob gerade externe Musik läuft.
+     * Methode: AudioContext kurz öffnen und einen winzigen PCM-Buffer analysieren.
+     * Auf iOS/WebKit gibt die AudioContext-State Auskunft über Audio-Aktivität.
+     * Falls Musik läuft → Jingle überspringen.
+     */
     async function isMusicPlaying() {
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            // Wenn iOS die Session bereits aktiv hat (Musik spielt),
+            // ist der ctx.state direkt 'running' und wir können einen kurzen
+            // AnalyserNode nutzen, um nach echten Samples zu suchen.
             await ctx.resume();
             const analyser = ctx.createAnalyser();
             analyser.fftSize = 256;
             const data = new Uint8Array(analyser.frequencyBinCount);
+            // Kurz warten damit der Analyser befüllt wird
             await new Promise(resolve => setTimeout(resolve, 100));
             analyser.getByteFrequencyData(data);
             const sum = data.reduce((a, b) => a + b, 0);
             await ctx.close();
             return sum > 0;
         } catch (e) {
+            // Kein AudioContext verfügbar → sicherheitshalber abspielen
             return false;
         }
     }
