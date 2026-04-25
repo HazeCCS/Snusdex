@@ -2719,32 +2719,34 @@ function openSettingsSubpage(type) {
 
         // Use cached username as placeholder, cached email as value – both instant
         const cachedRemaining = cache?.remaining ?? window._cachedUsernameChangesRemaining ?? null;
-        const cachedUsername = cache?.username || '';
         const cachedEmail   = cache?.email   || '';
+        // Always read the username directly from the profile card in the DOM – it's always correct
+        const liveUsername = document.getElementById('profile-email')?.innerText?.trim() || '';
+        const cachedUsername = liveUsername || cache?.username || '';
 
-        // Default avatar: properly centred grey person silhouette
+        // Default avatar: Merz photo
         const defaultAvatarSvg = `<svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
             <rect width="96" height="96" fill="#3A3A3C"/>
             <circle cx="48" cy="38" r="16" fill="#636366"/>
             <path d="M16 80c0-17.673 14.327-32 32-32s32 14.327 32 32" fill="#636366"/>
         </svg>`;
 
-        // Changes badge: 3/3 = grey (neutral), 1 = orange, 0 = red; just the number
+        // Changes badge: shows "X/3" format – grey=3, orange=1, red=0
         const changesLabel = cachedRemaining === null
             ? ''
             : cachedRemaining === 0
-                ? `<span class="text-[11px] text-[#FF3B30] font-semibold">0</span>`
+                ? `<span class="text-[11px] text-[#FF3B30] font-semibold">0/3</span>`
                 : cachedRemaining === 1
-                    ? `<span class="text-[11px] text-[#FF9500] font-medium">1</span>`
-                    : `<span class="text-[11px] text-[#8E8E93] font-medium">${cachedRemaining}</span>`;
+                    ? `<span class="text-[11px] text-[#FF9500] font-medium">1/3</span>`
+                    : `<span class="text-[11px] text-[#8E8E93] font-medium">${cachedRemaining}/3</span>`;
 
         html = `
             <div class="flex flex-col items-center mb-6 mt-2">
                 <div class="relative">
                     <input type="file" id="profile-image-upload" accept="image/*" class="hidden" onchange="previewProfileImage(event)">
                     <div class="w-24 h-24 rounded-full flex-shrink-0 shadow-lg border-2 border-white/5 overflow-hidden bg-[#3A3A3C]">
-                        <img id="edit-profile-image-preview" src="" alt="Profile photo" class="w-full h-full object-cover hidden">
-                        <div id="edit-profile-avatar-placeholder" class="w-full h-full">${defaultAvatarSvg}</div>
+                        <img id="edit-profile-image-preview" src="merz.jpg" alt="Profile photo" class="w-full h-full object-cover">
+                        <div id="edit-profile-avatar-placeholder" class="w-full h-full hidden">${defaultAvatarSvg}</div>
                     </div>
                     <button onclick="triggerHapticFeedback(); document.getElementById('profile-image-upload').click()" class="absolute bottom-0 right-0 w-8 h-8 bg-[#1C1C1E] border border-white/20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform z-10">
                         <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -2782,44 +2784,45 @@ function openSettingsSubpage(type) {
             </div>
         `;
 
-        // If no cache yet, fetch in background and update fields
-        if (!cache) {
-            setTimeout(async () => {
-                try {
-                    const { data: { user } } = await supabaseClient.auth.getUser();
-                    if (!user) return;
+        // Always fetch fresh from server to ensure username + changes badge are up-to-date
+        setTimeout(async () => {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) return;
 
-                    const emailInput = document.getElementById('edit-email');
-                    if (emailInput) emailInput.value = user.email;
+                const emailInput = document.getElementById('edit-email');
+                if (emailInput) emailInput.value = user.email;
 
-                    const { data: profile } = await supabaseClient
-                        .from('profiles')
-                        .select('username, username_changes, username_last_reset')
-                        .eq('id', user.id).single();
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('username, username_changes, username_last_reset')
+                    .eq('id', user.id).single();
 
-                    const usernameInput = document.getElementById('edit-username');
-                    if (usernameInput && profile?.username) usernameInput.placeholder = profile.username;
+                // Use user_metadata.username – same source as setupProfile – always correct
+                const correctUsername = user.user_metadata?.username || profile?.username || '';
 
-                    const now = new Date();
-                    const lastReset = profile?.username_last_reset ? new Date(profile.username_last_reset) : null;
-                    const sameMonth = lastReset && lastReset.getMonth() === now.getMonth() && lastReset.getFullYear() === now.getFullYear();
-                    const changesThisMonth = sameMonth ? (profile?.username_changes || 0) : 0;
-                    const remaining = Math.max(0, 3 - changesThisMonth);
+                const usernameInput = document.getElementById('edit-username');
+                if (usernameInput && correctUsername) usernameInput.placeholder = correctUsername;
 
-                    window._cachedUsernameChangesRemaining = remaining;
-                    window._profileCache = { email: user.email, username: profile?.username || '', remaining };
+                const now = new Date();
+                const lastReset = profile?.username_last_reset ? new Date(profile.username_last_reset) : null;
+                const sameMonth = lastReset && lastReset.getMonth() === now.getMonth() && lastReset.getFullYear() === now.getFullYear();
+                const changesThisMonth = sameMonth ? (profile?.username_changes || 0) : 0;
+                const remaining = Math.max(0, 3 - changesThisMonth);
 
-                    const changesLeftEl = document.getElementById('username-changes-left');
-                    if (changesLeftEl) {
-                        changesLeftEl.innerHTML = remaining === 0
-                            ? `<span class="text-[11px] text-[#FF3B30] font-semibold">0</span>`
-                            : remaining === 1
-                                ? `<span class="text-[11px] text-[#FF9500] font-medium">1</span>`
-                                : `<span class="text-[11px] text-[#8E8E93] font-medium">${remaining}</span>`;
-                    }
-                } catch (e) { /* ignore */ }
-            }, 100);
-        }
+                window._cachedUsernameChangesRemaining = remaining;
+                window._profileCache = { email: user.email, username: correctUsername, remaining };
+
+                const changesLeftEl = document.getElementById('username-changes-left');
+                if (changesLeftEl) {
+                    changesLeftEl.innerHTML = remaining === 0
+                        ? `<span class="text-[11px] text-[#FF3B30] font-semibold">0/3</span>`
+                        : remaining === 1
+                            ? `<span class="text-[11px] text-[#FF9500] font-medium">1/3</span>`
+                            : `<span class="text-[11px] text-[#8E8E93] font-medium">${remaining}/3</span>`;
+                }
+            } catch (e) { /* ignore */ }
+        }, 100);
     } else if (type === 'Stats') {
         const brandStats = getBrandStats();
 
@@ -3409,13 +3412,15 @@ async function handleProfileSave(btn) {
         // Update the remaining-changes badge and cache
         const newRemaining = Math.max(0, 3 - (changesThisMonth + 1));
         window._cachedUsernameChangesRemaining = newRemaining;
+        // Also update profileCache so next open of Edit Profile shows correct values
+        window._profileCache = { ...( window._profileCache || {}), username: newUsername, remaining: newRemaining };
         const changesLeftEl = document.getElementById('username-changes-left');
         if (changesLeftEl) {
             changesLeftEl.innerHTML = newRemaining === 0
-                ? `<span class="text-[11px] text-[#FF3B30] font-semibold">0</span>`
+                ? `<span class="text-[11px] text-[#FF3B30] font-semibold">0/3</span>`
                 : newRemaining === 1
-                    ? `<span class="text-[11px] text-[#FF9500] font-medium">1</span>`
-                    : `<span class="text-[11px] text-[#8E8E93] font-medium">${newRemaining}</span>`;
+                    ? `<span class="text-[11px] text-[#FF9500] font-medium">1/3</span>`
+                    : `<span class="text-[11px] text-[#8E8E93] font-medium">${newRemaining}/3</span>`;
         }
 
         btn.classList.remove('bg-white', 'text-black');
