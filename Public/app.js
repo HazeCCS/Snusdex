@@ -148,6 +148,22 @@ async function checkUser() {
             // Scroll home to top after login
             window.scrollTo(0, 0);
 
+            // Seed profile cache immediately on login
+            (async () => {
+                try {
+                    const { data: profile } = await supabaseClient
+                        .from('profiles')
+                        .select('username, username_changes, username_last_reset')
+                        .eq('id', session.user.id).single();
+                    const now = new Date();
+                    const lastReset = profile?.username_last_reset ? new Date(profile.username_last_reset) : null;
+                    const sameMonth = lastReset && lastReset.getMonth() === now.getMonth() && lastReset.getFullYear() === now.getFullYear();
+                    const remaining = Math.max(0, 3 - (sameMonth ? (profile?.username_changes || 0) : 0));
+                    window._profileCache = { email: session.user.email, username: profile?.username || session.user.user_metadata?.username || '', remaining };
+                    window._cachedUsernameChangesRemaining = remaining;
+                } catch (e) { /* ignore */ }
+            })();
+
             setupProfile(session.user);
 
             loadDex();
@@ -416,8 +432,37 @@ function switchTab(tabId) {
     }
 
     if (tabId === 'dex') {
-        // Kein Reflow nötig (Layout immer da) → direkt in nächstem Frame updaten
         requestAnimationFrame(updateDexScale);
+    }
+
+    if (tabId === 'profile') {
+        // Pre-fetch profile data so Edit Profile opens instantly with real values
+        (async () => {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) return;
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('username, username_changes, username_last_reset')
+                    .eq('id', user.id).single();
+
+                const now = new Date();
+                const lastReset = profile?.username_last_reset ? new Date(profile.username_last_reset) : null;
+                const sameMonth = lastReset && lastReset.getMonth() === now.getMonth() && lastReset.getFullYear() === now.getFullYear();
+                const changesThisMonth = sameMonth ? (profile?.username_changes || 0) : 0;
+                const remaining = Math.max(0, 3 - changesThisMonth);
+
+                window._profileCache = {
+                    email: user.email,
+                    username: profile?.username || user.user_metadata?.username || '',
+                    remaining
+                };
+                window._cachedUsernameChangesRemaining = remaining;
+            } catch (e) { /* ignore */ }
+        })();
+    } else {
+        // Clear cache when leaving profile tab
+        window._profileCache = null;
     }
 }
 
@@ -659,10 +704,9 @@ function loadMoreDexItems(chunkOverride) {
     // Layout-Reads + Observer-Setup nach dem Paint (kein erzwungener Reflow)
     if (!imageLazyObserver) initImageLazyLoadObserver();
     requestAnimationFrame(() => {
-        // Haptic-Schwellwert einmalig bestimmen
-        if (grid.children.length > 0 && currentDexRenderCount <= chunkSize + DEX_CHUNK_SIZE) {
-            const newThreshold = grid.children[0].offsetHeight + 16;
-            if (newThreshold > 50) HAPTIC_PIXEL_THRESHOLD = newThreshold;
+        // Recalc haptic threshold from real rendered row height after first chunk
+        if (currentDexRenderCount <= chunkSize + DEX_CHUNK_SIZE) {
+            recalcHapticThreshold();
         }
 
         // Lazy-Observer für neue Bilder registrieren
@@ -2671,13 +2715,36 @@ function openSettingsSubpage(type) {
     let html = '';
 
     if (type === 'Edit Profile') {
-        // Sofort Grundstruktur rendern, dann Daten nachladen
+        const cache = window._profileCache;
+
+        // Use cached username as placeholder, cached email as value – both instant
+        const cachedRemaining = cache?.remaining ?? window._cachedUsernameChangesRemaining ?? null;
+        const cachedUsername = cache?.username || '';
+        const cachedEmail   = cache?.email   || '';
+
+        // Default avatar: properly centred grey person silhouette
+        const defaultAvatarSvg = `<svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+            <rect width="96" height="96" fill="#3A3A3C"/>
+            <circle cx="48" cy="38" r="16" fill="#636366"/>
+            <path d="M16 80c0-17.673 14.327-32 32-32s32 14.327 32 32" fill="#636366"/>
+        </svg>`;
+
+        // Changes badge: 3/3 = grey (neutral), 1 = orange, 0 = red; just the number
+        const changesLabel = cachedRemaining === null
+            ? ''
+            : cachedRemaining === 0
+                ? `<span class="text-[11px] text-[#FF3B30] font-semibold">0</span>`
+                : cachedRemaining === 1
+                    ? `<span class="text-[11px] text-[#FF9500] font-medium">1</span>`
+                    : `<span class="text-[11px] text-[#8E8E93] font-medium">${cachedRemaining}</span>`;
+
         html = `
-            <div class="flex flex-col items-center mb-8 mt-2">
+            <div class="flex flex-col items-center mb-6 mt-2">
                 <div class="relative">
                     <input type="file" id="profile-image-upload" accept="image/*" class="hidden" onchange="previewProfileImage(event)">
-                    <div class="w-24 h-24 rounded-full flex-shrink-0 shadow-lg border-2 border-white/5 overflow-hidden bg-zinc-800">
-                        <img id="edit-profile-image-preview" src="https://i.pravatar.cc/150?img=11" alt="Profilbild" class="w-full h-full object-cover">
+                    <div class="w-24 h-24 rounded-full flex-shrink-0 shadow-lg border-2 border-white/5 overflow-hidden bg-[#3A3A3C]">
+                        <img id="edit-profile-image-preview" src="" alt="Profile photo" class="w-full h-full object-cover hidden">
+                        <div id="edit-profile-avatar-placeholder" class="w-full h-full">${defaultAvatarSvg}</div>
                     </div>
                     <button onclick="triggerHapticFeedback(); document.getElementById('profile-image-upload').click()" class="absolute bottom-0 right-0 w-8 h-8 bg-[#1C1C1E] border border-white/20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform z-10">
                         <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -2685,68 +2752,74 @@ function openSettingsSubpage(type) {
                 </div>
             </div>
 
-            <div class="bg-[#1C1C1E] rounded-[24px] p-5 space-y-4 border border-white/10 mb-4 shadow-sm w-full">
-                <div class="flex flex-col gap-1.5 w-full">
-                    <div class="flex items-center justify-between ml-1 mb-0.5">
+            <div class="bg-[#1C1C1E] rounded-[24px] border border-white/10 shadow-sm w-full overflow-hidden mb-4">
+                <!-- Username -->
+                <div class="px-5 pt-4 pb-3">
+                    <div class="flex items-center justify-between mb-2">
                         <label class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium">Username</label>
-                        <span id="username-changes-left" class="text-[11px] text-[#8E8E93] font-medium">Lädt...</span>
+                        <span id="username-changes-left">${changesLabel}</span>
                     </div>
-                    <input type="text" id="edit-username" value="${currentUsername}"
-                        class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all"
-                        placeholder="z.B. snuser_42"
+                    <input type="text" id="edit-username" value=""
+                        class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all placeholder:text-[#8E8E93]/60"
+                        placeholder="${cachedUsername || 'Username'}"
                         oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'')">
-                    <p id="edit-username-error" class="hidden text-[#FF3B30] text-[13px] ml-1 mt-1"></p>
-                    <p class="text-[11px] text-[#8E8E93] ml-1">Erlaubt: Buchstaben, Zahlen, _ (2–30 Zeichen) · 3 Änderungen pro Monat</p>
+                    <p id="edit-username-error" class="hidden text-[#FF3B30] text-[13px] mt-2"></p>
+                    <p class="text-[11px] text-[#8E8E93] mt-2">3 changes per month</p>
                 </div>
 
-                <div class="flex flex-col gap-1.5 w-full">
-                    <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Email</label>
-                    <input type="email" id="edit-email" value="" disabled class="w-full bg-black/50 text-[#8E8E93] border border-white/5 rounded-[14px] px-4 py-3.5 text-[17px] outline-none cursor-not-allowed">
+                <!-- Email -->
+                <div class="px-5 py-4">
+                    <label class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium block mb-2">Email</label>
+                    <input type="email" id="edit-email" value="${cachedEmail}" disabled class="w-full bg-black/50 text-[#8E8E93] border border-white/5 rounded-[14px] px-4 py-3.5 text-[17px] outline-none cursor-not-allowed">
                 </div>
 
-                <input type="date" id="edit-dob" value="2000-01-01" min="1900-01-01" max="2099-12-31" oninput="limitDateInput(this)" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all appearance-none" />
-
-                <div class="flex flex-col gap-1.5 w-full">
-                    <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Location</label>
-                    <input type="text" id="edit-location" placeholder="City, Country" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all placeholder:text-[#8E8E93]">
+                <!-- Save Changes inside the card -->
+                <div class="px-5 pb-4">
+                    <button id="save-profile-btn" onclick="triggerHapticFeedback(); handleProfileSave(this)" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-all duration-300 shadow-[0_4px_14px_rgba(255,255,255,0.1)] flex justify-center items-center gap-2">
+                        <span>Save Changes</span>
+                    </button>
                 </div>
             </div>
-
-            <button id="save-profile-btn" onclick="triggerHapticFeedback(); handleProfileSave(this)" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-all duration-300 shadow-[0_4px_14px_rgba(255,255,255,0.1)] flex justify-center items-center gap-2">
-                <span>Save Changes</span>
-            </button>
         `;
-        // Nach dem Rendern: Rate-Limit und Email asynchron nachladen
-        setTimeout(async () => {
-            try {
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                if (!user) return;
 
-                const emailInput = document.getElementById('edit-email');
-                if (emailInput) emailInput.value = user.email;
+        // If no cache yet, fetch in background and update fields
+        if (!cache) {
+            setTimeout(async () => {
+                try {
+                    const { data: { user } } = await supabaseClient.auth.getUser();
+                    if (!user) return;
 
-                const { data: profile } = await supabaseClient
-                    .from('profiles')
-                    .select('username_changes, username_last_reset')
-                    .eq('id', user.id).single();
+                    const emailInput = document.getElementById('edit-email');
+                    if (emailInput) emailInput.value = user.email;
 
-                const now = new Date();
-                const lastReset = profile?.username_last_reset ? new Date(profile.username_last_reset) : null;
-                const sameMonth = lastReset && lastReset.getMonth() === now.getMonth() && lastReset.getFullYear() === now.getFullYear();
-                const changesThisMonth = sameMonth ? (profile?.username_changes || 0) : 0;
-                const remaining = Math.max(0, 3 - changesThisMonth);
+                    const { data: profile } = await supabaseClient
+                        .from('profiles')
+                        .select('username, username_changes, username_last_reset')
+                        .eq('id', user.id).single();
 
-                const changesLeftEl = document.getElementById('username-changes-left');
-                if (changesLeftEl) {
-                    changesLeftEl.innerText = `${remaining} von 3 Änderungen verfügbar`;
-                    changesLeftEl.className = remaining === 0
-                        ? 'text-[11px] text-[#FF3B30] font-semibold'
-                        : remaining === 1
-                            ? 'text-[11px] text-[#FF9500] font-medium'
-                            : 'text-[11px] text-[#34C759] font-medium';
-                }
-            } catch (e) { /* ignorieren */ }
-        }, 100);
+                    const usernameInput = document.getElementById('edit-username');
+                    if (usernameInput && profile?.username) usernameInput.placeholder = profile.username;
+
+                    const now = new Date();
+                    const lastReset = profile?.username_last_reset ? new Date(profile.username_last_reset) : null;
+                    const sameMonth = lastReset && lastReset.getMonth() === now.getMonth() && lastReset.getFullYear() === now.getFullYear();
+                    const changesThisMonth = sameMonth ? (profile?.username_changes || 0) : 0;
+                    const remaining = Math.max(0, 3 - changesThisMonth);
+
+                    window._cachedUsernameChangesRemaining = remaining;
+                    window._profileCache = { email: user.email, username: profile?.username || '', remaining };
+
+                    const changesLeftEl = document.getElementById('username-changes-left');
+                    if (changesLeftEl) {
+                        changesLeftEl.innerHTML = remaining === 0
+                            ? `<span class="text-[11px] text-[#FF3B30] font-semibold">0</span>`
+                            : remaining === 1
+                                ? `<span class="text-[11px] text-[#FF9500] font-medium">1</span>`
+                                : `<span class="text-[11px] text-[#8E8E93] font-medium">${remaining}</span>`;
+                    }
+                } catch (e) { /* ignore */ }
+            }, 100);
+        }
     } else if (type === 'Stats') {
         const brandStats = getBrandStats();
 
@@ -3261,8 +3334,11 @@ function previewProfileImage(event) {
     if (file) {
         const reader = new FileReader();
         reader.onload = function (e) {
-            document.getElementById('edit-profile-image-preview').src = e.target.result;
-        }
+            const img = document.getElementById('edit-profile-image-preview');
+            const placeholder = document.getElementById('edit-profile-avatar-placeholder');
+            if (img) { img.src = e.target.result; img.classList.remove('hidden'); }
+            if (placeholder) placeholder.classList.add('hidden');
+        };
         reader.readAsDataURL(file);
     }
 }
@@ -3322,7 +3398,7 @@ async function handleProfileSave(btn) {
         }).eq('id', user.id);
         if (dbError) throw dbError;
 
-        // Globalen Cache + alle UI-Stellen updaten
+        // Update global cache + all UI spots
         currentUsername = newUsername;
         const emailEl = document.getElementById('profile-email');
         const initialsEl = document.getElementById('user-initials');
@@ -3330,9 +3406,17 @@ async function handleProfileSave(btn) {
         if (initialsEl) initialsEl.innerText = currentUsername[0].toUpperCase();
         updateGreeting();
 
-        // Rate-Limit Badge in Settings aktualisieren
+        // Update the remaining-changes badge and cache
+        const newRemaining = Math.max(0, 3 - (changesThisMonth + 1));
+        window._cachedUsernameChangesRemaining = newRemaining;
         const changesLeftEl = document.getElementById('username-changes-left');
-        if (changesLeftEl) changesLeftEl.innerText = `${3 - (changesThisMonth + 1)} von 3 Änderungen verfügbar`;
+        if (changesLeftEl) {
+            changesLeftEl.innerHTML = newRemaining === 0
+                ? `<span class="text-[11px] text-[#FF3B30] font-semibold">0</span>`
+                : newRemaining === 1
+                    ? `<span class="text-[11px] text-[#FF9500] font-medium">1</span>`
+                    : `<span class="text-[11px] text-[#8E8E93] font-medium">${newRemaining}</span>`;
+        }
 
         btn.classList.remove('bg-white', 'text-black');
         btn.classList.add('bg-[#34C759]', 'text-white');
@@ -3867,9 +3951,29 @@ async function loadLatestGitHubCommit() {
 // ==========================================
 let dexScrollRafId = null;
 let lastHapticScrollY = 0;
-// Der "Zahnabstand" deines Rades in Pixeln. 
-// Wird nun dynamisch anhand der Kartenhöhe berechnet!
+// Dynamic threshold – updated after first render to match actual card row height
 let HAPTIC_PIXEL_THRESHOLD = 140;
+
+// Called from loadMoreDexItems after first chunk: compute real row height from DOM
+function recalcHapticThreshold() {
+    const grid = document.getElementById('dex-grid');
+    if (!grid || grid.children.length < 2) return;
+    const first = grid.children[0].getBoundingClientRect();
+    const second = grid.children[1].getBoundingClientRect();
+    // In 3-col layout rows differ by top position; in 2-col too
+    // Walk cards until we find one on the next row (different top)
+    let rowHeight = 0;
+    for (let i = 1; i < Math.min(grid.children.length, 12); i++) {
+        const rect = grid.children[i].getBoundingClientRect();
+        if (rect.top > first.top + 4) {
+            rowHeight = rect.top - first.top;
+            break;
+        }
+    }
+    if (rowHeight > 30) {
+        HAPTIC_PIXEL_THRESHOLD = rowHeight;
+    }
+}
 
 function updateDexScale() {
     if (typeof dexSortMode !== 'undefined' && dexSortMode === 'alpha') return;

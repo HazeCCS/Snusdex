@@ -932,9 +932,9 @@
         </div>
     </main>
 
-    <main id="tab-social" class="tab-content hidden pt-12">
-        <div class="px-5 py-4">
-            <div class="flex justify-between items-center mb-6">
+    <main id="tab-social" class="tab-content hidden pt-12 pb-10">
+        <div class="px-5">
+            <div class="flex justify-between items-center mb-4">
                 <h1 class="text-[34px] font-bold tracking-tight">Social</h1>
                 <button onclick="triggerHapticFeedback(); openConnectionsPage()"
                     class="w-10 h-10 bg-[#1C1C1E] rounded-full flex items-center justify-center active:scale-95 transition-transform border border-white/10 shadow-sm">
@@ -978,10 +978,15 @@
                     class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none">
                 </div>
 
-                <div
-                    class="w-20 h-20 rounded-full flex-shrink-0 shadow-md relative z-10 border-2 border-white/5 overflow-hidden bg-zinc-800">
-                    <img id="profile-image" src="https://i.pravatar.cc/150?img=11" alt="Profilbild"
-                        class="w-full h-full object-cover">
+                <div class="w-20 h-20 rounded-full flex-shrink-0 shadow-md relative z-10 border-2 border-white/5 overflow-hidden bg-[#3A3A3C]">
+                    <img id="profile-image" src="" alt="Profile photo" class="w-full h-full object-cover hidden">
+                    <div id="profile-avatar-placeholder" class="w-full h-full">
+                        <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+                            <rect width="96" height="96" fill="#3A3A3C"/>
+                            <circle cx="48" cy="38" r="16" fill="#636366"/>
+                            <path d="M16 80c0-17.673 14.327-32 32-32s32 14.327 32 32" fill="#636366"/>
+                        </svg>
+                    </div>
                 </div>
 
                 <div class="relative z-10 flex-1">
