@@ -93,3 +93,10 @@ BEGIN
 END;
 $$;
 
+-- ==========================================
+-- USERNAME ÄNDERUNGS-LIMIT SYSTEM
+-- ==========================================
+-- Max. 3 Username-Änderungen pro Monat.
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS username_changes INT NOT NULL DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS username_last_reset TIMESTAMPTZ;
+

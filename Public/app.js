@@ -48,34 +48,20 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 
 let isLoginMode = true;
+let currentUsername = ''; // Globaler Cache für den aktuellen Usernamen
 
-async function updateGreeting() {
+function updateGreeting() {
     const greetingElement = document.getElementById('greeting');
     if (!greetingElement) return;
 
-    const {
-        data: {
-            session
-        }
-    } = await supabaseClient.auth.getSession();
-    let displayIdent = "Collector";
-
-    if (session && session.user) {
-        if (session.user.user_metadata?.username) {
-            displayIdent = session.user.user_metadata.username;
-        } else if (session.user.email) {
-            let rawName = session.user.email.split('@')[0];
-            displayIdent = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-        }
-    }
-
+    const displayIdent = currentUsername || 'Collector';
     const hour = new Date().getHours();
-    let message = "";
+    let message = '';
 
-    if (hour >= 5 && hour < 12) message = "Guten Morgen";
-    else if (hour >= 12 && hour < 18) message = "Guten Tag";
-    else if (hour >= 18 && hour < 22) message = "Guten Abend";
-    else message = "Gute Nacht";
+    if (hour >= 5 && hour < 12) message = 'Guten Morgen';
+    else if (hour >= 12 && hour < 18) message = 'Guten Tag';
+    else if (hour >= 18 && hour < 22) message = 'Guten Abend';
+    else message = 'Gute Nacht';
 
     greetingElement.innerHTML = `${message}, <span class="text-white font-semibold">${displayIdent}</span>`;
 }
@@ -194,6 +180,14 @@ async function saveSetupUsername() {
 
     if (!usernameInput) {
         errorEl.innerText = "Bitte gib einen Benutzernamen ein.";
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    // Validierung: nur Buchstaben, Zahlen, Unterstriche (2-30 Zeichen)
+    const usernameRegex = /^[a-zA-Z0-9_]{2,30}$/;
+    if (!usernameRegex.test(usernameInput)) {
+        errorEl.innerText = "Nur Buchstaben, Zahlen und _ erlaubt (2–30 Zeichen).";
         errorEl.classList.remove('hidden');
         return;
     }
@@ -1031,47 +1025,31 @@ function openSnusDetail(id, isFromScan = false) {
             dateEl.innerText = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
         }
 
-        // Live-Daten aus usage_logs laden (parallel für Performance)
+        // Live-Daten lokal aus dem Cache lesen (instant)
         const openedCountEl = document.getElementById('modal-opened-count');
-        if (openedCountEl) openedCountEl.innerText = '…';
+        
+        // Alle Logs für diese Snus aus dem Cache filtern
+        const snusLogs = globalAllLogs.filter(l => l.snus_id === snusId);
+        
+        // Öffnungsanzahl updaten
+        if (openedCountEl) {
+            const count = snusLogs.length;
+            openedCountEl.innerText = count > 0 ? `${count}x` : '0x';
+        }
 
-        supabaseClient.auth.getUser().then(({ data: { user } }) => {
-            if (!user) return;
-
-            Promise.all([
-                // 1. Anzahl Öffnungen (alle Einträge für diese Snus, egal ob aktiv oder fertig)
-                supabaseClient
-                    .from('usage_logs')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('user_id', user.id)
-                    .eq('snus_id', snusId),
-
-                // 2. Frühester opened_at = wann zum ersten Mal geöffnet
-                supabaseClient
-                    .from('usage_logs')
-                    .select('opened_at')
-                    .eq('user_id', user.id)
-                    .eq('snus_id', snusId)
-                    .order('opened_at', { ascending: true })
-                    .limit(1)
-            ]).then(([countResult, firstResult]) => {
-                // Öffnungsanzahl updaten
-                if (openedCountEl) {
-                    const count = countResult.count ?? 0;
-                    openedCountEl.innerText = count > 0 ? `${count}x` : '0x';
-                }
-
-                // "Unlocked at" mit dem echten ersten opened_at überschreiben
-                if (dateEl && firstResult.data && firstResult.data.length > 0) {
-                    const firstOpen = new Date(firstResult.data[0].opened_at);
-                    dateEl.innerText = firstOpen.toLocaleDateString('de-DE', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: '2-digit'
-                    });
-                }
+        // "Unlocked at" mit dem ältesten (letzten im Array, da descending sortiert) opened_at überschreiben
+        // falls Logs existieren. (Wir gehen auf Nummer sicher und suchen das kleinste Datum)
+        if (dateEl && snusLogs.length > 0) {
+            const earliestLog = snusLogs.reduce((prev, curr) => {
+                return (new Date(prev.opened_at) < new Date(curr.opened_at)) ? prev : curr;
             });
-        });
+            const firstOpen = new Date(earliestLog.opened_at);
+            dateEl.innerText = firstOpen.toLocaleDateString('de-DE', {
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit'
+            });
+        }
     } else {
         // Fall: Noch nicht gesammelt
         if (isFromScan) {
@@ -1343,13 +1321,26 @@ function toggleDexFilterUnlocked() {
 }
 
 
-function setupProfile(user) {
+async function setupProfile(user) {
+    // Username aus profiles Tabelle laden (Single Source of Truth)
+    const { data: profileData } = await supabaseClient
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .single();
+
+    // Fallback-Kette: profiles.username → user_metadata.username → email-prefix
+    currentUsername = profileData?.username
+        || user.user_metadata?.username
+        || user.email.split('@')[0];
+
+    // Alle UI-Stellen synchron aktualisieren
     const emailEl = document.getElementById('profile-email');
     const initialsEl = document.getElementById('user-initials');
-    const adminEl = document.getElementById('admin-panel');
+    if (emailEl) emailEl.innerText = currentUsername;
+    if (initialsEl) initialsEl.innerText = currentUsername[0].toUpperCase();
 
-    if (emailEl) emailEl.innerText = user.user_metadata?.username || user.email;
-    if (initialsEl) initialsEl.innerText = user.email[0].toUpperCase();
+    updateGreeting();
     loadUserStats(user.id);
 }
 
@@ -1969,6 +1960,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // 10. USAGE LOGS & CONCURRENT CAN TRACKING
 // ==========================================
 
+let globalAllLogs = []; // Array für alle Logs (Caching für Stats/Modals)
 let globalActiveLogs = []; // Array für alle aktuell offenen Dosen
 let globalInactiveLogs = []; // Array für alle geschlossenen Dosen
 
@@ -2058,6 +2050,7 @@ async function loadUsageData() {
         });
 
     if (!error && logs) {
+        globalAllLogs = logs;
         globalActiveLogs = logs.filter(l => l.is_active === true);
         globalInactiveLogs = logs.filter(l => l.is_active === false);
 
@@ -2663,6 +2656,7 @@ function openSettingsSubpage(type) {
     let html = '';
 
     if (type === 'Edit Profile') {
+        // Sofort Grundstruktur rendern, dann Daten nachladen
         html = `
             <div class="flex flex-col items-center mb-8 mt-2">
                 <div class="relative">
@@ -2671,27 +2665,32 @@ function openSettingsSubpage(type) {
                         <img id="edit-profile-image-preview" src="https://i.pravatar.cc/150?img=11" alt="Profilbild" class="w-full h-full object-cover">
                     </div>
                     <button onclick="triggerHapticFeedback(); document.getElementById('profile-image-upload').click()" class="absolute bottom-0 right-0 w-8 h-8 bg-[#1C1C1E] border border-white/20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform z-10">
-                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
+                        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     </button>
                 </div>
             </div>
 
-            <div class="bg-[#1C1C1E] rounded-[24px] p-5 space-y-4 border border-white/10 mb-8 shadow-sm w-full max-w-full">
+            <div class="bg-[#1C1C1E] rounded-[24px] p-5 space-y-4 border border-white/10 mb-4 shadow-sm w-full">
                 <div class="flex flex-col gap-1.5 w-full">
-                    <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Username</label>
-                    <input type="text" id="edit-username" value="Test User" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all">
+                    <div class="flex items-center justify-between ml-1 mb-0.5">
+                        <label class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium">Username</label>
+                        <span id="username-changes-left" class="text-[11px] text-[#8E8E93] font-medium">Lädt...</span>
+                    </div>
+                    <input type="text" id="edit-username" value="${currentUsername}"
+                        class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all"
+                        placeholder="z.B. snuser_42"
+                        oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'')">
+                    <p id="edit-username-error" class="hidden text-[#FF3B30] text-[13px] ml-1 mt-1"></p>
+                    <p class="text-[11px] text-[#8E8E93] ml-1">Erlaubt: Buchstaben, Zahlen, _ (2–30 Zeichen) · 3 Änderungen pro Monat</p>
                 </div>
-                
+
                 <div class="flex flex-col gap-1.5 w-full">
                     <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Email</label>
-                    <input type="email" id="edit-email" value="user@example.com" disabled class="w-full bg-black/50 text-[#8E8E93] border border-white/5 rounded-[14px] px-4 py-3.5 text-[17px] outline-none cursor-not-allowed">
+                    <input type="email" id="edit-email" value="" disabled class="w-full bg-black/50 text-[#8E8E93] border border-white/5 rounded-[14px] px-4 py-3.5 text-[17px] outline-none cursor-not-allowed">
                 </div>
-                
+
                 <input type="date" id="edit-dob" value="2000-01-01" min="1900-01-01" max="2099-12-31" oninput="limitDateInput(this)" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all appearance-none" />
-                
+
                 <div class="flex flex-col gap-1.5 w-full">
                     <label class="text-[13px] text-[#8E8E93] ml-1 uppercase tracking-wider font-medium">Location</label>
                     <input type="text" id="edit-location" placeholder="City, Country" class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all placeholder:text-[#8E8E93]">
@@ -2702,6 +2701,37 @@ function openSettingsSubpage(type) {
                 <span>Save Changes</span>
             </button>
         `;
+        // Nach dem Rendern: Rate-Limit und Email asynchron nachladen
+        setTimeout(async () => {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) return;
+
+                const emailInput = document.getElementById('edit-email');
+                if (emailInput) emailInput.value = user.email;
+
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('username_changes, username_last_reset')
+                    .eq('id', user.id).single();
+
+                const now = new Date();
+                const lastReset = profile?.username_last_reset ? new Date(profile.username_last_reset) : null;
+                const sameMonth = lastReset && lastReset.getMonth() === now.getMonth() && lastReset.getFullYear() === now.getFullYear();
+                const changesThisMonth = sameMonth ? (profile?.username_changes || 0) : 0;
+                const remaining = Math.max(0, 3 - changesThisMonth);
+
+                const changesLeftEl = document.getElementById('username-changes-left');
+                if (changesLeftEl) {
+                    changesLeftEl.innerText = `${remaining} von 3 Änderungen verfügbar`;
+                    changesLeftEl.className = remaining === 0
+                        ? 'text-[11px] text-[#FF3B30] font-semibold'
+                        : remaining === 1
+                            ? 'text-[11px] text-[#FF9500] font-medium'
+                            : 'text-[11px] text-[#34C759] font-medium';
+                }
+            } catch (e) { /* ignorieren */ }
+        }, 100);
     } else if (type === 'Stats') {
         const brandStats = getBrandStats();
 
@@ -3189,38 +3219,90 @@ function previewProfileImage(event) {
     }
 }
 
-function handleProfileSave(btn) {
+async function handleProfileSave(btn) {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
-    btn.disabled = true;
-    btn.innerHTML = `
-        <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        Saving...
-    `;
+    const newUsername = (document.getElementById('edit-username')?.value || '').trim();
+    const errorEl = document.getElementById('edit-username-error');
 
-    setTimeout(() => {
-        if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
+    // Validierung: nur Buchstaben, Zahlen, Unterstriche
+    const usernameRegex = /^[a-zA-Z0-9_]{2,30}$/;
+    if (!usernameRegex.test(newUsername)) {
+        if (errorEl) { errorEl.innerText = 'Nur Buchstaben, Zahlen und _ erlaubt (2–30 Zeichen).'; errorEl.classList.remove('hidden'); }
+        return;
+    }
+    if (errorEl) errorEl.classList.add('hidden');
+
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Saving...`;
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) throw new Error('Nicht eingeloggt.');
+
+        // Aktuelles Profil laden (Rate-Limit Check)
+        const { data: profile } = await supabaseClient
+            .from('profiles').select('username, username_changes, username_last_reset').eq('id', user.id).single();
+
+        const now = new Date();
+        const lastReset = profile?.username_last_reset ? new Date(profile.username_last_reset) : null;
+        const sameMonth = lastReset && lastReset.getMonth() === now.getMonth() && lastReset.getFullYear() === now.getFullYear();
+        const changesThisMonth = sameMonth ? (profile.username_changes || 0) : 0;
+
+        if (changesThisMonth >= 3) {
+            const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+            const daysLeft = Math.ceil((nextMonth - now) / (1000 * 60 * 60 * 24));
+            if (errorEl) { errorEl.innerText = `Limit erreicht (3/3). Noch ${daysLeft} Tag(e) bis zur Freischaltung.`; errorEl.classList.remove('hidden'); }
+            btn.disabled = false;
+            btn.innerHTML = `<span>Save Changes</span>`;
+            return;
+        }
+
+        if (newUsername === currentUsername) {
+            btn.disabled = false; btn.innerHTML = `<span>Save Changes</span>`; return;
+        }
+
+        // Supabase auth metadata updaten
+        const { error: authError } = await supabaseClient.auth.updateUser({ data: { username: newUsername } });
+        if (authError) throw authError;
+
+        // profiles Tabelle updaten inkl. Rate-Limit Counter
+        const { error: dbError } = await supabaseClient.from('profiles').update({
+            username: newUsername,
+            username_changes: changesThisMonth + 1,
+            username_last_reset: sameMonth ? profile.username_last_reset : now.toISOString()
+        }).eq('id', user.id);
+        if (dbError) throw dbError;
+
+        // Globalen Cache + alle UI-Stellen updaten
+        currentUsername = newUsername;
+        const emailEl = document.getElementById('profile-email');
+        const initialsEl = document.getElementById('user-initials');
+        if (emailEl) emailEl.innerText = currentUsername;
+        if (initialsEl) initialsEl.innerText = currentUsername[0].toUpperCase();
+        updateGreeting();
+
+        // Rate-Limit Badge in Settings aktualisieren
+        const changesLeftEl = document.getElementById('username-changes-left');
+        if (changesLeftEl) changesLeftEl.innerText = `${3 - (changesThisMonth + 1)} von 3 Änderungen verfügbar`;
 
         btn.classList.remove('bg-white', 'text-black');
         btn.classList.add('bg-[#34C759]', 'text-white');
-        btn.innerHTML = `
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            Saved
-        `;
+        btn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg> Gespeichert`;
+        if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
         setTimeout(() => {
             btn.disabled = false;
             btn.classList.remove('bg-[#34C759]', 'text-white');
             btn.classList.add('bg-white', 'text-black');
             btn.innerHTML = `<span>Save Changes</span>`;
-        }, 2000);
+        }, 2500);
 
-    }, 500);
+    } catch (err) {
+        if (errorEl) { errorEl.innerText = err.message; errorEl.classList.remove('hidden'); }
+        btn.disabled = false;
+        btn.innerHTML = `<span>Save Changes</span>`;
+    }
 }
 
 let displayedXp = null;
