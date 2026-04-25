@@ -17,27 +17,20 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 document.addEventListener('DOMContentLoaded', () => {
     const video = document.getElementById('splash-video');
-    const audio = document.getElementById('splash-sound');
     const splash = document.getElementById('splash-screen');
 
-    // Video + Sound gleichzeitig starten
-    Promise.all([
-        video.play(),
-        audio.play()
-    ]).catch(err => {
-        console.log("Autoplay blocked:", err);
-    });
+    // Nur das Video starten – Sound wird vom zweiten Handler mit Musik-Check übernommen
+    if (video) {
+        video.play().catch(err => console.log("Video-Autoplay blocked:", err));
 
-    // Wenn das Video zu Ende ist → Splash ausblenden
-    video.addEventListener('ended', () => {
-        splash.style.opacity = '0';
-
-        setTimeout(() => {
-            splash.style.display = 'none';
-            // Optional: Audio stoppen
-            audio.pause();
-        }, 600);
-    });
+        // Wenn das Video zu Ende ist → Splash ausblenden
+        video.addEventListener('ended', () => {
+            splash.style.opacity = '0';
+            setTimeout(() => {
+                splash.style.display = 'none';
+            }, 600);
+        });
+    }
     loadLatestGitHubCommit();
     checkUser();
     initDexScrollAnimation();
@@ -3079,6 +3072,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         splashSound.volume -= 0.1;
                     } else {
                         splashSound.pause();
+                        splashSound.currentTime = 0;
                         clearInterval(fadeAudio);
                     }
                 }, 50);
@@ -3090,15 +3084,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function isMusicPlaying() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            await ctx.resume();
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 256;
+            const data = new Uint8Array(analyser.frequencyBinCount);
+            await new Promise(resolve => setTimeout(resolve, 100));
+            analyser.getByteFrequencyData(data);
+            const sum = data.reduce((a, b) => a + b, 0);
+            await ctx.close();
+            return sum > 0;
+        } catch (e) {
+            return false;
+        }
+    }
+
     if (splashScreen && splashVideo) {
-        splashVideo.play().then(() => {
+        splashVideo.play().then(async () => {
             if (splashSound) {
-                splashSound.play().catch(e => console.log("Audio-Autoplay blockiert"));
+                const musicActive = await isMusicPlaying();
+                if (!musicActive) {
+                    splashSound.play().catch(e => console.log("Audio-Autoplay blockiert"));
+                } else {
+                    console.log("Musik läuft – Jingle übersprungen.");
+                }
             }
-        });
+        }).catch(e => console.log("Video-Autoplay blockiert:", e));
 
         splashVideo.addEventListener('ended', removeSplashScreen);
-
         setTimeout(removeSplashScreen, 2500);
     }
 });
