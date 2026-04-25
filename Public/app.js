@@ -67,22 +67,18 @@ async function signInWithGoogle() {
     const btnText = document.getElementById('google-btn-text');
     const btn = document.getElementById('google-login-btn');
 
-    // 1. Validierung des Clients
     if (!supabaseClient || !supabaseClient.auth) {
-        console.error("Supabase Client fehlt!");
-        alert("Verbindung zum Server wird aufgebaut... Bitte versuche es in 2 Sekunden erneut.");
+        console.error("Supabase Client missing!");
+        alert("Connecting to server... Please try again in 2 seconds.");
         return;
     }
 
     try {
         // UI Feedback
-        btnText.innerText = "Öffne Google...";
+        btnText.innerText = "Opening Google...";
         btn.disabled = true;
         btn.style.opacity = "0.7";
 
-        // 2. Redirect URL für WebViews optimieren
-        // Auf iOS WebViews ist window.location.origin oft 'file://' oder lokal.
-        // Falls du eine echte Domain hast (ngrok oder live), setze sie hier fest ein.
         const redirectUrl = window.location.origin + window.location.pathname;
 
         const { data, error } = await supabaseClient.auth.signInWithOAuth({
@@ -90,7 +86,7 @@ async function signInWithGoogle() {
             options: {
                 redirectTo: redirectUrl,
                 queryParams: {
-                    prompt: 'select_account', // Zwingt Google zur Kontoauswahl (hilft bei WebView-Hängern)
+                    prompt: 'select_account',
                     access_type: 'offline'
                 }
             }
@@ -98,18 +94,16 @@ async function signInWithGoogle() {
 
         if (error) throw error;
 
-        // data.url enthält den Google-Link. In manchen WebViews muss man 
-        // den Redirect manuell triggern, falls er nicht automatisch passiert:
         if (data?.url) {
             window.location.href = data.url;
         }
 
     } catch (error) {
         console.error("Google Login Error:", error.message);
-        alert("Login-Fehler: " + error.message);
+        alert("Login error: " + error.message);
 
-        // UI Reset
-        btnText.innerText = "Mit Google anmelden";
+        // Reset label depending on current mode
+        btnText.innerText = isLoginMode ? "Sign in with Google" : "Register with Google";
         btn.disabled = false;
         btn.style.opacity = "1";
     }
@@ -127,22 +121,25 @@ async function checkUser() {
         const overlay = document.getElementById('auth-overlay');
 
         if (session) {
-            // NEU: Prüfen ob Username existiert (wichtig für Google Login)
+            // Check if username exists (important for Google Login)
             const hasUsername = session.user.user_metadata?.username;
 
             if (!hasUsername) {
                 const usernameView = document.getElementById('auth-username-view');
                 if (!usernameView) {
-                    console.error("HTML Element 'auth-username-view' fehlt in der index.html!");
-                    return; // Stoppe Ausführung, um Endlosschleife/Absturz zu verhindern
+                    console.error("HTML element 'auth-username-view' missing!");
+                    return;
                 }
+
+                // Show the auth card (in case email-check screen is showing)
+                document.getElementById('auth-card')?.classList.remove('hidden');
+                document.getElementById('email-check-screen')?.classList.add('hidden');
 
                 document.getElementById('auth-main-view')?.classList.add('hidden');
                 document.getElementById('auth-verify-view')?.classList.add('hidden');
                 usernameView.classList.remove('hidden');
-                if (document.getElementById('auth-title')) document.getElementById('auth-title').innerText = "Fast geschafft";
-                if (document.getElementById('auth-subtitle')) document.getElementById('auth-subtitle').innerText = "Wie möchtest du heißen?";
-                return; // Warte auf Usereingabe
+                if (document.getElementById('auth-subtitle')) document.getElementById('auth-subtitle').innerText = "Almost there";
+                return;
             }
 
             overlay.classList.add('opacity-0');
@@ -172,21 +169,21 @@ async function saveSetupUsername() {
     const btn = document.getElementById('setup-username-btn');
 
     if (!usernameInput) {
-        errorEl.innerText = "Bitte gib einen Benutzernamen ein.";
+        errorEl.innerText = "Please enter a username.";
         errorEl.classList.remove('hidden');
         return;
     }
 
-    // Validierung: nur Buchstaben, Zahlen, Unterstriche (2-30 Zeichen)
+    // Only letters, numbers, underscores (2-30 chars)
     const usernameRegex = /^[a-zA-Z0-9_]{2,30}$/;
     if (!usernameRegex.test(usernameInput)) {
-        errorEl.innerText = "Nur Buchstaben, Zahlen und _ erlaubt (2–30 Zeichen).";
+        errorEl.innerText = "Only letters, numbers and _ allowed (2–30 chars).";
         errorEl.classList.remove('hidden');
         return;
     }
 
     btn.disabled = true;
-    btn.innerText = "Speichere...";
+    btn.innerText = "Saving...";
 
     try {
         const { error: updateError } = await supabaseClient.auth.updateUser({
@@ -205,7 +202,7 @@ async function saveSetupUsername() {
         errorEl.innerText = error.message;
         errorEl.classList.remove('hidden');
         btn.disabled = false;
-        btn.innerText = "Weiter";
+        btn.innerText = "Continue";
     }
 }
 
@@ -227,29 +224,35 @@ function toggleAuthMode() {
     isLoginMode = !isLoginMode;
 
     const registerFields = document.getElementById('register-fields');
-    const title = document.getElementById('auth-title');
+    const registerConfirmWrap = document.getElementById('register-confirm-wrap');
     const subtitle = document.getElementById('auth-subtitle');
     const mainBtn = document.getElementById('auth-main-btn');
     const toggleText = document.getElementById('toggle-text');
-    const toggleBtnText = document.querySelector('button[onclick="toggleAuthMode()"] span.font-semibold');
+    const toggleBtnText = document.querySelector('#auth-toggle-btn span.font-semibold');
     const errorEl = document.getElementById('auth-error');
+    const googleBtnText = document.getElementById('google-btn-text');
+    const appleBtnText = document.getElementById('apple-btn-text');
 
-    errorEl.classList.add('hidden'); // Fehler ausblenden beim Wechsel
+    errorEl.classList.add('hidden');
 
     if (isLoginMode) {
-        registerFields.classList.replace('flex', 'hidden');
-        title.innerText = "Snusdex Elite";
-        subtitle.innerText = "Willkommen zurück";
-        mainBtn.innerText = "Anmelden";
-        toggleText.innerText = "Noch kein Account? ";
-        toggleBtnText.innerText = "Registrieren";
+        registerFields.classList.add('hidden');
+        registerConfirmWrap?.classList.add('hidden');
+        subtitle.innerText = "Welcome back";
+        mainBtn.innerText = "Sign In";
+        toggleText.innerText = "Don't have an account? ";
+        if (toggleBtnText) toggleBtnText.innerText = "Register";
+        if (googleBtnText) googleBtnText.innerText = "Sign in with Google";
+        if (appleBtnText) appleBtnText.innerText = "Sign in with Apple";
     } else {
-        registerFields.classList.replace('hidden', 'flex');
-        title.innerText = "Account erstellen";
-        subtitle.innerText = "Werde Teil der Elite";
-        mainBtn.innerText = "Registrieren";
-        toggleText.innerText = "Bereits einen Account? ";
-        toggleBtnText.innerText = "Anmelden";
+        registerFields.classList.remove('hidden');
+        registerConfirmWrap?.classList.remove('hidden');
+        subtitle.innerText = "Create your account";
+        mainBtn.innerText = "Register";
+        toggleText.innerText = "Already have an account? ";
+        if (toggleBtnText) toggleBtnText.innerText = "Sign In";
+        if (googleBtnText) googleBtnText.innerText = "Register with Google";
+        if (appleBtnText) appleBtnText.innerText = "Register with Apple";
     }
 }
 
@@ -264,79 +267,95 @@ async function handleLoginWrapper() {
     const mainBtn = document.getElementById('auth-main-btn');
 
     if (!email || !password) {
-        errorEl.innerText = "Bitte fülle alle Felder aus.";
+        errorEl.innerText = "Please fill in all fields.";
         errorEl.classList.remove('hidden');
         triggerHapticFeedback();
         return;
     }
 
-    // Button deaktivieren während er lädt
+    // Disable button while loading
     mainBtn.disabled = true;
     mainBtn.innerHTML = `<div class="flex items-center justify-center h-[26px]"><svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`;
 
     if (isLoginMode) {
-        // --- DEIN ORIGINALER LOGIN CODE ---
-        const {
-            error
-        } = await supabaseClient.auth.signInWithPassword({
-            email,
-            password
-        });
+        // --- LOGIN ---
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
         if (error) {
-            errorEl.innerText = "Falsches Passwort oder E-Mail";
+            errorEl.innerText = "Incorrect email or password.";
             errorEl.classList.remove('hidden');
             triggerHapticFeedback();
-
             mainBtn.disabled = false;
-            mainBtn.innerText = "Anmelden";
+            mainBtn.innerText = "Sign In";
         } else {
             errorEl.classList.add('hidden');
             checkUser();
         }
     } else {
-        // --- REGISTRIERUNGS CODE ---
+        // --- REGISTER ---
         const username = document.getElementById('auth-username').value.trim();
         const passwordConfirm = document.getElementById('auth-password-confirm').value;
 
         if (password !== passwordConfirm) {
-            errorEl.innerText = "Die Passwörter stimmen nicht überein.";
+            errorEl.innerText = "Passwords do not match.";
             errorEl.classList.remove('hidden');
             triggerHapticFeedback();
             mainBtn.disabled = false;
-            mainBtn.innerText = "Registrieren";
+            mainBtn.innerText = "Register";
             return;
         }
 
-        const {
-            data,
-            error
-        } = await supabaseClient.auth.signUp({
+        const { data, error } = await supabaseClient.auth.signUp({
             email: email,
             password: password,
-            options: {
-                data: {
-                    username: username
-                }
-            }
+            options: { data: { username: username } }
         });
 
         if (error) {
-            // Falls E-Mail schon existiert etc.
-            errorEl.innerText = error.message.includes('already registered') ? "E-Mail wird bereits verwendet." : error.message;
+            errorEl.innerText = error.message.includes('already registered')
+                ? "This email is already in use."
+                : error.message;
             errorEl.classList.remove('hidden');
             triggerHapticFeedback();
-
             mainBtn.disabled = false;
-            mainBtn.innerText = "Registrieren";
+            mainBtn.innerText = "Register";
         } else {
-            alert("Account erfolgreich erstellt! Bitte melde dich jetzt an.");
-            toggleAuthMode(); // Zurück zur Anmeldung wischen
-
+            // Show email-check screen
+            showEmailCheckScreen(email);
             mainBtn.disabled = false;
-            mainBtn.innerText = "Anmelden";
+            mainBtn.innerText = "Register";
         }
     }
+}
+
+// Show the email confirmation screen after successful sign-up
+function showEmailCheckScreen(email) {
+    const authCard = document.getElementById('auth-card');
+    const emailCheckScreen = document.getElementById('email-check-screen');
+    const emailAddressEl = document.getElementById('email-check-address');
+
+    if (emailAddressEl) emailAddressEl.innerText = email;
+    if (authCard) authCard.classList.add('hidden');
+    if (emailCheckScreen) emailCheckScreen.classList.remove('hidden');
+}
+
+// Return to sign-in form from the email-check screen with email pre-filled
+function goToSignInFromEmailCheck() {
+    const authCard = document.getElementById('auth-card');
+    const emailCheckScreen = document.getElementById('email-check-screen');
+    const emailInput = document.getElementById('auth-email');
+    const emailAddressEl = document.getElementById('email-check-address');
+
+    // Pre-fill email
+    if (emailInput && emailAddressEl) {
+        emailInput.value = emailAddressEl.innerText;
+    }
+
+    // Switch back to login mode if currently in register mode
+    if (!isLoginMode) toggleAuthMode();
+
+    if (emailCheckScreen) emailCheckScreen.classList.add('hidden');
+    if (authCard) authCard.classList.remove('hidden');
 }
 // ==========================================
 // 3. NAVIGATION (TABS)
