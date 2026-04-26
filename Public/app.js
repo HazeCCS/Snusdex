@@ -1612,33 +1612,45 @@ function renderSocialCard(title, snus, ratings, overall, count, countLabel = 'Sc
 // ==========================================
 
 let userSearchTimeout;
+
+function clearConnectionSearch() {
+    const input = document.getElementById('connections-search-input');
+    const clearBtn = document.getElementById('conn-search-clear');
+    const searchPanel = document.getElementById('connections-search-panel');
+    const mainPanel = document.getElementById('connections-main-panel');
+    const resultsContainer = document.getElementById('connections-search-results');
+    
+    input.value = '';
+    clearBtn.classList.add('hidden');
+    searchPanel.classList.add('hidden');
+    mainPanel.classList.remove('hidden');
+    resultsContainer.innerHTML = '';
+}
+
 async function searchUsersConnections() {
     clearTimeout(userSearchTimeout);
     const query = document.getElementById('connections-search-input').value.trim();
     const resultsContainer = document.getElementById('connections-search-results');
-    const listsContainer = document.getElementById('connections-lists');
+    const searchPanel = document.getElementById('connections-search-panel');
+    const mainPanel = document.getElementById('connections-main-panel');
+    const clearBtn = document.getElementById('conn-search-clear');
 
     if (query.length < 2) {
-        resultsContainer.innerHTML = '';
-        listsContainer.style.display = 'block';
+        clearConnectionSearch();
         return;
     }
 
-    listsContainer.style.display = 'none';
-    resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">Searching...</div>';
+    clearBtn.classList.remove('hidden');
+    mainPanel.classList.add('hidden');
+    searchPanel.classList.remove('hidden');
+    resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] mt-8">Suche...</div>';
 
     userSearchTimeout = setTimeout(async () => {
-        const {
-            data: {
-                user
-            }
-        } = await supabaseClient.auth.getUser();
+        const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
 
-        const {
-            data: profiles,
-            error: pError
-        } = await supabaseClient
+        // Suche Profile
+        const { data: profiles, error: pError } = await supabaseClient
             .from('profiles')
             .select('id, username, avatar_url, xp')
             .ilike('username', `%${query}%`)
@@ -1646,107 +1658,334 @@ async function searchUsersConnections() {
             .limit(20);
 
         if (pError || !profiles || profiles.length === 0) {
-            resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[15px] mt-4">No Collectors found.</div>';
+            resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] mt-8">Keine Collector gefunden.</div>';
             return;
         }
 
-        const {
-            data: follows
-        } = await supabaseClient
-            .from('connections')
-            .select('following_id')
+        // Finde Follow-Status des aktuellen Users zu diesen Profilen
+        const { data: follows } = await supabaseClient
+            .from('user_follows')
+            .select('following_id, status')
             .eq('follower_id', user.id)
             .in('following_id', profiles.map(p => p.id));
 
-        const followingSet = new Set(follows?.map(f => f.following_id) || []);
+        const followMap = {};
+        if (follows) {
+            follows.forEach(f => followMap[f.following_id] = f.status);
+        }
 
         resultsContainer.innerHTML = '';
         profiles.forEach(profile => {
-            const isFollowing = followingSet.has(profile.id);
-            const btnIcon = isFollowing ?
-                `<svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>` :
-                `<svg class="w-5 h-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>`;
-            const btnClass = isFollowing ?
-                `bg-black border border-white/20 active:bg-white/10` :
-                `bg-white active:bg-zinc-200`;
+            const followStatus = followMap[profile.id] || 'none';
+            
+            let btnText = "Folgen";
+            let btnClass = "bg-[#0A84FF] text-white active:bg-[#0070E0]"; // Standard Follow Button
+            
+            if (followStatus === 'accepted') {
+                btnText = "Folge ich";
+                btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]";
+            } else if (followStatus === 'pending') {
+                btnText = "Angefragt";
+                btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]";
+            }
 
-            const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=random`;
+            const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
             const xp = profile.xp || 0;
             const level = Math.floor(xp / 300) + 1;
             const cans = Math.floor(xp / 100);
 
             resultsContainer.innerHTML += `
-                <div class="flex items-center justify-between p-3 bg-[#2C2C2E] rounded-[16px] border border-white/5 shadow-sm">
+                <div class="flex items-center justify-between py-2.5">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
-                        <img src="${avatar}" class="w-12 h-12 rounded-full object-cover border border-white/10 flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
+                        <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0">
                         <div class="min-w-0 flex-1">
-                            <h4 class="text-white text-[16px] font-bold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
-                            <p class="text-[12px] text-[#8E8E93] font-medium">Lvl ${level} • ${cans} Cans</p>
+                            <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                            <p class="text-[13px] text-[#8E8E93] truncate">Lvl ${level} • ${cans} Dosen</p>
                         </div>
                     </div>
-                    <button onclick="triggerHapticFeedback(); toggleFollow('${profile.id}', this)" class="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ml-3 ${btnClass}" data-following="${isFollowing}">
-                        ${btnIcon}
+                    <button onclick="triggerHapticFeedback(); toggleFollow('${profile.id}', this)" 
+                            data-status="${followStatus}"
+                            class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold transition-all flex-shrink-0 ${btnClass}">
+                        ${btnText}
                     </button>
                 </div>
             `;
         });
-    }, 300);
+    }, 400);
 }
 
 async function toggleFollow(targetId, btnElement) {
-    const {
-        data: {
-            user
-        }
-    } = await supabaseClient.auth.getUser();
+    const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
 
-    const isFollowing = btnElement.getAttribute('data-following') === 'true';
+    const currentStatus = btnElement.getAttribute('data-status');
     btnElement.disabled = true;
+    
+    // Visuelles Feedback sofort
+    const originalText = btnElement.innerText;
+    const originalClass = btnElement.className;
+    btnElement.innerText = "...";
 
-    if (isFollowing) {
-        const {
-            error
-        } = await supabaseClient
-            .from('connections')
+    if (currentStatus === 'accepted' || currentStatus === 'pending') {
+        // UNFOLLOW / ANFRAGE ZURÜCKZIEHEN
+        const { error } = await supabaseClient
+            .from('user_follows')
             .delete()
             .eq('follower_id', user.id)
             .eq('following_id', targetId);
 
         if (!error) {
-            btnElement.setAttribute('data-following', 'false');
-            btnElement.className = "w-10 h-10 rounded-full flex items-center justify-center transition-all bg-white active:bg-zinc-200";
-            btnElement.innerHTML = `<svg class="w-5 h-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>`;
+            btnElement.setAttribute('data-status', 'none');
+            btnElement.className = "ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold transition-all flex-shrink-0 bg-[#0A84FF] text-white active:bg-[#0070E0]";
+            btnElement.innerText = "Folgen";
+        } else {
+            btnElement.className = originalClass;
+            btnElement.innerText = originalText;
         }
     } else {
-        const {
-            error
-        } = await supabaseClient
-            .from('connections')
+        // FOLLOW / ANFRAGE SENDEN
+        const { error } = await supabaseClient
+            .from('user_follows')
             .insert([{
                 follower_id: user.id,
-                following_id: targetId
+                following_id: targetId,
+                status: 'pending' // Instagram-style: immer erst pending
             }]);
 
         if (!error) {
-            btnElement.setAttribute('data-following', 'true');
-            btnElement.className = "w-10 h-10 rounded-full flex items-center justify-center transition-all bg-black border border-white/20 active:bg-white/10";
-            btnElement.innerHTML = `<svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"/></svg>`;
+            btnElement.setAttribute('data-status', 'pending');
+            btnElement.className = "ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold transition-all flex-shrink-0 bg-[#2C2C2E] text-white active:bg-[#3A3A3C]";
+            btnElement.innerText = "Angefragt";
+        } else {
+            btnElement.className = originalClass;
+            btnElement.innerText = originalText;
         }
     }
 
     btnElement.disabled = false;
-
-    const connectionsPage = document.getElementById('connections-page');
-    if (connectionsPage && !connectionsPage.classList.contains('hidden')) {
+    // Wenn wir nicht in der Suche sind, lade Daten neu
+    const searchPanel = document.getElementById('connections-search-panel');
+    if (searchPanel && searchPanel.classList.contains('hidden')) {
         loadConnectionsData();
     }
 }
 
 // ==========================================
-// 9.6. CONNECTIONS PAGE (New)
+// 9.6. CONNECTIONS PAGE TABS & DATA LOGIC
 // ==========================================
 
+function switchConnTab(tabName) {
+    // 1. Update Buttons
+    const tabs = ['friends', 'followers', 'following', 'requests'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`conn-tab-${t}`);
+        if (btn) {
+            if (t === tabName) {
+                btn.classList.remove('text-[#8E8E93]', 'bg-transparent');
+                btn.classList.add('bg-white', 'text-black');
+            } else {
+                btn.classList.remove('bg-white', 'text-black');
+                btn.classList.add('text-[#8E8E93]', 'bg-transparent');
+            }
+        }
+        
+        // 2. Update Panels
+        const panel = document.getElementById(`conn-panel-${t}`);
+        if (panel) {
+            if (t === tabName) panel.classList.remove('hidden');
+            else panel.classList.add('hidden');
+        }
+    });
+}
+
+async function acceptFollowRequest(requestId, targetId) {
+    triggerHapticFeedback();
+    const btn = event.currentTarget;
+    const parentDiv = btn.closest('.request-item-row');
+    
+    // Optimistic UI
+    if (parentDiv) parentDiv.style.opacity = '0.5';
+    
+    const { error } = await supabaseClient
+        .from('user_follows')
+        .update({ status: 'accepted' })
+        .eq('id', requestId);
+        
+    if (!error) {
+        if (parentDiv) parentDiv.remove();
+        loadConnectionsData(); // Refresh all lists
+    } else {
+        if (parentDiv) parentDiv.style.opacity = '1';
+        alert("Fehler beim Akzeptieren der Anfrage.");
+    }
+}
+
+async function declineFollowRequest(requestId) {
+    triggerHapticFeedback();
+    const btn = event.currentTarget;
+    const parentDiv = btn.closest('.request-item-row');
+    
+    // Optimistic UI
+    if (parentDiv) parentDiv.style.opacity = '0.5';
+    
+    const { error } = await supabaseClient
+        .from('user_follows')
+        .delete()
+        .eq('id', requestId);
+        
+    if (!error) {
+        if (parentDiv) parentDiv.remove();
+        loadConnectionsData(); // Refresh counts
+    } else {
+        if (parentDiv) parentDiv.style.opacity = '1';
+        alert("Fehler beim Ablehnen der Anfrage.");
+    }
+}
+
+async function loadConnectionsData() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+
+    const friendsList = document.getElementById('friends-list-container');
+    const followersList = document.getElementById('followers-list-container');
+    const followingList = document.getElementById('following-list-container');
+    const requestsList = document.getElementById('requests-list-container');
+
+    // 1. Lade eingehende Anfragen & Follower
+    const { data: incoming } = await supabaseClient
+        .from('user_follows')
+        .select(`
+            id, status,
+            follower:profiles!follower_id(id, username, avatar_url, xp)
+        `)
+        .eq('following_id', user.id);
+
+    // 2. Lade ausgehende Follows
+    const { data: outgoing } = await supabaseClient
+        .from('user_follows')
+        .select(`
+            id, status, following_id,
+            following:profiles!following_id(id, username, avatar_url, xp)
+        `)
+        .eq('follower_id', user.id);
+
+    // Verarbeiten
+    const pendingRequests = (incoming || []).filter(c => c.status === 'pending');
+    const myFollowers = (incoming || []).filter(c => c.status === 'accepted');
+    const iAmFollowing = (outgoing || []).filter(c => c.status === 'accepted');
+
+    // Freunde (Mutuals) = Die, denen ich folge UND die mir folgen
+    const myFollowersIds = new Set(myFollowers.map(f => f.follower.id));
+    const friends = iAmFollowing.filter(f => myFollowersIds.has(f.following_id));
+
+    // --- RENDER PENDING REQUESTS ---
+    const banner = document.getElementById('conn-pending-banner');
+    const badge = document.getElementById('conn-requests-badge');
+    const countText = document.getElementById('conn-pending-count-text');
+    
+    if (pendingRequests.length > 0) {
+        banner.classList.remove('hidden');
+        badge.classList.remove('hidden');
+        countText.innerText = `${pendingRequests.length} offene Anfrage${pendingRequests.length > 1 ? 'n' : ''}`;
+        
+        requestsList.innerHTML = '';
+        pendingRequests.forEach(req => {
+            const profile = req.follower;
+            if(!profile) return;
+            const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
+            
+            requestsList.innerHTML += `
+                <div class="request-item-row flex items-center justify-between py-2.5">
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0">
+                        <div class="min-w-0 flex-1">
+                            <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                            <p class="text-[13px] text-[#8E8E93] truncate">Möchte dir folgen</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0 pl-2">
+                        <button onclick="acceptFollowRequest('${req.id}', '${profile.id}')" class="px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-[#0A84FF] text-white active:bg-[#0070E0] transition-colors">
+                            Bestätigen
+                        </button>
+                        <button onclick="declineFollowRequest('${req.id}')" class="w-8 h-8 rounded-[10px] bg-[#2C2C2E] text-[#8E8E93] flex items-center justify-center active:bg-[#3A3A3C] transition-colors">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        banner.classList.add('hidden');
+        badge.classList.add('hidden');
+        requestsList.innerHTML = '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Keine offenen Anfragen.</div>';
+    }
+
+    // --- RENDER FRIENDS ---
+    if (friends.length > 0) {
+        friendsList.innerHTML = '';
+        friends.forEach(f => {
+            friendsList.innerHTML += renderConnectionItem(f.following, true, f.following_id);
+        });
+    } else {
+        friendsList.innerHTML = '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Füge Freunde hinzu, um sie hier zu sehen.</div>';
+    }
+
+    // --- RENDER FOLLOWERS ---
+    if (myFollowers.length > 0) {
+        followersList.innerHTML = '';
+        myFollowers.forEach(f => {
+            // Zeige Entfernen/Blockieren in einem echten App, hier vereinfacht
+            followersList.innerHTML += renderConnectionItem(f.follower, false, f.follower.id);
+        });
+    } else {
+        followersList.innerHTML = '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Du hast noch keine Follower.</div>';
+    }
+
+    // --- RENDER FOLLOWING ---
+    if (iAmFollowing.length > 0) {
+        followingList.innerHTML = '';
+        iAmFollowing.forEach(f => {
+            followingList.innerHTML += renderConnectionItem(f.following, true, f.following_id);
+        });
+    } else {
+        followingList.innerHTML = '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Du folgst noch niemandem.</div>';
+    }
+}
+
+// Helper zum Rendern von Profil-Reihen in den Listen
+function renderConnectionItem(profile, isFollowing, profileId) {
+    if (!profile) return '';
+    const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
+    const xp = profile.xp || 0;
+    const level = Math.floor(xp / 300) + 1;
+    const cans = Math.floor(xp / 100);
+
+    let actionBtn = '';
+    if (isFollowing) {
+        actionBtn = `
+            <button onclick="triggerHapticFeedback(); toggleFollow('${profileId}', this)" data-status="accepted" class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-[#2C2C2E] text-white active:bg-[#3A3A3C] transition-all flex-shrink-0">
+                Folge ich
+            </button>`;
+    } else {
+        actionBtn = `
+            <button onclick="triggerHapticFeedback(); toggleFollow('${profileId}', this)" data-status="none" class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-[#0A84FF] text-white active:bg-[#0070E0] transition-all flex-shrink-0">
+                Folgen
+            </button>`;
+    }
+
+    return `
+        <div class="flex items-center justify-between py-2.5">
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+                <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff'">
+                <div class="min-w-0 flex-1">
+                    <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                    <p class="text-[13px] text-[#8E8E93] truncate">Lvl ${level} • ${cans} Dosen</p>
+                </div>
+            </div>
+            ${actionBtn}
+        </div>
+    `;
+}
 
 // Swipe-Logik für die Connections-Seite
 let connStartX = 0;
@@ -1760,6 +1999,13 @@ function setupConnectionsSwipe() {
     if (!page) return;
 
     page.addEventListener('touchstart', (e) => {
+        // WICHTIG: Ignoriere Swipes, die auf einem Input-Feld starten,
+        // da sonst iOS Safari den Fokus-Event abbrechen kann.
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            isConnDragging = false;
+            return;
+        }
+
         connStartX = e.touches[0].clientX;
         connStartY = e.touches[0].clientY;
         connCurrentX = connStartX;
@@ -1826,9 +2072,8 @@ function openConnectionsPage() {
     if (!page) return;
 
     // 1. Reset & Lade Daten
-    document.getElementById('connections-search-input').value = '';
-    document.getElementById('connections-search-results').innerHTML = '';
-    document.getElementById('connections-lists').style.display = 'block';
+    clearConnectionSearch();
+    switchConnTab('friends'); // Default Tab
     loadConnectionsData();
 
     // 2. Setup (Unsichtbar nach rechts schieben)
@@ -1863,100 +2108,6 @@ function closeConnectionsPage() {
         page.style.transform = '';
         page.style.transition = '';
     }, 350);
-}
-
-async function loadConnectionsData() {
-    const {
-        data: {
-            user
-        }
-    } = await supabaseClient.auth.getUser();
-    if (!user) return;
-
-    const followersList = document.getElementById('followers-list');
-    const followingList = document.getElementById('following-list');
-
-    followersList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">Loading...</div>';
-    followingList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">Loading...</div>';
-
-    // Load Followers
-    const {
-        data: followers,
-        error: followersError
-    } = await supabaseClient
-        .from('connections')
-        .select('profiles:profiles!follower_id(id, username, avatar_url, xp)')
-        .eq('following_id', user.id);
-
-    if (followersError || !followers || followers.length === 0) {
-        followersList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">No one is following you yet.</div>';
-    } else {
-        followersList.innerHTML = '';
-        const sortedFollowers = followers
-            .map(conn => Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles)
-            .filter(p => p)
-            .sort((a, b) => (b.xp || 0) - (a.xp || 0));
-
-        sortedFollowers.forEach((profile, idx) => {
-            followersList.innerHTML += renderConnectionItem(profile, idx);
-        });
-    }
-
-    // Load Following
-    const {
-        data: following,
-        error: followingError
-    } = await supabaseClient
-        .from('connections')
-        .select('profiles:profiles!following_id(id, username, avatar_url, xp)')
-        .eq('follower_id', user.id);
-
-    if (followingError || !following || following.length === 0) {
-        followingList.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[14px]">You are not following anyone yet.</div>';
-    } else {
-        followingList.innerHTML = '';
-        const sortedFollowing = following
-            .map(conn => Array.isArray(conn.profiles) ? conn.profiles[0] : conn.profiles)
-            .filter(p => p)
-            .sort((a, b) => (b.xp || 0) - (a.xp || 0));
-
-        sortedFollowing.forEach((profile, idx) => {
-            followingList.innerHTML += renderConnectionItem(profile, idx);
-        });
-    }
-}
-
-function renderConnectionItem(profile, index) {
-    const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=random`;
-    const xp = profile.xp || 0;
-    const level = Math.floor(xp / 300) + 1;
-    const cans = Math.floor(xp / 100);
-
-    let rankHtml = '';
-    if (index !== undefined) {
-        let rankColor = 'text-[#8E8E93]';
-        if (index === 0) rankColor = 'text-[#FFCC00]';
-        else if (index === 1) rankColor = 'text-[#E5E4E2]';
-        else if (index === 2) rankColor = 'text-[#CD7F32]';
-
-        rankHtml = `<span class="text-[15px] font-bold ${rankColor} w-5 text-center mr-1 flex-shrink-0">${index + 1}</span>`;
-    }
-
-    return `
-            <div class="flex items-center justify-between p-3 border-b border-white/5 last:border-0 cursor-pointer active:bg-white/5 transition-colors">
-                <div class="flex items-center gap-3 min-w-0 flex-1">
-                    ${rankHtml}
-                    <img src="${avatar}" class="w-11 h-11 rounded-full object-cover border border-white/10 flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}'">
-                    <div class="min-w-0 flex-1">
-                        <h4 class="text-[17px] font-semibold text-white tracking-tight truncate">${profile.username || 'Unknown'}</h4>
-                        <p class="text-[13px] text-[#8E8E93] font-medium mt-0.5">Lvl ${level} • ${cans} Cans</p>
-                    </div>
-            </div>
-                <div class="flex items-center gap-2 pl-4 flex-shrink-0 text-right">
-                    <span class="text-[17px] font-semibold text-white tracking-tight">${xp} XP</span>
-            </div>
-        </div>
-    `;
 }
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -1696,51 +1696,135 @@
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- CONNECTIONS PAGE (Instagram-Style Follow System)   -->
+    <!-- ═══════════════════════════════════════════════════ -->
     <div id="connections-page"
         class="fixed inset-0 z-[100] bg-[#000000] flex flex-col transition-transform duration-300 translate-x-full hidden">
 
-        <div
-            class="px-5 pt-14 pb-2 flex justify-between items-center z-10 bg-gradient-to-b from-black to-transparent flex-shrink-0">
+        <!-- Header -->
+        <div class="px-5 pt-14 pb-3 flex justify-between items-center flex-shrink-0 border-b border-white/5">
             <button onclick="triggerHapticFeedback(); closeConnectionsPage()"
-                class="w-10 h-10 bg-[#1C1C1E] rounded-full flex items-center justify-center active:scale-95 transition-transform border border-white/10 shadow-sm">
-                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                class="w-10 h-10 bg-[#1C1C1E] rounded-full flex items-center justify-center active:scale-95 transition-transform border border-white/10">
+                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
             </button>
-            <h1 class="text-[20px] font-semibold text-white tracking-tight">Connections</h1>
+            <h1 class="text-[20px] font-bold text-white tracking-tight">Connections</h1>
             <div class="w-10"></div>
         </div>
 
-        <div class="px-5 py-3 flex-shrink-0">
+        <!-- Search Bar -->
+        <div class="px-5 pt-4 pb-3 flex-shrink-0">
             <div class="relative group">
-                <div
-                    class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-[#8E8E93] group-focus-within:text-white transition-colors">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-[#8E8E93] group-focus-within:text-white transition-colors duration-200">
+                    <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
                     </svg>
                 </div>
                 <input type="text" id="connections-search-input" oninput="searchUsersConnections()"
-                    placeholder="Find Collectors..."
-                    class="w-full bg-black border border-white/10 rounded-[16px] py-3.5 pl-12 pr-4 text-[17px] text-white outline-none placeholder:text-[#8E8E93] focus:border-white/30 transition-all shadow-sm">
+                    placeholder="Username suchen..."
+                    class="w-full bg-[#1C1C1E] border border-white/8 rounded-[14px] py-3 pl-11 pr-4 text-[15px] text-white outline-none placeholder:text-[#636366] focus:border-white/25 focus:bg-[#2C2C2E] transition-all"
+                    style="border-color: rgba(255,255,255,0.08);">
+                <button id="conn-search-clear" onclick="clearConnectionSearch()" class="hidden absolute inset-y-0 right-3 flex items-center justify-center w-7 h-full text-[#636366] active:text-white transition-colors">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
             </div>
         </div>
 
-        <div id="connections-content" class="flex-1 overflow-y-auto px-5 py-4 space-y-6 overscroll-contain">
-            <div id="connections-search-results" class="space-y-3"></div>
-            <div id="connections-lists">
-                <div class="mb-6">
-                    <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium pl-2 mb-3">Followers</h2>
-                    <div id="followers-list"
-                        class="bg-[#1C1C1E] border border-white/5 rounded-2xl shadow-sm overflow-hidden mb-3"></div>
-                </div>
-                <div>
-                    <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium pl-2 mb-3">Following</h2>
-                    <div id="following-list"
-                        class="bg-[#1C1C1E] border border-white/5 rounded-2xl shadow-sm overflow-hidden mb-3"></div>
+        <!-- Search Results (hidden when no query) -->
+        <div id="connections-search-panel" class="hidden flex-1 overflow-y-auto px-5 pb-10 overscroll-contain">
+            <div id="connections-search-results" class="space-y-2 pt-1"></div>
+        </div>
+
+        <!-- Main Content Tabs (visible when no query) -->
+        <div id="connections-main-panel" class="flex flex-col flex-1 overflow-hidden">
+
+            <!-- Pending Requests Banner (conditionally shown) -->
+            <div id="conn-pending-banner" class="hidden px-5 pt-1 pb-2 flex-shrink-0">
+                <button onclick="triggerHapticFeedback(); switchConnTab('requests')"
+                    class="w-full flex items-center justify-between bg-[#0A84FF]/10 border border-[#0A84FF]/25 rounded-[14px] px-4 py-3 active:bg-[#0A84FF]/20 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-[#0A84FF]/20 flex items-center justify-center">
+                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:#0A84FF;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                            </svg>
+                        </div>
+                        <div class="text-left">
+                            <p class="text-[14px] font-semibold text-white leading-tight">Neue Anfragen</p>
+                            <p id="conn-pending-count-text" class="text-[12px] text-[#0A84FF]">0 Follower-Anfragen</p>
+                        </div>
+                    </div>
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;color:#636366;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="px-5 pt-2 pb-0 flex-shrink-0">
+                <div class="flex bg-[#1C1C1E] rounded-[12px] p-1 gap-0.5">
+                    <button id="conn-tab-friends" onclick="triggerHapticFeedback(); switchConnTab('friends')"
+                        class="flex-1 py-2 rounded-[10px] text-[13px] font-semibold transition-all duration-200 bg-white text-black">
+                        Freunde
+                    </button>
+                    <button id="conn-tab-followers" onclick="triggerHapticFeedback(); switchConnTab('followers')"
+                        class="flex-1 py-2 rounded-[10px] text-[13px] font-semibold transition-all duration-200 text-[#8E8E93]">
+                        Follower
+                    </button>
+                    <button id="conn-tab-following" onclick="triggerHapticFeedback(); switchConnTab('following')"
+                        class="flex-1 py-2 rounded-[10px] text-[13px] font-semibold transition-all duration-200 text-[#8E8E93]">
+                        Following
+                    </button>
+                    <button id="conn-tab-requests" onclick="triggerHapticFeedback(); switchConnTab('requests')"
+                        class="relative flex-1 py-2 rounded-[10px] text-[13px] font-semibold transition-all duration-200 text-[#8E8E93]">
+                        Anfragen
+                        <span id="conn-requests-badge" class="hidden absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#0A84FF] rounded-full"></span>
+                    </button>
                 </div>
             </div>
+
+            <!-- Tab Content -->
+            <div class="flex-1 overflow-y-auto px-5 pt-4 pb-10 overscroll-contain">
+
+                <!-- FRIENDS TAB -->
+                <div id="conn-panel-friends" class="space-y-2">
+                    <div id="friends-list-container">
+                        <div class="p-8 text-center text-[#8E8E93] text-[14px]">Laden...</div>
+                    </div>
+                </div>
+
+                <!-- FOLLOWERS TAB -->
+                <div id="conn-panel-followers" class="space-y-2 hidden">
+                    <div id="followers-list-container">
+                        <div class="p-8 text-center text-[#8E8E93] text-[14px]">Laden...</div>
+                    </div>
+                </div>
+
+                <!-- FOLLOWING TAB -->
+                <div id="conn-panel-following" class="space-y-2 hidden">
+                    <div id="following-list-container">
+                        <div class="p-8 text-center text-[#8E8E93] text-[14px]">Laden...</div>
+                    </div>
+                </div>
+
+                <!-- REQUESTS TAB -->
+                <div id="conn-panel-requests" class="space-y-2 hidden">
+                    <div id="requests-list-container">
+                        <div class="p-8 text-center text-[#8E8E93] text-[14px]">Laden...</div>
+                    </div>
+                </div>
+
+            </div>
         </div>
+
+        <!-- Legacy ids for backwards compat -->
+        <div id="connections-lists" class="hidden"></div>
+        <div id="followers-list" class="hidden"></div>
+        <div id="following-list" class="hidden"></div>
+
     </div>
 
     <nav
