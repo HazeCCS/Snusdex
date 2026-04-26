@@ -1935,18 +1935,22 @@ async function loadConnectionsData() {
     if (friends.length > 0) {
         friendsList.innerHTML = '';
         friends.forEach(f => {
-            friendsList.innerHTML += renderConnectionItem(f.following, true, f.following_id);
+            friendsList.innerHTML += renderConnectionItem(f.following, 'accepted', f.following_id);
         });
     } else {
         friendsList.innerHTML = '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Füge Freunde hinzu, um sie hier zu sehen.</div>';
     }
 
+    // Erstelle ein Map mit Status der Leute, denen ich folge
+    const myOutgoingFollows = new Map();
+    (outgoing || []).forEach(f => myOutgoingFollows.set(f.following_id, f.status));
+
     // --- RENDER FOLLOWERS ---
     if (myFollowers.length > 0) {
         followersList.innerHTML = '';
         myFollowers.forEach(f => {
-            // Zeige Entfernen/Blockieren in einem echten App, hier vereinfacht
-            followersList.innerHTML += renderConnectionItem(f.follower, false, f.follower.id);
+            const status = myOutgoingFollows.get(f.follower.id) || 'none';
+            followersList.innerHTML += renderConnectionItem(f.follower, status, f.follower.id);
         });
     } else {
         followersList.innerHTML = '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Du hast noch keine Follower.</div>';
@@ -1956,7 +1960,7 @@ async function loadConnectionsData() {
     if (iAmFollowing.length > 0) {
         followingList.innerHTML = '';
         iAmFollowing.forEach(f => {
-            followingList.innerHTML += renderConnectionItem(f.following, true, f.following_id);
+            followingList.innerHTML += renderConnectionItem(f.following, 'accepted', f.following_id);
         });
     } else {
         followingList.innerHTML = '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Du folgst noch niemandem.</div>';
@@ -1964,7 +1968,7 @@ async function loadConnectionsData() {
 }
 
 // Helper zum Rendern von Profil-Reihen in den Listen
-function renderConnectionItem(profile, isFollowing, profileId) {
+function renderConnectionItem(profile, followStatus, profileId) {
     if (!profile) return '';
     const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
     const xp = profile.xp || 0;
@@ -1972,10 +1976,15 @@ function renderConnectionItem(profile, isFollowing, profileId) {
     const cans = Math.floor(xp / 100);
 
     let actionBtn = '';
-    if (isFollowing) {
+    if (followStatus === 'accepted') {
         actionBtn = `
             <button onclick="triggerHapticFeedback(); toggleFollow('${profileId}', this)" data-status="accepted" class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-[#2C2C2E] text-white active:bg-[#3A3A3C] transition-all flex-shrink-0">
                 Folge ich
+            </button>`;
+    } else if (followStatus === 'pending') {
+        actionBtn = `
+            <button onclick="triggerHapticFeedback(); toggleFollow('${profileId}', this)" data-status="pending" class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-[#2C2C2E] text-white active:bg-[#3A3A3C] transition-all flex-shrink-0">
+                Angefragt
             </button>`;
     } else {
         actionBtn = `

@@ -1,8 +1,11 @@
+-- Löscht die alte Tabelle falls sie falsche Foreign Keys hatte
+DROP TABLE IF EXISTS public.user_follows CASCADE;
+
 -- Erstellt die neue user_follows Tabelle
 CREATE TABLE IF NOT EXISTS public.user_follows (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    follower_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    following_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    follower_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    following_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
