@@ -1629,14 +1629,25 @@ function clearConnectionSearch() {
 
 async function searchUsersConnections() {
     clearTimeout(userSearchTimeout);
-    const query = document.getElementById('connections-search-input').value.trim();
+    const inputField = document.getElementById('connections-search-input');
+    const query = inputField.value.trim();
     const resultsContainer = document.getElementById('connections-search-results');
     const searchPanel = document.getElementById('connections-search-panel');
     const mainPanel = document.getElementById('connections-main-panel');
     const clearBtn = document.getElementById('conn-search-clear');
 
-    if (query.length < 2) {
+    if (query.length === 0) {
+        // Wenn komplett leer, rufe clearConnectionSearch auf (welches alles zurücksetzt)
         clearConnectionSearch();
+        return;
+    }
+
+    if (query.length < 2) {
+        // Wenn 1 Buchstabe: Zeige Search Panel mit "Bitte mehr tippen", aber lösche NICHT den Input!
+        clearBtn.classList.remove('hidden');
+        mainPanel.classList.add('hidden');
+        searchPanel.classList.remove('hidden');
+        resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] mt-8">Bitte mindestens 2 Zeichen eingeben...</div>';
         return;
     }
 
