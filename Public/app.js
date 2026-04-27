@@ -1479,68 +1479,170 @@ async function loadTopSnusOfWeek() {
     container.innerHTML = '';
 
     if (!data || (!data.top_rated && !data.most_popular_today)) {
-        container.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">No social stats available yet.</div>';
+        // Render nothing for these cards, but continue to load Most Scanned
+    } else {
+        const {
+            top_rated,
+            most_popular_today
+        } = data;
+
+        // Render Top Rated card
+        if (top_rated && top_rated.snus_id) {
+            const snusInfo = globalSnusData.find(s => s.id == top_rated.snus_id);
+            if (snusInfo) {
+                const ratings = {
+                    visuals: (top_rated.avg_ratings.visuals || 0).toFixed(1),
+                    smell: (top_rated.avg_ratings.smell || 0).toFixed(1),
+                    taste: (top_rated.avg_ratings.taste || 0).toFixed(1),
+                    bite: (top_rated.avg_ratings.bite || 0).toFixed(1),
+                    drip: (top_rated.avg_ratings.drip || 0).toFixed(1),
+                    strength: (top_rated.avg_ratings.strength || 0).toFixed(1),
+                };
+                const overall = (top_rated.avg_score || 0).toFixed(1);
+                const count = top_rated.rating_count || 0;
+                container.innerHTML += renderSocialCard("Top Rated Snus 🏆", snusInfo, ratings, overall, count, 'Ratings');
+            }
+        }
+
+        // Render Most Popular Today card
+        if (most_popular_today && most_popular_today.snus_id) {
+            const snusInfo = globalSnusData.find(s => s.id == most_popular_today.snus_id);
+            if (snusInfo) {
+                let popOverall = 'N/A';
+                let popAvgRatings = {
+                    taste: 'N/A',
+                    smell: 'N/A',
+                    bite: 'N/A',
+                    drip: 'N/A',
+                    visuals: 'N/A',
+                    strength: 'N/A'
+                };
+
+                // Check if there are any ratings for the most popular snus
+                if (most_popular_today.rating_count && most_popular_today.rating_count > 0) {
+                    popAvgRatings = {
+                        visuals: (most_popular_today.avg_ratings.visuals || 0).toFixed(1),
+                        smell: (most_popular_today.avg_ratings.smell || 0).toFixed(1),
+                        taste: (most_popular_today.avg_ratings.taste || 0).toFixed(1),
+                        bite: (most_popular_today.avg_ratings.bite || 0).toFixed(1),
+                        drip: (most_popular_today.avg_ratings.drip || 0).toFixed(1),
+                        strength: (most_popular_today.avg_ratings.strength || 0).toFixed(1),
+                    };
+                    popOverall = (most_popular_today.avg_score || 0).toFixed(1);
+                }
+
+                container.innerHTML += renderSocialCard("Most Popular Today 🔍", snusInfo, popAvgRatings, popOverall, most_popular_today.scan_count, 'Scans');
+            }
+        }
+    }
+
+    // Load Most Scanned List
+    await loadMostScannedThisWeek();
+}
+
+async function loadMostScannedThisWeek() {
+    const container = document.getElementById('top-snus-container');
+    if (!container) return;
+
+    // Fetch collections from last 7 days — aggregate by snus_id client-side
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const { data, error } = await supabaseClient
+        .from('user_collections')
+        .select('snus_id, collected_at')
+        .gte('collected_at', sevenDaysAgo.toISOString());
+
+    if (error) {
+        console.error("Error fetching most scanned:", error);
         return;
     }
 
-    const {
-        top_rated,
-        most_popular_today
-    } = data;
+    // Count occurrences per snus_id
+    const counts = {};
+    if (data && data.length > 0) {
+        data.forEach(item => {
+            if (item.snus_id) counts[item.snus_id] = (counts[item.snus_id] || 0) + 1;
+        });
+    }
 
-    // Render Top Rated card
-    if (top_rated && top_rated.snus_id) {
-        const snusInfo = globalSnusData.find(s => s.id == top_rated.snus_id);
-        if (snusInfo) {
-            const ratings = {
-                visuals: (top_rated.avg_ratings.visuals || 0).toFixed(1),
-                smell: (top_rated.avg_ratings.smell || 0).toFixed(1),
-                taste: (top_rated.avg_ratings.taste || 0).toFixed(1),
-                bite: (top_rated.avg_ratings.bite || 0).toFixed(1),
-                drip: (top_rated.avg_ratings.drip || 0).toFixed(1),
-                strength: (top_rated.avg_ratings.strength || 0).toFixed(1),
-            };
-            const overall = (top_rated.avg_score || 0).toFixed(1);
-            const count = top_rated.rating_count || 0;
-            container.innerHTML += renderSocialCard("Top Rated Snus 🏆", snusInfo, ratings, overall, count, 'Ratings');
+    // Sort by count and take top 7
+    const sortedSnus = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 7)
+        .map(([id, count]) => {
+            const snusInfo = globalSnusData.find(s => String(s.id) === String(id));
+            return { snusInfo, count };
+        })
+        .filter(item => item.snusInfo != null);
+
+    // Helper: score color
+    const scoreColor = (v) => {
+        if (!v && v !== 0) return 'text-[#8E8E93]';
+        const n = parseFloat(v);
+        if (n <= 3.9) return 'text-[#FF3B30]';
+        if (n <= 6.9) return 'text-[#FFCC00]';
+        if (n <= 8.9) return 'text-[#34C759]';
+        return 'text-[#32ADE6]';
+    };
+
+    // Render HTML
+    let listHTML = `
+        <div class="mb-6">
+            <div class="flex items-center justify-between mb-2.5">
+                <span class="text-[13px] text-[#8E8E93] font-semibold uppercase tracking-wider">Most Scanned (7 Tage)</span>
+            </div>
+            <div class="bg-[#1C1C1E] rounded-[16px] border border-white/5 overflow-hidden shadow-lg">
+    `;
+
+    for (let i = 0; i < 7; i++) {
+        const rank = i + 1;
+        if (i < sortedSnus.length) {
+            const item = sortedSnus[i];
+            const snus = item.snusInfo;
+            const name = snus.name || '—';
+            const imgUrl = snus.image ? `${GITHUB_BASE}${snus.image}` : '';
+            // overall_score may not exist; use avg_score or computed field; fallback to '—'
+            const rawScore = snus.overall_score ?? snus.avg_score ?? snus.score ?? null;
+            const scoreDisplay = (rawScore !== null && rawScore !== undefined) ? parseFloat(rawScore).toFixed(1) : '—';
+            const colorClass = scoreColor(rawScore);
+
+            listHTML += `
+                <div class="flex items-center gap-3 p-3 border-b border-white/5 last:border-0 active:bg-white/5 cursor-pointer transition-colors" onclick="openSnusDetail(${snus.id})">
+                    <span class="text-[13px] font-bold text-[#8E8E93] w-5 text-center flex-shrink-0">${rank}</span>
+                    <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                        ${imgUrl ? `<img src="${imgUrl}" class="h-full w-full object-contain" onerror="this.style.display='none'">` : '<div class="w-10 h-10 rounded-md bg-[#2C2C2E]"></div>'}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-white text-[15px] font-semibold truncate tracking-tight leading-tight">${name}</h4>
+                        <p class="text-[#8E8E93] text-[11px] tracking-wider mt-0.5">${item.count} Scan${item.count > 1 ? 's' : ''} diese Woche</p>
+                    </div>
+                    <div class="flex-shrink-0 flex flex-col items-center justify-center min-w-[40px]">
+                        <span class="text-[17px] font-bold ${colorClass}">${scoreDisplay}</span>
+                        <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-medium">Score</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Empty placeholder row
+            listHTML += `
+                <div class="flex items-center gap-3 p-3 border-b border-white/5 last:border-0 opacity-30">
+                    <span class="text-[13px] font-bold text-[#8E8E93] w-5 text-center flex-shrink-0">${rank}</span>
+                    <div class="w-10 h-10 rounded-md bg-[#2C2C2E] flex-shrink-0"></div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-[#8E8E93] text-[14px] italic tracking-tight">Noch keine Daten</h4>
+                    </div>
+                </div>
+            `;
         }
     }
 
-    // Render Most Popular Today card
-    if (most_popular_today && most_popular_today.snus_id) {
-        const snusInfo = globalSnusData.find(s => s.id == most_popular_today.snus_id);
-        if (snusInfo) {
-            let popOverall = 'N/A';
-            let popAvgRatings = {
-                taste: 'N/A',
-                smell: 'N/A',
-                bite: 'N/A',
-                drip: 'N/A',
-                visuals: 'N/A',
-                strength: 'N/A'
-            };
+    listHTML += `
+            </div>
+        </div>
+    `;
 
-            // Check if there are any ratings for the most popular snus
-            if (most_popular_today.rating_count && most_popular_today.rating_count > 0) {
-                popAvgRatings = {
-                    visuals: (most_popular_today.avg_ratings.visuals || 0).toFixed(1),
-                    smell: (most_popular_today.avg_ratings.smell || 0).toFixed(1),
-                    taste: (most_popular_today.avg_ratings.taste || 0).toFixed(1),
-                    bite: (most_popular_today.avg_ratings.bite || 0).toFixed(1),
-                    drip: (most_popular_today.avg_ratings.drip || 0).toFixed(1),
-                    strength: (most_popular_today.avg_ratings.strength || 0).toFixed(1),
-                };
-                popOverall = (most_popular_today.avg_score || 0).toFixed(1);
-            }
-
-            container.innerHTML += renderSocialCard("Most Popular Today 🔍", snusInfo, popAvgRatings, popOverall, most_popular_today.scan_count, 'Scans');
-        }
-    }
-
-    // Final check if anything was rendered
-    if (container.innerHTML.trim() === '') {
-        container.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">No social stats available yet.</div>';
-    }
+    container.innerHTML += listHTML;
 }
 
 function getScoreColor(score) {
@@ -2635,6 +2737,14 @@ function calculateUsageStats(allLogs) {
 
 let html5QrCode = null;
 let isProcessingScan = false;
+let scanFlashlightOn = false;
+let scanCurrentTrack = null; // MediaStreamTrack for torch control
+let scanCameraIndex = 0;     // 0=normal, 1=wide, 2=tele
+const SCAN_CAMERA_MODES = [
+    { label: 'Normal', zoom: null, facingMode: 'environment' },
+    { label: 'Weitwinkel', zoom: 0.5, facingMode: 'environment' },
+    { label: 'Telelinse', zoom: 2.0, facingMode: 'environment' },
+];
 
 const scanModal = document.getElementById('scan-modal');
 const scanModalCard = document.getElementById('scan-modal-card');
@@ -2656,6 +2766,21 @@ async function openScanModal() {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
     isProcessingScan = false;
+    scanFlashlightOn = false;
+    scanCurrentTrack = null;
+    scanCameraIndex = 0;
+
+    // Reset button states
+    const flashlightBtn = document.getElementById('scan-flashlight-btn');
+    const flashlightLabel = document.getElementById('scan-flashlight-label');
+    const cameraLabel = document.getElementById('scan-camera-label');
+    if (flashlightBtn) {
+        flashlightBtn.classList.remove('bg-white/20', 'border-white/40');
+        flashlightBtn.classList.add('bg-[#1C1C1E]', 'border-white/10');
+    }
+    if (flashlightLabel) flashlightLabel.textContent = 'Licht';
+    if (cameraLabel) cameraLabel.textContent = SCAN_CAMERA_MODES[0].label;
+
     scanModal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 
@@ -2706,6 +2831,22 @@ async function openScanModal() {
                 (errorMessage) => { }
             );
 
+            // Grab the active camera track for torch/zoom control
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                const tracks = stream.getVideoTracks();
+                if (tracks.length > 0) {
+                    scanCurrentTrack = tracks[0];
+                    // Hide flashlight button if torch not supported
+                    const capabilities = scanCurrentTrack.getCapabilities ? scanCurrentTrack.getCapabilities() : {};
+                    const flashBtn = document.getElementById('scan-flashlight-btn');
+                    if (flashBtn && !capabilities.torch) {
+                        flashBtn.style.opacity = '0.3';
+                        flashBtn.style.pointerEvents = 'none';
+                    }
+                }
+            } catch (e) { /* torch not available */ }
+
             document.getElementById('camera-loading').classList.add('opacity-0', 'pointer-events-none');
 
             const scannerReader = document.getElementById('scanner-reader');
@@ -2725,6 +2866,13 @@ async function openScanModal() {
 
 
 function closeScanModal(isDragging = false) {
+    // Turn off flashlight when closing
+    if (scanFlashlightOn && scanCurrentTrack) {
+        try { scanCurrentTrack.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) {}
+        scanFlashlightOn = false;
+    }
+    scanCurrentTrack = null;
+
     scanModalCard.classList.remove('translate-y-0');
     scanModalCard.classList.add('translate-y-full');
 
@@ -2772,7 +2920,63 @@ function closeScanModal(isDragging = false) {
             scannerReader.classList.add('opacity-0');
         }
 
+        // Reset flashlight button visual state
+        const flashBtn = document.getElementById('scan-flashlight-btn');
+        if (flashBtn) {
+            flashBtn.style.opacity = '';
+            flashBtn.style.pointerEvents = '';
+        }
+
     }, 400);
+}
+
+async function toggleScanFlashlight() {
+    if (!scanCurrentTrack) return;
+    try {
+        const capabilities = scanCurrentTrack.getCapabilities ? scanCurrentTrack.getCapabilities() : {};
+        if (!capabilities.torch) return;
+
+        scanFlashlightOn = !scanFlashlightOn;
+        await scanCurrentTrack.applyConstraints({ advanced: [{ torch: scanFlashlightOn }] });
+
+        const btn = document.getElementById('scan-flashlight-btn');
+        const label = document.getElementById('scan-flashlight-label');
+        if (btn) {
+            if (scanFlashlightOn) {
+                btn.classList.remove('bg-[#1C1C1E]', 'border-white/10');
+                btn.classList.add('bg-white/20', 'border-white/40');
+            } else {
+                btn.classList.add('bg-[#1C1C1E]', 'border-white/10');
+                btn.classList.remove('bg-white/20', 'border-white/40');
+            }
+        }
+        if (label) label.textContent = scanFlashlightOn ? 'An' : 'Licht';
+    } catch (e) {
+        console.error('Torch not supported:', e);
+    }
+}
+
+async function cycleScanCamera() {
+    scanCameraIndex = (scanCameraIndex + 1) % SCAN_CAMERA_MODES.length;
+    const mode = SCAN_CAMERA_MODES[scanCameraIndex];
+    const label = document.getElementById('scan-camera-label');
+    if (label) label.textContent = mode.label;
+
+    // If zoom is supported by the current track, use applyConstraints
+    if (scanCurrentTrack && typeof scanCurrentTrack.getCapabilities === 'function') {
+        const capabilities = scanCurrentTrack.getCapabilities();
+        if (capabilities.zoom && mode.zoom !== null) {
+            try {
+                const clampedZoom = Math.min(Math.max(mode.zoom, capabilities.zoom.min), capabilities.zoom.max);
+                await scanCurrentTrack.applyConstraints({ advanced: [{ zoom: clampedZoom }] });
+                return;
+            } catch (e) {
+                console.warn('Zoom constraint failed, ignoring:', e);
+            }
+        }
+    }
+    // Fallback: restart scanner with a zoom hint (no-op on unsupported devices)
+    console.log(`Camera mode set to: ${mode.label} (hardware zoom not available on this device)`);
 }
 
 let scanStartY = 0;
