@@ -94,7 +94,7 @@
             display: none !important;
         }
 
-        /* MARK: - Layout-erhaltende Versteckung (kein display:none → kein Reflow) */
+        /* MARK: - Layout-erhaltende Versteckung */
         .tab-dex-hidden {
             opacity: 0 !important;
             pointer-events: none !important;
@@ -844,12 +844,12 @@
             </div>
         </div>
 
-        <div class="mt-8 mb-8 overflow-hidden">
+        <div class="mt-8 mb-8">
             <div class="flex items-end justify-between mb-2 px-[6vw]">
                 <h2 class="text-[20px] font-semibold text-white tracking-tight">Explore Brands</h2>
             </div>
             <div id="suggestions-container"
-                class="flex gap-[2vw] overflow-x-auto px-[6vw] pb-6 pt-1 snap-x snap-mandatory scroll-smooth"
+                class="flex gap-[2vw] overflow-x-auto px-[6vw] pb-6 pt-3 snap-x snap-mandatory scroll-smooth"
                 style="touch-action: pan-x; -webkit-overflow-scrolling: touch;">
                 <div class="text-[13px] text-[#8E8E93]">Lade Vorschläge...</div>
             </div>

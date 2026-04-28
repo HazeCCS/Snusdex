@@ -4850,7 +4850,7 @@ function createBrandHeaderHTML(brandName, unlockedCount, totalCount) {
     const safeBrandName = brandName.replace(/'/g, "\\'");
 
     return `
-        <div class="flex justify-between items-end mb-3 px-1 mt-6 first:mt-2">
+        <div class="flex justify-between items-end mb-3 px-5 mt-6 first:mt-2">
             <div class="flex items-center gap-2">
                 <h2 class="text-[20px] font-semibold text-white tracking-tight">${brandName}</h2>
                 <button onclick="handleFavoriteClick('${safeBrandName}')" class="w-7 h-7 flex items-center justify-center rounded-full bg-white/10 border border-white/5 text-[#8E8E93] transition-all duration-200 active:scale-90 shadow-sm mb-0.5">
@@ -4935,7 +4935,11 @@ function renderDexGrouped(groupedData) {
 
         chunk.forEach(brandData => {
             const section = document.createElement('div');
-            section.className = 'brand-section w-full mb-4';
+            section.className = 'brand-section mb-4';
+            // Bricht aus dem px-5 Eltern-Container aus → Carousel geht bis zum Bildschirmrand
+            section.style.marginLeft = '-20px';
+            section.style.marginRight = '-20px';
+            section.style.width = 'calc(100% + 40px)';
             // Dem Browser erlauben, Off-Screen-Sections zu überspringen (reduziert Reflow-Kosten)
             section.style.contentVisibility = 'auto';
             section.style.containIntrinsicSize = '0 200px';
@@ -4949,7 +4953,7 @@ function renderDexGrouped(groupedData) {
 
             section.innerHTML = `
                 ${header}
-                <div class="brand-carousel flex gap-[3vw] overflow-x-auto pb-4 pt-2 snap-x snap-mandatory scroll-smooth px-1">
+                <div class="brand-carousel flex gap-[3vw] overflow-x-auto pb-4 pt-3 snap-x snap-mandatory scroll-smooth px-5">
                     ${cardsHTML}
                 </div>
             `;
