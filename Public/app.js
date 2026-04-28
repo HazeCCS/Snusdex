@@ -429,6 +429,7 @@ function switchTab(tabId) {
 
     if (tabId === 'social') {
         loadTopSnusOfWeek();
+        loadBadges();
     }
 
     if (tabId === 'dex') {
@@ -1086,10 +1087,10 @@ function openSnusDetail(id, isFromScan = false) {
 
         // Live-Daten lokal aus dem Cache lesen (instant)
         const openedCountEl = document.getElementById('modal-opened-count');
-        
+
         // Alle Logs für diese Snus aus dem Cache filtern
         const snusLogs = globalAllLogs.filter(l => l.snus_id === snusId);
-        
+
         // Öffnungsanzahl updaten
         if (openedCountEl) {
             const count = snusLogs.length;
@@ -1248,6 +1249,7 @@ async function collectCurrentSnus() {
             await startNewCan(currentSelectedSnusId);
             await loadUserStats(user.id);
             updateLivePerformance();
+            evaluateBadges();
         }
         renderDexGrid(globalSnusData);
         closeSnusDetail();
@@ -1710,7 +1712,202 @@ function renderSocialCard(title, snus, ratings, overall, count, countLabel = 'Sc
 }
 
 // ==========================================
-// 9.5. SOCIAL FEATURES (FRIENDS & SEARCH)
+// 9.5. BADGES SYSTEM
+// ==========================================
+
+let globalBadges = [];
+let globalUserBadges = new Set();
+let globalBadgeProgress = 0;
+
+async function loadBadges() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+
+    // Fetch badges
+    const { data: allBadges } = await supabaseClient
+        .from('badges')
+        .select('*')
+        .order('level', { ascending: true });
+
+    globalBadges = allBadges || [];
+
+    // Fetch user badges
+    const { data: userBadges } = await supabaseClient
+        .from('user_badges')
+        .select('badge_id')
+        .eq('user_id', user.id);
+
+    globalUserBadges = new Set(userBadges ? userBadges.map(ub => ub.badge_id) : []);
+
+    // Calculate progress for "collector" badges
+    const { data: collections } = await supabaseClient
+        .from('user_collections')
+        .select('snus_id')
+        .eq('user_id', user.id);
+
+    globalBadgeProgress = collections ? new Set(collections.map(c => c.snus_id)).size : 0;
+
+    const stripContainer = document.getElementById('badges-strip');
+    if (stripContainer) {
+        let stripHtml = '';
+        globalBadges.forEach(badge => {
+            if (globalUserBadges.has(badge.id)) {
+                const imgUrl = badge.image_url.startsWith('http') ? badge.image_url : GITHUB_BASE + badge.image_url;
+                stripHtml += `<div class="w-12 h-12 flex-shrink-0"><img src="${imgUrl}" class="w-full h-full object-contain" onerror="this.src='https://via.placeholder.com/150'"></div>`;
+            }
+        });
+
+        if (stripHtml === '') {
+            stripContainer.innerHTML = '<div class="text-[13px] text-[#8E8E93] py-2 px-1">Noch keine Badges freigeschaltet.</div>';
+        } else {
+            stripContainer.innerHTML = stripHtml;
+        }
+    }
+}
+
+function openBadgesGrid() {
+    const gridPage = document.getElementById('badges-grid-page');
+    if (!gridPage) return;
+
+    gridPage.classList.remove('hidden');
+    setTimeout(() => {
+        gridPage.classList.remove('translate-x-full');
+    }, 10);
+
+    const gridContent = document.getElementById('badges-grid-content');
+    if (!gridContent) return;
+
+    let html = '';
+    globalBadges.forEach(badge => {
+        const isUnlocked = globalUserBadges.has(badge.id);
+        const imgUrl = badge.image_url.startsWith('http') ? badge.image_url : GITHUB_BASE + badge.image_url;
+
+        let progressPercent = 0;
+        if (badge.category === 'collector') {
+            progressPercent = Math.min(100, Math.floor((globalBadgeProgress / badge.required_count) * 100));
+        }
+
+        if (isUnlocked) {
+            html += `
+                <div class="bg-[#1C1C1E] border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-sm relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
+                    <div class="w-28 h-28 mb-3 drop-shadow-lg">
+                        <img src="${imgUrl}" class="w-full h-full object-contain" onerror="this.src='https://via.placeholder.com/150'">
+                    </div>
+                    <h3 class="text-white text-[15px] font-bold text-center leading-tight mb-1">${badge.name}</h3>
+                    <p class="text-[#8E8E93] text-[11px] text-center mb-3 line-clamp-2">${badge.description}</p>
+                    <div class="w-full bg-[#34C759]/20 rounded-full py-1 text-center mt-auto border border-[#34C759]/30">
+                        <span class="text-[#34C759] text-[10px] font-bold uppercase tracking-wider">Freigeschaltet</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="bg-[#1C1C1E]/50 border border-white/5 rounded-2xl p-4 flex flex-col items-center shadow-sm relative opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
+                    <div class="w-28 h-28 mb-3 opacity-50 drop-shadow-none">
+                        <img src="${imgUrl}" class="w-full h-full object-contain" onerror="this.src='https://via.placeholder.com/150'">
+                    </div>
+                    <h3 class="text-white/70 text-[15px] font-bold text-center leading-tight mb-1">${badge.name}</h3>
+                    <p class="text-[#8E8E93]/70 text-[11px] text-center mb-3 line-clamp-2">${badge.description}</p>
+                    
+                    <div class="w-full mt-auto">
+                        <div class="flex justify-between items-end mb-1">
+                            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-semibold">Fortschritt</span>
+                            <span class="text-[11px] font-bold text-white">${progressPercent}%</span>
+                        </div>
+                        <div class="h-1.5 w-full bg-black/50 rounded-full overflow-hidden">
+                            <div class="h-full bg-white/30 rounded-full" style="width: ${progressPercent}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    gridContent.innerHTML = html;
+}
+
+function closeBadgesGrid() {
+    const gridPage = document.getElementById('badges-grid-page');
+    if (!gridPage) return;
+
+    gridPage.classList.add('translate-x-full');
+    setTimeout(() => {
+        gridPage.classList.add('hidden');
+    }, 300);
+}
+
+async function evaluateBadges() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+
+    await loadBadges();
+
+    for (const badge of globalBadges) {
+        if (!globalUserBadges.has(badge.id) && badge.category === 'collector' && globalBadgeProgress >= badge.required_count) {
+
+            const { error } = await supabaseClient
+                .from('user_badges')
+                .insert([{ user_id: user.id, badge_id: badge.id }]);
+
+            if (!error) {
+                const xpMap = { 1: 250, 2: 400, 3: 600, 4: 800, 5: 1000, 6: 1200, 7: 1400, 8: 1600, 9: 1800, 10: 2000 };
+                const xpGained = xpMap[badge.level] || 100;
+                await supabaseClient.rpc('increment_badge_xp', { uid: user.id, xp_amount: xpGained });
+
+                showBadgeUnlock(badge, xpGained);
+                globalUserBadges.add(badge.id);
+            }
+        }
+    }
+
+    loadBadges();
+}
+
+function showBadgeUnlock(badge, xp) {
+    const overlay = document.getElementById('badge-unlock-overlay');
+    const img = document.getElementById('badge-unlock-img');
+    const nameText = document.getElementById('badge-unlock-name');
+    const xpText = document.getElementById('badge-unlock-xp');
+
+    if (!overlay || !img || !nameText) return;
+
+    const imgUrl = badge.image_url.startsWith('http') ? badge.image_url : GITHUB_BASE + badge.image_url;
+    img.src = imgUrl;
+    nameText.innerText = badge.name;
+
+    if (xpText && xp) {
+        xpText.style.display = 'block';
+        xpText.innerText = '+' + xp + ' XP';
+    } else if (xpText) {
+        xpText.style.display = 'none';
+    }
+
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('success');
+
+    // Close on click
+    overlay.onclick = () => closeBadgeUnlock();
+}
+
+function closeBadgeUnlock() {
+    const overlay = document.getElementById('badge-unlock-overlay');
+    if (!overlay) return;
+
+    overlay.classList.remove('flex');
+    overlay.classList.add('hidden');
+    overlay.onclick = null;
+
+    if (typeof loadUserStats === 'function') {
+        supabaseClient.auth.getUser().then(({ data: { user } }) => {
+            if (user) loadUserStats(user.id);
+        });
+    }
+}
+
+// ==========================================
+// 9.6. SOCIAL FEATURES (FRIENDS & SEARCH)
 // ==========================================
 
 let userSearchTimeout;
@@ -1721,7 +1918,7 @@ function clearConnectionSearch() {
     const searchPanel = document.getElementById('connections-search-panel');
     const mainPanel = document.getElementById('connections-main-panel');
     const resultsContainer = document.getElementById('connections-search-results');
-    
+
     input.value = '';
     clearBtn.classList.add('hidden');
     searchPanel.classList.add('hidden');
@@ -1790,10 +1987,10 @@ async function searchUsersConnections() {
         resultsContainer.innerHTML = '';
         profiles.forEach(profile => {
             const followStatus = followMap[profile.id] || 'none';
-            
+
             let btnText = "Folgen";
             let btnClass = "bg-[#0A84FF] text-white active:bg-[#0070E0]"; // Standard Follow Button
-            
+
             if (followStatus === 'accepted') {
                 btnText = "Folge ich";
                 btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]";
@@ -1833,7 +2030,7 @@ async function toggleFollow(targetId, btnElement) {
 
     const currentStatus = btnElement.getAttribute('data-status');
     btnElement.disabled = true;
-    
+
     // Visuelles Feedback sofort
     const originalText = btnElement.innerText;
     const originalClass = btnElement.className;
@@ -1901,7 +2098,7 @@ function switchConnTab(tabName) {
                 btn.classList.add('text-[#8E8E93]', 'bg-transparent');
             }
         }
-        
+
         // 2. Update Panels
         const panel = document.getElementById(`conn-panel-${t}`);
         if (panel) {
@@ -1915,15 +2112,15 @@ async function acceptFollowRequest(requestId, targetId) {
     triggerHapticFeedback();
     const btn = event.currentTarget;
     const parentDiv = btn.closest('.request-item-row');
-    
+
     // Optimistic UI
     if (parentDiv) parentDiv.style.opacity = '0.5';
-    
+
     const { error } = await supabaseClient
         .from('user_follows')
         .update({ status: 'accepted' })
         .eq('id', requestId);
-        
+
     if (!error) {
         if (parentDiv) parentDiv.remove();
         loadConnectionsData(); // Refresh all lists
@@ -1937,15 +2134,15 @@ async function declineFollowRequest(requestId) {
     triggerHapticFeedback();
     const btn = event.currentTarget;
     const parentDiv = btn.closest('.request-item-row');
-    
+
     // Optimistic UI
     if (parentDiv) parentDiv.style.opacity = '0.5';
-    
+
     const { error } = await supabaseClient
         .from('user_follows')
         .delete()
         .eq('id', requestId);
-        
+
     if (!error) {
         if (parentDiv) parentDiv.remove();
         loadConnectionsData(); // Refresh counts
@@ -1995,18 +2192,18 @@ async function loadConnectionsData() {
     const banner = document.getElementById('conn-pending-banner');
     const badge = document.getElementById('conn-requests-badge');
     const countText = document.getElementById('conn-pending-count-text');
-    
+
     if (pendingRequests.length > 0) {
         banner.classList.remove('hidden');
         badge.classList.remove('hidden');
         countText.innerText = `${pendingRequests.length} offene Anfrage${pendingRequests.length > 1 ? 'n' : ''}`;
-        
+
         requestsList.innerHTML = '';
         pendingRequests.forEach(req => {
             const profile = req.follower;
-            if(!profile) return;
+            if (!profile) return;
             const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
-            
+
             requestsList.innerHTML += `
                 <div class="request-item-row flex items-center justify-between py-2.5">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -2868,7 +3065,7 @@ async function openScanModal() {
 function closeScanModal(isDragging = false) {
     // Turn off flashlight when closing
     if (scanFlashlightOn && scanCurrentTrack) {
-        try { scanCurrentTrack.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) {}
+        try { scanCurrentTrack.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) { }
         scanFlashlightOn = false;
     }
     scanCurrentTrack = null;
@@ -3094,7 +3291,7 @@ function openSettingsSubpage(type) {
 
         // Use cached username as placeholder, cached email as value – both instant
         const cachedRemaining = cache?.remaining ?? window._cachedUsernameChangesRemaining ?? null;
-        const cachedEmail   = cache?.email   || '';
+        const cachedEmail = cache?.email || '';
         // Always read the username directly from the profile card in the DOM – it's always correct
         const liveUsername = document.getElementById('profile-email')?.innerText?.trim() || '';
         const cachedUsername = liveUsername || cache?.username || '';
@@ -3788,7 +3985,7 @@ async function handleProfileSave(btn) {
         const newRemaining = Math.max(0, 3 - (changesThisMonth + 1));
         window._cachedUsernameChangesRemaining = newRemaining;
         // Also update profileCache so next open of Edit Profile shows correct values
-        window._profileCache = { ...( window._profileCache || {}), username: newUsername, remaining: newRemaining };
+        window._profileCache = { ...(window._profileCache || {}), username: newUsername, remaining: newRemaining };
         const changesLeftEl = document.getElementById('username-changes-left');
         if (changesLeftEl) {
             changesLeftEl.innerHTML = newRemaining === 0

@@ -46,16 +46,16 @@ CREATE POLICY "user_badges_own_insert" ON user_badges
 -- image_url: Trage hier deine eigenen Bild-URLs ein.
 -- Du kannst diese Einträge nach dem Ausführen in Supabase anpassen (z.B. image_url updaten).
 INSERT INTO badges (name, description, image_url, category, level, required_count) VALUES
-    ('Collector Lvl 1',   'Schalte 5 verschiedene Snusdosen frei.',    'badges/collector_1.png',   'collector', 1,   5),
-    ('Collector Lvl 2',   'Schalte 10 verschiedene Snusdosen frei.',   'badges/collector_2.png',   'collector', 2,   10),
-    ('Collector Lvl 3',   'Schalte 15 verschiedene Snusdosen frei.',   'badges/collector_3.png',   'collector', 3,   15),
-    ('Collector Lvl 4',   'Schalte 20 verschiedene Snusdosen frei.',   'badges/collector_4.png',   'collector', 4,   20),
-    ('Collector Lvl 5',   'Schalte 30 verschiedene Snusdosen frei.',   'badges/collector_5.png',   'collector', 5,   30),
-    ('Collector Lvl 6',   'Schalte 40 verschiedene Snusdosen frei.',   'badges/collector_6.png',   'collector', 6,   40),
-    ('Collector Lvl 7',   'Schalte 50 verschiedene Snusdosen frei.',   'badges/collector_7.png',   'collector', 7,   50),
-    ('Collector Lvl 8',   'Schalte 65 verschiedene Snusdosen frei.',   'badges/collector_8.png',   'collector', 8,   65),
-    ('Collector Lvl 9',   'Schalte 80 verschiedene Snusdosen frei.',   'badges/collector_9.png',   'collector', 9,   80),
-    ('Collector Lvl 10',  'Schalte 100 verschiedene Snusdosen frei.',  'badges/collector_10.png',  'collector', 10,  100)
+    ('Collector Lvl 1',   'Schalte 5 verschiedene Snusdosen frei.',    'BadgeCollector1.png',   'collector', 1,   5),
+    ('Collector Lvl 2',   'Schalte 10 verschiedene Snusdosen frei.',   'BadgeCollector2.png',   'collector', 2,   10),
+    ('Collector Lvl 3',   'Schalte 15 verschiedene Snusdosen frei.',   'BadgeCollector3.png',   'collector', 3,   15),
+    ('Collector Lvl 4',   'Schalte 20 verschiedene Snusdosen frei.',   'BadgeCollector4.png',   'collector', 4,   20),
+    ('Collector Lvl 5',   'Schalte 30 verschiedene Snusdosen frei.',   'BadgeCollector5.png',   'collector', 5,   30),
+    ('Collector Lvl 6',   'Schalte 40 verschiedene Snusdosen frei.',   'BadgeCollector6.png',   'collector', 6,   40),
+    ('Collector Lvl 7',   'Schalte 50 verschiedene Snusdosen frei.',   'BadgeCollector7.png',   'collector', 7,   50),
+    ('Collector Lvl 8',   'Schalte 65 verschiedene Snusdosen frei.',   'BadgeCollector8.png',   'collector', 8,   65),
+    ('Collector Lvl 9',   'Schalte 80 verschiedene Snusdosen frei.',   'BadgeCollector9.png',   'collector', 9,   80),
+    ('Collector Lvl 10',  'Schalte 100 verschiedene Snusdosen frei.',  'BadgeCollector10.png', 'collector', 10,  100)
 ON CONFLICT DO NOTHING;
 
 -- ==========================================
