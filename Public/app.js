@@ -2718,26 +2718,26 @@ function renderActiveCansUI() {
                         onmousedown="startEmptyCan('${can.id}')"
                         onmouseup="stopEmptyCan()"
                         onmouseleave="stopEmptyCan()"
-                        style="user-select: none; -webkit-user-select: none;">
+                        oncontextmenu="return false;"
+                        style="padding: 4px; user-select: none; -webkit-user-select: none;">
 
-                        <!-- Ring: 8px Abstand, rx = button-rx + 8, perfekt konzentrisch -->
-                        <svg class="absolute pointer-events-none"
-                             style="inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px);"
-                             viewBox="0 0 88 50">
+                        <!-- Ring liegt innerhalb des Containers (kein negativer Inset) -->
+                        <svg class="absolute inset-0 w-full h-full pointer-events-none"
+                             viewBox="0 0 76 41">
                             <!-- Track -->
-                            <path d="M44,4 H64 A21,21 0 1,1 64,46 H24 A21,21 0 1,1 24,4 H44 Z"
-                                stroke="rgba(255,255,255,0.15)" stroke-width="3" fill="none"
-                                stroke-linecap="round" />
-                            <!-- Progress — von Mitte oben, Uhrzeigersinn -->
+                            <path d="M38,1.25 H55.5 A19.25,19.25 0 1,1 55.5,39.75 H20.5 A19.25,19.25 0 1,1 20.5,1.25 H38 Z"
+                                stroke="rgba(255,255,255,0.15)" stroke-width="2.5" fill="none"
+                                stroke-linecap="butt" />
+                            <!-- Progress — startet oben Mitte, Uhrzeigersinn -->
                             <path id="empty-progress-${can.id}"
-                                d="M44,4 H64 A21,21 0 1,1 64,46 H24 A21,21 0 1,1 24,4 H44 Z"
-                                stroke="white" stroke-width="3" fill="none"
-                                stroke-linecap="round"
+                                d="M38,1.25 H55.5 A19.25,19.25 0 1,1 55.5,39.75 H20.5 A19.25,19.25 0 1,1 20.5,1.25 H38 Z"
+                                stroke="white" stroke-width="2.5" fill="none"
+                                stroke-linecap="butt"
                                 pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"
                                 style="transition: none;" />
                         </svg>
 
-                        <div id="empty-btn-${can.id}" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-transform pointer-events-none select-none whitespace-nowrap">
+                        <div id="empty-btn-${can.id}" class="relative bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full pointer-events-none select-none whitespace-nowrap">
                             Empty
                         </div>
                     </div>
