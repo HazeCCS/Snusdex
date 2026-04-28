@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadLatestGitHubCommit();
     checkUser();
     initDexScrollAnimation();
+    loadBadgesFromCache();
 });
 
 // ==========================================
@@ -233,7 +234,12 @@ async function handleLogout(btn) {
     const {
         error
     } = await supabaseClient.auth.signOut();
-    if (!error) window.location.reload();
+    if (!error) {
+        localStorage.removeItem('cached_badges');
+        localStorage.removeItem('cached_user_badges');
+        localStorage.removeItem('cached_badge_progress');
+        window.location.reload();
+    }
 }
 
 // ==========================================
@@ -1719,6 +1725,43 @@ let globalBadges = [];
 let globalUserBadges = new Set();
 let globalBadgeProgress = 0;
 
+function updateBadgesStrip() {
+    const stripContainer = document.getElementById('badges-strip');
+    if (stripContainer) {
+        let stripHtml = '';
+        globalBadges.forEach(badge => {
+            if (globalUserBadges.has(badge.id)) {
+                const imgUrl = badge.image_url.startsWith('http') ? badge.image_url : GITHUB_BASE + badge.image_url;
+                stripHtml += `<div class="w-12 h-12 flex-shrink-0"><img src="${imgUrl}" class="w-full h-full object-contain" onerror="this.src='https://via.placeholder.com/150'"></div>`;
+            }
+        });
+
+        if (stripHtml === '') {
+            stripContainer.innerHTML = '<div class="text-[13px] text-[#8E8E93] py-2 px-1">Noch keine Badges freigeschaltet.</div>';
+        } else {
+            stripContainer.innerHTML = stripHtml;
+        }
+    }
+}
+
+function loadBadgesFromCache() {
+    try {
+        const cachedBadges = localStorage.getItem('cached_badges');
+        const cachedUserBadges = localStorage.getItem('cached_user_badges');
+        const cachedProgress = localStorage.getItem('cached_badge_progress');
+
+        if (cachedBadges) globalBadges = JSON.parse(cachedBadges);
+        if (cachedUserBadges) globalUserBadges = new Set(JSON.parse(cachedUserBadges));
+        if (cachedProgress) globalBadgeProgress = parseInt(cachedProgress) || 0;
+
+        if (globalBadges.length > 0) {
+            updateBadgesStrip();
+        }
+    } catch (e) {
+        console.warn("Failed to load badges from cache", e);
+    }
+}
+
 async function loadBadges() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
@@ -1729,7 +1772,7 @@ async function loadBadges() {
         .select('*')
         .order('level', { ascending: true });
 
-    globalBadges = allBadges || [];
+    if (allBadges) globalBadges = allBadges;
 
     // Fetch user badges
     const { data: userBadges } = await supabaseClient
@@ -1747,22 +1790,12 @@ async function loadBadges() {
 
     globalBadgeProgress = collections ? new Set(collections.map(c => c.snus_id)).size : 0;
 
-    const stripContainer = document.getElementById('badges-strip');
-    if (stripContainer) {
-        let stripHtml = '';
-        globalBadges.forEach(badge => {
-            if (globalUserBadges.has(badge.id)) {
-                const imgUrl = badge.image_url.startsWith('http') ? badge.image_url : GITHUB_BASE + badge.image_url;
-                stripHtml += `<div class="w-12 h-12 flex-shrink-0"><img src="${imgUrl}" class="w-full h-full object-contain" onerror="this.src='https://via.placeholder.com/150'"></div>`;
-            }
-        });
+    // Save to cache
+    localStorage.setItem('cached_badges', JSON.stringify(globalBadges));
+    localStorage.setItem('cached_user_badges', JSON.stringify([...globalUserBadges]));
+    localStorage.setItem('cached_badge_progress', globalBadgeProgress);
 
-        if (stripHtml === '') {
-            stripContainer.innerHTML = '<div class="text-[13px] text-[#8E8E93] py-2 px-1">Noch keine Badges freigeschaltet.</div>';
-        } else {
-            stripContainer.innerHTML = stripHtml;
-        }
-    }
+    updateBadgesStrip();
 }
 
 function openBadgesGrid() {
