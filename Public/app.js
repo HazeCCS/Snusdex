@@ -79,7 +79,6 @@ async function signInWithGoogle() {
         btnText.innerText = "Opening Google...";
         btn.disabled = true;
         btn.style.opacity = "0.7";
-
         const redirectUrl = window.location.origin + window.location.pathname;
 
         const { data, error } = await supabaseClient.auth.signInWithOAuth({
@@ -544,6 +543,22 @@ const dexImageCache = new Map();
 
 // Lädt alle Bilder im Hintergrund mit einer geordneten Queue.
 // Max. 6 parallele Downloads – kein setTimeout-Spam, kein Browser-Überlastung.
+async function preloadBadgeImages() {
+    if (!globalBadges || globalBadges.length === 0) return;
+    const unlockedBadges = globalBadges.filter(b => globalUserBadges.has(b.id));
+    await Promise.all(unlockedBadges.map(async badge => {
+        const url = badge.image_url.startsWith('http') ? badge.image_url : GITHUB_BASE + badge.image_url;
+        if (badgeImageCache.has(url)) return;
+        try {
+            const resp = await fetch(url);
+            if (resp.ok) {
+                const blob = await resp.blob();
+                badgeImageCache.set(url, URL.createObjectURL(blob));
+            }
+        } catch (e) {}
+    }));
+}
+
 function preloadAllDexImages(items) {
     const queue = items
         .map(snus => GITHUB_BASE + snus.image)
@@ -1399,7 +1414,7 @@ async function setupProfile(user) {
     // Username aus profiles Tabelle laden (Single Source of Truth)
     const { data: profileData } = await supabaseClient
         .from('profiles')
-        .select('username')
+        .select('username, featured_badge_id')
         .eq('id', user.id)
         .single();
 
@@ -1413,6 +1428,9 @@ async function setupProfile(user) {
     const initialsEl = document.getElementById('user-initials');
     if (emailEl) emailEl.innerText = currentUsername;
     if (initialsEl) initialsEl.innerText = currentUsername[0].toUpperCase();
+
+    window._featuredBadgeId = profileData?.featured_badge_id || null;
+    renderFeaturedBadgeOverlay();
 
     updateGreeting();
     loadUserStats(user.id);
@@ -1731,6 +1749,7 @@ function renderSocialCard(title, snus, ratings, overall, count, countLabel = 'Sc
 let globalBadges = [];
 let globalUserBadges = new Set();
 let globalBadgeProgress = 0;
+const badgeImageCache = new Map();
 
 function updateBadgesStrip() {
     const stripContainer = document.getElementById('badges-strip');
@@ -1739,7 +1758,8 @@ function updateBadgesStrip() {
         globalBadges.forEach(badge => {
             if (globalUserBadges.has(badge.id)) {
                 const imgUrl = badge.image_url.startsWith('http') ? badge.image_url : GITHUB_BASE + badge.image_url;
-                stripHtml += `<div class="w-12 h-12 flex-shrink-0"><img src="${imgUrl}" class="w-full h-full object-contain" onerror="this.src='https://via.placeholder.com/150'"></div>`;
+                const displayUrl = badgeImageCache.get(imgUrl) || imgUrl;
+                stripHtml += `<div class="w-12 h-12 flex-shrink-0"><img src="${displayUrl}" class="w-full h-full object-contain" onerror="this.src='https://via.placeholder.com/150'"></div>`;
             }
         });
 
@@ -1763,6 +1783,8 @@ function loadBadgesFromCache() {
 
         if (globalBadges.length > 0) {
             updateBadgesStrip();
+            renderFeaturedBadgeOverlay();
+            preloadBadgeImages();
         }
     } catch (e) {
         console.warn("Failed to load badges from cache", e);
@@ -1803,6 +1825,8 @@ async function loadBadges() {
     localStorage.setItem('cached_badge_progress', globalBadgeProgress);
 
     updateBadgesStrip();
+    renderFeaturedBadgeOverlay();
+    preloadBadgeImages();
 }
 
 function openBadgesGrid() {
@@ -1875,6 +1899,84 @@ function closeBadgesGrid() {
     setTimeout(() => {
         gridPage.classList.add('hidden');
     }, 300);
+}
+
+function renderFeaturedBadgeOverlay() {
+    const overlay = document.getElementById('profile-badge-overlay');
+    const img = document.getElementById('profile-badge-img');
+    if (!overlay || !img) return;
+
+    const badgeId = window._featuredBadgeId;
+    if (!badgeId) { overlay.classList.add('hidden'); return; }
+
+    const badge = globalBadges.find(b => b.id === badgeId);
+    if (!badge) { overlay.classList.add('hidden'); return; }
+
+    const imgUrl = badge.image_url.startsWith('http') ? badge.image_url : GITHUB_BASE + badge.image_url;
+    img.src = badgeImageCache.get(imgUrl) || imgUrl;
+    overlay.classList.remove('hidden');
+}
+
+function renderBadgeSelectorItems() {
+    const container = document.getElementById('badge-selector-scroll');
+    if (!container) return;
+
+    while (container.children.length > 1) container.removeChild(container.lastChild);
+
+    const unlockedBadges = globalBadges.filter(b => globalUserBadges.has(b.id));
+
+    if (unlockedBadges.length === 0) {
+        container.insertAdjacentHTML('beforeend', `<span class="text-[12px] text-[#8E8E93] self-center pl-1">Noch keine Badges freigeschaltet</span>`);
+    }
+
+    unlockedBadges.forEach(badge => {
+        const imgUrl = badge.image_url.startsWith('http') ? badge.image_url : GITHUB_BASE + badge.image_url;
+        const displayUrl = badgeImageCache.get(imgUrl) || imgUrl;
+        const item = document.createElement('div');
+        item.className = 'badge-sel-item flex-shrink-0 flex flex-col items-center gap-2';
+        item.dataset.badgeId = String(badge.id);
+        item.onclick = function() { triggerHapticFeedback(); selectFeaturedBadge(badge.id, this); };
+        const displayName = badge.name.replace(/\bcollector\b/i, '').trim();
+        item.innerHTML = `
+            <div class="sel-ring w-14 h-14 rounded-full border-2 border-white/20 flex items-center justify-center bg-[#1C1C1E] transition-all duration-200 overflow-hidden p-1">
+                <img src="${displayUrl}" class="w-full h-full object-contain">
+            </div>
+            <span class="text-[11px] text-[#8E8E93] text-center leading-tight w-[56px] line-clamp-2">${displayName}</span>
+        `;
+        container.appendChild(item);
+    });
+
+    updateBadgeSelectorUI();
+}
+
+function updateBadgeSelectorUI() {
+    const selected = window._featuredBadgeId;
+    document.querySelectorAll('.badge-sel-item').forEach(item => {
+        const ring = item.querySelector('.sel-ring');
+        if (!ring) return;
+        const isNone = item.dataset.badgeId === 'none';
+        const isSelected = selected ? String(selected) === item.dataset.badgeId : isNone;
+        if (isSelected) {
+            ring.classList.remove('border-white/20', 'border-dashed');
+            ring.classList.add('border-white');
+        } else {
+            ring.classList.remove('border-white');
+            ring.classList.add('border-white/20');
+            if (isNone) ring.classList.add('border-dashed');
+        }
+    });
+}
+
+async function selectFeaturedBadge(badgeId, el) {
+    window._featuredBadgeId = badgeId;
+    updateBadgeSelectorUI();
+    renderFeaturedBadgeOverlay();
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+        await supabaseClient.from('profiles').update({ featured_badge_id: badgeId }).eq('id', user.id);
+    } catch (e) { /* ignore */ }
 }
 
 async function evaluateBadges() {
@@ -3366,6 +3468,21 @@ function openSettingsSubpage(type) {
                 </div>
             </div>
 
+            <div class="w-full mb-4">
+                <p class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium mb-3 px-1">Featured Badge</p>
+                <div id="badge-selector-scroll" class="flex gap-3 overflow-x-auto pb-1 px-1" style="scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;">
+                    <div onclick="triggerHapticFeedback();selectFeaturedBadge(null,this)" data-badge-id="none"
+                        class="badge-sel-item flex-shrink-0 flex flex-col items-center gap-2">
+                        <div class="sel-ring w-14 h-14 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center bg-[#1C1C1E] transition-all duration-200">
+                            <svg class="w-5 h-5 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </div>
+                        <span class="text-[11px] text-[#8E8E93]">Keins</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-[#1C1C1E] rounded-[24px] border border-white/10 shadow-sm w-full overflow-hidden mb-4">
                 <!-- Username -->
                 <div class="px-5 pt-4 pb-3">
@@ -3673,6 +3790,10 @@ function openSettingsSubpage(type) {
     }
 
     contentObj.innerHTML = html;
+
+    if (type === 'Edit Profile') {
+        renderBadgeSelectorItems();
+    }
 
     subpage.classList.remove('hidden');
 
