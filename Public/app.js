@@ -405,12 +405,19 @@ function switchTab(tabId) {
     });
 
     if (isDexTarget) {
-        // Dex einblenden: Layout war immer da, nur Sichtbarkeit ändert sich
+        // Dex einblenden: einen Frame unsichtbar halten (opacity:0), damit Scroll und
+        // contentVisibility-Layout vor dem Animationsstart stabil sind.
+        dexTab.style.opacity = '0';
         dexTab.classList.remove('tab-dex-hidden');
-        // Animation neu starten (identisch zu allen anderen Tabs)
-        dexTab.style.animation = 'none';
-        void dexTab.offsetWidth; // Force reflow → Animation-Reset
-        dexTab.style.animation = '';
+        requestAnimationFrame(() => {
+            window.scrollTo(0, 0);
+            requestAnimationFrame(() => {
+                dexTab.style.opacity = '';
+                dexTab.style.animation = 'none';
+                void dexTab.offsetWidth;
+                dexTab.style.animation = '';
+            });
+        });
     } else {
         // Dex ausblenden: Layout BLEIBT berechnet → kein Reflow beim nächsten Switch
         dexTab.classList.add('tab-dex-hidden');
