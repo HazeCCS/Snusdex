@@ -2131,7 +2131,7 @@ async function searchUsersConnections() {
             const followStatus = followMap[profile.id] || 'none';
 
             let btnText = "Folgen";
-            let btnClass = "bg-[#0A84FF] text-white active:bg-[#0070E0]"; // Standard Follow Button
+            let btnClass = "bg-white text-black active:bg-white/90"; // Standard Follow Button
 
             if (followStatus === 'accepted') {
                 btnText = "Folge ich";
@@ -2188,7 +2188,7 @@ async function toggleFollow(targetId, btnElement) {
 
         if (!error) {
             btnElement.setAttribute('data-status', 'none');
-            btnElement.className = "ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold transition-all flex-shrink-0 bg-[#0A84FF] text-white active:bg-[#0070E0]";
+            btnElement.className = "ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold transition-all flex-shrink-0 bg-white text-black active:bg-white/90";
             btnElement.innerText = "Folgen";
         } else {
             btnElement.className = originalClass;
@@ -2356,7 +2356,7 @@ async function loadConnectionsData() {
                         </div>
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0 pl-2">
-                        <button onclick="acceptFollowRequest('${req.id}', '${profile.id}')" class="px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-[#0A84FF] text-white active:bg-[#0070E0] transition-colors">
+                        <button onclick="acceptFollowRequest('${req.id}', '${profile.id}')" class="px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-white text-black active:bg-white/90 transition-colors">
                             Bestätigen
                         </button>
                         <button onclick="declineFollowRequest('${req.id}')" class="w-8 h-8 rounded-[10px] bg-[#2C2C2E] text-[#8E8E93] flex items-center justify-center active:bg-[#3A3A3C] transition-colors">
@@ -2429,7 +2429,7 @@ function renderConnectionItem(profile, followStatus, profileId) {
             </button>`;
     } else {
         actionBtn = `
-            <button onclick="triggerHapticFeedback(); toggleFollow('${profileId}', this)" data-status="none" class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-[#0A84FF] text-white active:bg-[#0070E0] transition-all flex-shrink-0">
+            <button onclick="triggerHapticFeedback(); toggleFollow('${profileId}', this)" data-status="none" class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-white text-black active:bg-white/90 transition-all flex-shrink-0">
                 Folgen
             </button>`;
     }
