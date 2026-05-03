@@ -511,42 +511,40 @@ let _socialCacheTime = 0;
 const SOCIAL_CACHE_TTL = 5 * 60 * 1000; // 5 Minuten
 
 async function loadDex() {
-    const {
-        data: {
-            user
-        }
-    } = await supabaseClient.auth.getUser();
+    const { data: { user } } = await supabaseClient.auth.getUser();
+
+    // Beide Queries parallel starten – halbiert die Netzwerkwartezeit
+    const queries = [
+        supabaseClient.from('snus_products').select('*').order('id', { ascending: true })
+    ];
     if (user) {
-        const {
-            data: myCol
-        } = await supabaseClient.from('user_collections').select('*').eq('user_id', user.id);
-        globalUserCollection = {};
-        if (myCol) {
-            myCol.forEach(item => {
-                globalUserCollection[item.snus_id] = {
-                    date: item.collected_at,
-                    ratings: {
-                        taste: item.rating_taste || 5,
-                        smell: item.rating_smell || 5,
-                        bite: item.rating_bite || 5,
-                        drip: item.rating_drip || 5,
-                        visuals: item.rating_visuals || 5
-                    }
-                };
-            });
-        }
+        queries.push(supabaseClient.from('user_collections').select('*').eq('user_id', user.id));
     }
 
-    const {
-        data: snusItems
-    } = await supabaseClient.from('snus_products').select('*').order('id', {
-        ascending: true
-    });
+    const results = await Promise.all(queries);
+    const snusItems = results[0].data;
+    const myCol = user ? results[1].data : null;
+
     globalSnusData = snusItems || [];
+    globalUserCollection = {};
+    if (myCol) {
+        myCol.forEach(item => {
+            globalUserCollection[item.snus_id] = {
+                date: item.collected_at,
+                ratings: {
+                    taste: item.rating_taste || 5,
+                    smell: item.rating_smell || 5,
+                    bite: item.rating_bite || 5,
+                    drip: item.rating_drip || 5,
+                    visuals: item.rating_visuals || 5
+                }
+            };
+        });
+    }
+
     updateLivePerformance();
     updateDexSortButtonUI();
     filterDex();
-    // NOTE: loadTopSnusOfWeek wird nur beim Social-Tab-Wechsel geladen, nicht hier
     renderSuggestions();
 }
 
@@ -1438,31 +1436,7 @@ function toggleDexFilterUnlocked() {
 }
 
 
-async function setupProfile(user) {
-    // Username aus profiles Tabelle laden (Single Source of Truth)
-    const { data: profileData } = await supabaseClient
-        .from('profiles')
-        .select('username, featured_badge_id')
-        .eq('id', user.id)
-        .single();
-
-    // Fallback-Kette: profiles.username → user_metadata.username → email-prefix
-    currentUsername = profileData?.username
-        || user.user_metadata?.username
-        || user.email.split('@')[0];
-
-    // Alle UI-Stellen synchron aktualisieren
-    const emailEl = document.getElementById('profile-email');
-    const initialsEl = document.getElementById('user-initials');
-    if (emailEl) emailEl.innerText = currentUsername;
-    if (initialsEl) initialsEl.innerText = currentUsername[0].toUpperCase();
-
-    window._featuredBadgeId = profileData?.featured_badge_id || null;
-    renderFeaturedBadgeOverlay();
-
-    updateGreeting();
-    loadUserStats(user.id);
-}
+// setupProfile: nur eine Definition weiter unten (Zeile ~4331)
 
 function triggerHapticFeedback() {
     if (window.webkit && window.webkit.messageHandlers.hapticHandler) window.webkit.messageHandlers.hapticHandler.postMessage("vibrate");
@@ -1986,28 +1960,15 @@ async function loadBadges() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
 
-    // Fetch badges
-    const { data: allBadges } = await supabaseClient
-        .from('badges')
-        .select('*')
-        .order('level', { ascending: true });
+    // Alle 3 Queries parallel starten – spart ~60-80% Wartezeit
+    const [{ data: allBadges }, { data: userBadges }, { data: collections }] = await Promise.all([
+        supabaseClient.from('badges').select('*').order('level', { ascending: true }),
+        supabaseClient.from('user_badges').select('badge_id').eq('user_id', user.id),
+        supabaseClient.from('user_collections').select('snus_id').eq('user_id', user.id)
+    ]);
 
     if (allBadges) globalBadges = allBadges;
-
-    // Fetch user badges
-    const { data: userBadges } = await supabaseClient
-        .from('user_badges')
-        .select('badge_id')
-        .eq('user_id', user.id);
-
     globalUserBadges = new Set(userBadges ? userBadges.map(ub => ub.badge_id) : []);
-
-    // Calculate progress for "collector" badges
-    const { data: collections } = await supabaseClient
-        .from('user_collections')
-        .select('snus_id')
-        .eq('user_id', user.id);
-
     globalBadgeProgress = collections ? new Set(collections.map(c => c.snus_id)).size : 0;
 
     // Save to cache
@@ -2176,9 +2137,9 @@ async function evaluateBadges() {
 
     await loadBadges();
 
+    let anyUnlocked = false;
     for (const badge of globalBadges) {
         if (!globalUserBadges.has(badge.id) && badge.category === 'collector' && globalBadgeProgress >= badge.required_count) {
-
             const { error } = await supabaseClient
                 .from('user_badges')
                 .insert([{ user_id: user.id, badge_id: badge.id }]);
@@ -2187,14 +2148,19 @@ async function evaluateBadges() {
                 const xpMap = { 1: 250, 2: 400, 3: 600, 4: 800, 5: 1000, 6: 1200, 7: 1400, 8: 1600, 9: 1800, 10: 2000 };
                 const xpGained = xpMap[badge.level] || 100;
                 await supabaseClient.rpc('increment_badge_xp', { uid: user.id, xp_amount: xpGained });
-
                 showBadgeUnlock(badge, xpGained);
                 globalUserBadges.add(badge.id);
+                anyUnlocked = true;
             }
         }
     }
 
-    loadBadges();
+    // Nur UI aktualisieren wenn neue Badges freigeschaltet wurden – kein zweites loadBadges()
+    if (anyUnlocked) {
+        updateBadgesStrip();
+        renderFeaturedBadgeOverlay();
+        localStorage.setItem('cached_user_badges', JSON.stringify([...globalUserBadges]));
+    }
 }
 
 function showBadgeUnlock(badge, xp) {
@@ -2325,27 +2291,19 @@ async function searchUsersConnections() {
             follows.forEach(f => followMap[f.following_id] = f.status);
         }
 
-        resultsContainer.innerHTML = '';
-        profiles.forEach(profile => {
+        resultsContainer.innerHTML = profiles.map(profile => {
             const followStatus = followMap[profile.id] || 'none';
-
             let btnText = "Folgen";
-            let btnClass = "bg-white text-black active:bg-white/90"; // Standard Follow Button
-
-            if (followStatus === 'accepted') {
-                btnText = "Folge ich";
-                btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]";
-            } else if (followStatus === 'pending') {
-                btnText = "Angefragt";
-                btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]";
-            }
+            let btnClass = "bg-white text-black active:bg-white/90";
+            if (followStatus === 'accepted') { btnText = "Folge ich"; btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]"; }
+            else if (followStatus === 'pending') { btnText = "Angefragt"; btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]"; }
 
             const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
             const xp = profile.xp || 0;
             const level = Math.floor(xp / 300) + 1;
             const cans = Math.floor(xp / 100);
 
-            resultsContainer.innerHTML += `
+            return `
                 <div class="flex items-center justify-between py-2.5">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
                         <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0">
@@ -2354,14 +2312,14 @@ async function searchUsersConnections() {
                             <p class="text-[13px] text-[#8E8E93] truncate">Lvl ${level} • ${cans} Dosen</p>
                         </div>
                     </div>
-                    <button onclick="triggerHapticFeedback(); toggleFollow('${profile.id}', this)" 
+                    <button onclick="triggerHapticFeedback(); toggleFollow('${profile.id}', this)"
                             data-status="${followStatus}"
                             class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold transition-all flex-shrink-0 ${btnClass}">
                         ${btnText}
                     </button>
                 </div>
             `;
-        });
+        }).join('');
     }, 400);
 }
 
@@ -2539,13 +2497,11 @@ async function loadConnectionsData() {
         badge.classList.remove('hidden');
         countText.innerText = `${pendingRequests.length} offene Anfrage${pendingRequests.length > 1 ? 'n' : ''}`;
 
-        requestsList.innerHTML = '';
-        pendingRequests.forEach(req => {
+        const reqParts = pendingRequests.map(req => {
             const profile = req.follower;
-            if (!profile) return;
+            if (!profile) return '';
             const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
-
-            requestsList.innerHTML += `
+            return `
                 <div class="request-item-row flex items-center justify-between py-2.5">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
                         <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0">
@@ -2565,6 +2521,7 @@ async function loadConnectionsData() {
                 </div>
             `;
         });
+        requestsList.innerHTML = reqParts.join('');
     } else {
         banner.classList.add('hidden');
         badge.classList.add('hidden');
@@ -2572,39 +2529,23 @@ async function loadConnectionsData() {
     }
 
     // --- RENDER FRIENDS ---
-    if (friends.length > 0) {
-        friendsList.innerHTML = '';
-        friends.forEach(f => {
-            friendsList.innerHTML += renderConnectionItem(f.following, 'accepted', f.following_id);
-        });
-    } else {
-        friendsList.innerHTML = '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Füge Freunde hinzu, um sie hier zu sehen.</div>';
-    }
+    friendsList.innerHTML = friends.length > 0
+        ? friends.map(f => renderConnectionItem(f.following, 'accepted', f.following_id)).join('')
+        : '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Füge Freunde hinzu, um sie hier zu sehen.</div>';
 
     // Erstelle ein Map mit Status der Leute, denen ich folge
     const myOutgoingFollows = new Map();
     (outgoing || []).forEach(f => myOutgoingFollows.set(f.following_id, f.status));
 
     // --- RENDER FOLLOWERS ---
-    if (myFollowers.length > 0) {
-        followersList.innerHTML = '';
-        myFollowers.forEach(f => {
-            const status = myOutgoingFollows.get(f.follower.id) || 'none';
-            followersList.innerHTML += renderConnectionItem(f.follower, status, f.follower.id);
-        });
-    } else {
-        followersList.innerHTML = '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Du hast noch keine Follower.</div>';
-    }
+    followersList.innerHTML = myFollowers.length > 0
+        ? myFollowers.map(f => renderConnectionItem(f.follower, myOutgoingFollows.get(f.follower.id) || 'none', f.follower.id)).join('')
+        : '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Du hast noch keine Follower.</div>';
 
     // --- RENDER FOLLOWING ---
-    if (iAmFollowing.length > 0) {
-        followingList.innerHTML = '';
-        iAmFollowing.forEach(f => {
-            followingList.innerHTML += renderConnectionItem(f.following, 'accepted', f.following_id);
-        });
-    } else {
-        followingList.innerHTML = '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Du folgst noch niemandem.</div>';
-    }
+    followingList.innerHTML = iAmFollowing.length > 0
+        ? iAmFollowing.map(f => renderConnectionItem(f.following, 'accepted', f.following_id)).join('')
+        : '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Du folgst noch niemandem.</div>';
 }
 
 // Helper zum Rendern von Profil-Reihen in den Listen
@@ -2964,6 +2905,7 @@ function renderActiveCansUI() {
     }
 
     const trackingMode = localStorage.getItem('snusTrackingMode') || 'full';
+    const parts = [];
 
     globalActiveLogs.forEach(can => {
         const snusName = can.snus_products ? can.snus_products.name : 'Unknown';
@@ -2974,7 +2916,7 @@ function renderActiveCansUI() {
             const pouchesTotal = can.pouches_per_can || 20;
             const pouchesTaken = can.pouches_taken || 0;
 
-            container.innerHTML += `
+            parts.push(`
                 <div class="flex items-center justify-between bg-[#1C1C1E] border border-white/5 rounded-2xl p-3 mb-3 shadow-sm select-none">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
                         <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
@@ -2985,21 +2927,21 @@ function renderActiveCansUI() {
                             <p class="text-[11px] text-[#8E8E93] tracking-wider mt-0.5">${pouchesTaken} / ${pouchesTotal} Pouches Taken</p>
                         </div>
                     </div>
-                    
-                    <div class="relative w-[48px] h-[48px] flex items-center justify-center group flex-shrink-0 touch-none" 
+
+                    <div class="relative w-[48px] h-[48px] flex items-center justify-center group flex-shrink-0 touch-none"
                          oncontextmenu="return false;"
-                         ontouchstart="startAddPouch('${logId}', ${pouchesTotal}, ${pouchesTaken})" 
-                         ontouchend="stopAddPouch()" 
-                         onmousedown="startAddPouch('${logId}', ${pouchesTotal}, ${pouchesTaken})" 
-                         onmouseup="stopAddPouch()" 
+                         ontouchstart="startAddPouch('${logId}', ${pouchesTotal}, ${pouchesTaken})"
+                         ontouchend="stopAddPouch()"
+                         onmousedown="startAddPouch('${logId}', ${pouchesTotal}, ${pouchesTaken})"
+                         onmouseup="stopAddPouch()"
                          onmouseleave="stopAddPouch()">
-                        
+
                         <svg class="absolute inset-0 w-full h-full transform -rotate-90 pointer-events-none" viewBox="0 0 48 48">
                             <circle cx="24" cy="24" r="22" stroke="rgba(255,255,255,0.1)" stroke-width="4" fill="none" />
-                            <circle id="progress-${logId}" cx="24" cy="24" r="22" stroke="white" stroke-width="4" fill="none" 
+                            <circle id="progress-${logId}" cx="24" cy="24" r="22" stroke="white" stroke-width="4" fill="none"
                                     stroke-dasharray="138.2" stroke-dashoffset="138.2" style="transition: none;" />
                         </svg>
-                        
+
                         <div class="w-[36px] h-[36px] bg-white/10 rounded-full flex items-center justify-center group-active:scale-95 transition-transform pointer-events-none">
                             <svg class="w-5 h-5 text-white pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -3007,9 +2949,9 @@ function renderActiveCansUI() {
                         </div>
                     </div>
                 </div>
-            `;
+            `);
         } else {
-            container.innerHTML += `
+            parts.push(`
                 <div class="flex items-center justify-between bg-[#1C1C1E] border border-white/5 rounded-2xl p-3 mb-3 shadow-sm">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
@@ -3029,14 +2971,11 @@ function renderActiveCansUI() {
                         oncontextmenu="return false;"
                         style="padding: 4px; user-select: none; -webkit-user-select: none;">
 
-                        <!-- Ring liegt innerhalb des Containers (kein negativer Inset) -->
                         <svg class="absolute inset-0 w-full h-full pointer-events-none"
                              viewBox="0 0 76 41">
-                            <!-- Track -->
                             <path d="M38,1.25 H55.5 A19.25,19.25 0 1,1 55.5,39.75 H20.5 A19.25,19.25 0 1,1 20.5,1.25 H38 Z"
                                 stroke="rgba(255,255,255,0.15)" stroke-width="2.5" fill="none"
                                 stroke-linecap="butt" />
-                            <!-- Progress — startet oben Mitte, Uhrzeigersinn -->
                             <path id="empty-progress-${can.id}"
                                 d="M38,1.25 H55.5 A19.25,19.25 0 1,1 55.5,39.75 H20.5 A19.25,19.25 0 1,1 20.5,1.25 H38 Z"
                                 stroke="white" stroke-width="2.5" fill="none"
@@ -3050,9 +2989,11 @@ function renderActiveCansUI() {
                         </div>
                     </div>
                 </div>
-            `;
+            `);
         }
     });
+
+    container.innerHTML = parts.join('');
 }
 
 let addPouchTimer = null;
@@ -3074,17 +3015,22 @@ function startEmptyCan(logId) {
         progressRect.style.strokeDashoffset = '100';
     }
 
-    emptyCanTimer = setInterval(() => {
-        emptyCanProgress += 2;
+    let lastTs = null;
+    function animateEmpty(ts) {
+        if (lastTs === null) lastTs = ts;
+        const delta = ts - lastTs;
+        lastTs = ts;
+        // 2% pro 20ms entspricht 100% in 1 Sekunde
+        emptyCanProgress = Math.min(100, emptyCanProgress + (delta / 20) * 2);
 
         if (progressRect) {
             progressRect.style.strokeDashoffset = 100 - emptyCanProgress;
         }
 
-        if (emptyCanProgress >= 100) {
-            clearInterval(emptyCanTimer);
+        if (emptyCanProgress < 100) {
+            emptyCanTimer = requestAnimationFrame(animateEmpty);
+        } else {
             emptyCanTimer = null;
-            emptyCanProgress = 100;
             if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('success');
 
             const btn = document.getElementById(`empty-btn-${logId}`);
@@ -3094,18 +3040,17 @@ function startEmptyCan(logId) {
             }
 
             const container = document.getElementById(`empty-container-${logId}`);
-            if (container) {
-                container.style.pointerEvents = 'none';
-            }
+            if (container) container.style.pointerEvents = 'none';
 
             finishSpecificCan(logId);
         }
-    }, 20);
+    }
+    emptyCanTimer = requestAnimationFrame(animateEmpty);
 }
 
 function stopEmptyCan() {
     if (emptyCanTimer) {
-        clearInterval(emptyCanTimer);
+        cancelAnimationFrame(emptyCanTimer);
         emptyCanTimer = null;
     }
 
@@ -3128,27 +3073,32 @@ function startAddPouch(logId, maxPouches, currentPouches) {
         progressCircle.style.strokeDashoffset = '138.2';
     }
 
-    addPouchTimer = setInterval(() => {
-        addPouchProgress += 2; // 50 updates per second -> 100 in 1 second
+    let lastTs = null;
+    function animatePouch(ts) {
+        if (lastTs === null) lastTs = ts;
+        const delta = ts - lastTs;
+        lastTs = ts;
+        // 2% pro 20ms entspricht 100% in 1 Sekunde
+        addPouchProgress = Math.min(100, addPouchProgress + (delta / 20) * 2);
+
         if (progressCircle) {
-            const offset = 138.2 - (138.2 * (addPouchProgress / 100));
-            progressCircle.style.strokeDashoffset = offset;
+            progressCircle.style.strokeDashoffset = 138.2 - (138.2 * (addPouchProgress / 100));
         }
 
-        if (addPouchProgress >= 100) {
-            clearInterval(addPouchTimer);
+        if (addPouchProgress < 100) {
+            addPouchTimer = requestAnimationFrame(animatePouch);
+        } else {
             addPouchTimer = null;
-            addPouchProgress = 100;
             if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('success');
-
             executeAddPouch(logId, maxPouches, currentPouches + 1);
         }
-    }, 20);
+    }
+    addPouchTimer = requestAnimationFrame(animatePouch);
 }
 
 function stopAddPouch() {
     if (addPouchTimer) {
-        clearInterval(addPouchTimer);
+        cancelAnimationFrame(addPouchTimer);
         addPouchTimer = null;
     }
 
@@ -4328,20 +4278,42 @@ function filterDex() {
     }
 }
 
-function setupProfile(user) {
+async function setupProfile(user) {
+    // Sofort mit user_metadata rendern (kein DB-Wait nötig)
     const emailEl = document.getElementById('profile-email');
+    const initialsEl = document.getElementById('user-initials');
     const idEl = document.getElementById('profile-id');
     const adminEl = document.getElementById('admin-panel');
-    if (emailEl) emailEl.innerText = user.user_metadata?.username || user.email;
-    if (idEl) {
-        const shortId = user.id.split('-')[0].toUpperCase();
-        idEl.innerText = `ID #${shortId}`;
-    }
 
-    if (user.email === 'tarayannorman@gmail.com' && adminEl) {
-        adminEl.classList.remove('hidden');
-    }
+    const immediateUsername = user.user_metadata?.username || user.email.split('@')[0];
+    currentUsername = immediateUsername;
+
+    if (emailEl) emailEl.innerText = currentUsername;
+    if (initialsEl) initialsEl.innerText = currentUsername[0].toUpperCase();
+    if (idEl) idEl.innerText = `ID #${user.id.split('-')[0].toUpperCase()}`;
+    if (user.email === 'tarayannorman@gmail.com' && adminEl) adminEl.classList.remove('hidden');
+
+    updateGreeting();
     loadUserStats(user.id);
+
+    // Vollständiges Profil im Hintergrund nachladen (featured badge + korrekter username aus DB)
+    try {
+        const { data: profileData } = await supabaseClient
+            .from('profiles')
+            .select('username, featured_badge_id')
+            .eq('id', user.id)
+            .single();
+
+        if (profileData?.username && profileData.username !== currentUsername) {
+            currentUsername = profileData.username;
+            if (emailEl) emailEl.innerText = currentUsername;
+            if (initialsEl) initialsEl.innerText = currentUsername[0].toUpperCase();
+            updateGreeting();
+        }
+
+        window._featuredBadgeId = profileData?.featured_badge_id || null;
+        renderFeaturedBadgeOverlay();
+    } catch (e) { /* ignore */ }
 }
 
 function previewProfileImage(event) {
@@ -4634,8 +4606,6 @@ function updateLivePerformance() {
     const showMoreBtn = document.getElementById('show-more-scans-btn');
     if (!listEl) return;
 
-    listEl.innerHTML = '';
-
     if (globalInactiveLogs.length === 0) {
         listEl.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">Noch keine Dosen geschlossen.</div>';
         if (showMoreBtn) showMoreBtn.classList.add('hidden');
@@ -4650,18 +4620,16 @@ function updateLivePerformance() {
         }
     }
 
+    const parts = [];
     globalInactiveLogs.slice(0, 4).forEach(log => {
         const snus = globalSnusData.find(s => s.id === log.snus_id);
         if (snus) {
             const dateObj = new Date(log.finished_at || log.opened_at);
-            const customDateStr = dateObj.toLocaleDateString('de-DE', {
-                day: '2-digit',
-                month: '2-digit',
-                year: '2-digit'
-            });
-            listEl.innerHTML += createScanListItemHTML(snus, false, customDateStr);
+            const customDateStr = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+            parts.push(createScanListItemHTML(snus, false, customDateStr));
         }
     });
+    listEl.innerHTML = parts.join('');
 }
 
 function openAllScansModal() {
@@ -4670,19 +4638,16 @@ function openAllScansModal() {
     const card = document.getElementById('all-scans-card');
     const listContainer = document.getElementById('all-scans-list-container');
 
-    listContainer.innerHTML = '';
+    const scanParts = [];
     globalInactiveLogs.forEach(log => {
         const snus = globalSnusData.find(s => s.id === log.snus_id);
         if (snus) {
             const dateObj = new Date(log.finished_at || log.opened_at);
-            const customDateStr = dateObj.toLocaleDateString('de-DE', {
-                day: '2-digit',
-                month: '2-digit',
-                year: '2-digit'
-            });
-            listContainer.innerHTML += createScanListItemHTML(snus, true, customDateStr);
+            const customDateStr = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+            scanParts.push(createScanListItemHTML(snus, true, customDateStr));
         }
     });
+    listContainer.innerHTML = scanParts.join('');
 
     modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
@@ -4819,36 +4784,31 @@ function renderSuggestions() {
     const shuffled = uncollected.sort(() => 0.5 - Math.random());
     const suggestions = shuffled.slice(0, 9); // 9 Dosen
 
-    container.innerHTML = '';
     const glowActive = localStorage.getItem('dexGlow') === 'true';
 
-    suggestions.forEach(snus => {
+    container.innerHTML = suggestions.map(snus => {
         const formattedId = '#' + String(snus.id).padStart(3, '0');
         const rarity = (snus.rarity || 'common').toLowerCase().trim();
         const boxShadow = glowActive ? `box-shadow: 0 0px 20px -8px var(--${rarity}, var(--common));` : '';
         const rarityIndicator = `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
 
-        container.innerHTML += `
+        return `
             <div onclick="openSnusDetail(${snus.id})" class="suggestion-card cursor-pointer group flex-shrink-0 w-[28vw] snap-center transition-transform duration-200 ease-out origin-center" style="touch-action: pan-x;">
                 <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] shadow-md overflow-hidden" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
-                    
                     <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
                         <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
                         ${rarityIndicator}
                     </div>
-
                     <div class="w-full aspect-square flex items-center justify-center relative mt-1">
                         <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10" loading="lazy" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
                     </div>
-                    
                     <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
                         <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 text-white">${snus.name}</h5>
                     </div>
-                    
                 </div>
             </div>
         `;
-    });
+    }).join('');
 
     setTimeout(initSuggestionsScrollAnimation, 50);
 }
@@ -4968,6 +4928,7 @@ async function loadLatestGitHubCommit() {
 // ==========================================
 let dexScrollRafId = null;
 let lastHapticScrollY = 0;
+let _dexScrollListenerActive = false;
 // Dynamic threshold – updated after first render to match actual card row height
 let HAPTIC_PIXEL_THRESHOLD = 140;
 
@@ -5037,8 +4998,9 @@ function updateDexScale() {
 }
 
 function initDexScrollAnimation() {
-    // Startpunkt setzen, sobald die Animation initialisiert wird
     lastHapticScrollY = window.scrollY;
+    if (_dexScrollListenerActive) return; // Verhindert doppelte Registrierung
+    _dexScrollListenerActive = true;
 
     window.addEventListener('scroll', () => {
         const dexTab = document.getElementById('tab-dex');
