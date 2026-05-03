@@ -397,30 +397,39 @@ function switchTab(tabId) {
         if (!activeTab || !activeTab.classList.contains('hidden')) return;
     }
 
-    // Alle NICHT-Dex-Tabs per display:none verstecken
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        if (tab.id === 'tab-dex') return; // Dex niemals mit display:none anfassen!
-        tab.classList.add('hidden');
-    });
-
     if (isDexTarget) {
-        // Dex einblenden: einen Frame unsichtbar halten (opacity:0), damit Scroll und
-        // contentVisibility-Layout vor dem Animationsstart stabil sind.
-        dexTab.style.opacity = '0';
+        // DEX ZUERST sichtbar machen (synchron, vor dem Paint) →
+        // kein schwarzes Frame, weil Dex sofort im Flow erscheint.
         dexTab.classList.remove('tab-dex-hidden');
+
+        // Erst DANACH alte Tabs ausblenden (synchron im selben JS-Tick)
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            if (tab.id === 'tab-dex') return;
+            tab.classList.add('hidden');
+        });
+
+        // Scroll + Scale-Animation einmalig nach dem Paint
         requestAnimationFrame(() => {
             window.scrollTo(0, 0);
-            requestAnimationFrame(() => {
-                dexTab.style.opacity = '';
-                dexTab.style.animation = 'none';
-                void dexTab.offsetWidth;
-                dexTab.style.animation = '';
-            });
+            updateDexScale();
         });
     } else {
-        // Dex ausblenden: Layout BLEIBT berechnet → kein Reflow beim nächsten Switch
+        // Nicht-Dex: Dex layout-erhaltend ausblenden, neuen Tab einblenden.
+        // Reihenfolge: neuen Tab zuerst zeigen → kein schwarzes Frame.
+        const nextTab = document.getElementById(`tab-${tabId}`);
+        if (nextTab) nextTab.classList.remove('hidden');
+
+        // Alle anderen Tabs (außer Dex und Ziel) ausblenden
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            if (tab.id === 'tab-dex' || tab.id === `tab-${tabId}`) return;
+            tab.classList.add('hidden');
+        });
+
+        // Dex layout-erhaltend verstecken (kein display:none → kein Reflow)
         dexTab.classList.add('tab-dex-hidden');
-        document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+        // Scroll nach oben
+        window.scrollTo(0, 0);
     }
 
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -429,8 +438,6 @@ function switchTab(tabId) {
         btn.classList.toggle('text-[#8E8E93]', !isActive);
     });
 
-    // scrollTo nach erstem Paint
-    requestAnimationFrame(() => window.scrollTo(0, 0));
 
     if (tabId === 'home' && displayedXp !== null && actualXp !== null && displayedXp !== actualXp) {
         setTimeout(() => {
@@ -450,10 +457,6 @@ function switchTab(tabId) {
         }
         // Badges immer aus Cache laden (sehr schnell)
         loadBadges();
-    }
-
-    if (tabId === 'dex') {
-        requestAnimationFrame(updateDexScale);
     }
 
     if (tabId === 'profile') {
