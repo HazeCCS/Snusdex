@@ -1634,51 +1634,124 @@ async function loadTopSnusOfWeek() {
         }
     }
 
-    // Load Most Scanned List
+    // Load Most Scanned List Wrapper & Data
     await loadMostScannedThisWeek();
-
-    // Cache das gerenderte HTML + Timestamp
-    _socialCacheData = container.innerHTML;
-    _socialCacheTime = Date.now();
 }
+
+let _socialListMode = 0; // 0: 7 Days, 1: Today, 2: Top Rated
+let _socialListData = { days7: [], today: [], topRated: [] };
+
+window.cycleSocialListMode = function() {
+    _socialListMode = (_socialListMode + 1) % 3;
+    triggerHapticFeedback();
+    renderSocialListUI();
+};
+
+window.toggleListScore = function(btn, id) {
+    triggerHapticFeedback();
+    const detailsDiv = document.getElementById(`score-details-${id}`);
+    if (detailsDiv) {
+        const isHidden = detailsDiv.classList.contains('hidden');
+        
+        if (isHidden) {
+            detailsDiv.classList.remove('hidden');
+            detailsDiv.style.opacity = '0';
+            detailsDiv.style.transform = 'translateY(-10px)';
+            detailsDiv.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            
+            // Force reflow
+            void detailsDiv.offsetWidth;
+            
+            detailsDiv.style.opacity = '1';
+            detailsDiv.style.transform = 'translateY(0)';
+        } else {
+            detailsDiv.style.opacity = '0';
+            detailsDiv.style.transform = 'translateY(-10px)';
+            setTimeout(() => {
+                detailsDiv.classList.add('hidden');
+            }, 300);
+        }
+
+        const svg = btn.querySelector('svg');
+        if (svg) {
+            svg.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+            svg.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        }
+        
+        // Cache aktualisieren, da sich das DOM verändert hat
+        setTimeout(() => {
+            const topContainer = document.getElementById('top-snus-container');
+            if (topContainer) _socialCacheData = topContainer.innerHTML;
+        }, 300);
+    }
+};
 
 async function loadMostScannedThisWeek() {
     const container = document.getElementById('top-snus-container');
     if (!container) return;
 
-    // Fetch collections from last 7 days — aggregate by snus_id client-side
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // Wir fügen einen Wrapper für die dynamische Liste hinzu
+    if (!document.getElementById('social-dynamic-list-wrapper')) {
+        container.innerHTML += `<div id="social-dynamic-list-wrapper"></div>`;
+    }
 
-    const { data, error } = await supabaseClient
-        .from('user_collections')
-        .select('snus_id, collected_at')
-        .gte('collected_at', sevenDaysAgo.toISOString());
+    // Call the RPC that bypasses RLS and returns all 3 lists with ratings
+    const { data, error } = await supabaseClient.rpc('get_social_list_stats');
 
     if (error) {
-        console.error("Error fetching most scanned:", error);
+        console.error("Error fetching social list stats:", error);
         return;
     }
 
-    // Count occurrences per snus_id
-    const counts = {};
-    if (data && data.length > 0) {
-        data.forEach(item => {
-            if (item.snus_id) counts[item.snus_id] = (counts[item.snus_id] || 0) + 1;
-        });
+    const mapToSnus = (items, countField) => {
+        if (!items) return [];
+        return items.map(item => {
+            const snusInfo = globalSnusData.find(s => String(s.id) === String(item.snus_id));
+            return {
+                snusInfo,
+                count: item[countField],
+                score: item.score,
+                ratings: {
+                    visuals: item.visuals,
+                    smell: item.smell,
+                    taste: item.taste,
+                    bite: item.bite,
+                    drip: item.drip,
+                    strength: item.strength
+                }
+            };
+        }).filter(item => item.snusInfo != null);
+    };
+
+    _socialListData.days7 = mapToSnus(data?.most_scanned_7d, 'scan_count');
+    _socialListData.today = mapToSnus(data?.most_scanned_today, 'scan_count');
+    _socialListData.topRated = mapToSnus(data?.top_rated_7d, 'rating_count');
+
+    renderSocialListUI();
+}
+
+function renderSocialListUI() {
+    const wrapper = document.getElementById('social-dynamic-list-wrapper');
+    if (!wrapper) return;
+
+    let items = [];
+    let title = '';
+    let countLabel = '';
+    
+    if (_socialListMode === 0) {
+        items = _socialListData.days7;
+        title = 'Most Scanned (7 Tage)';
+        countLabel = 'Scan';
+    } else if (_socialListMode === 1) {
+        items = _socialListData.today;
+        title = 'Most Scanned (Heute)';
+        countLabel = 'Scan';
+    } else {
+        items = _socialListData.topRated;
+        title = 'Top Rated (All Time)';
+        countLabel = 'Score';
     }
 
-    // Sort by count and take top 7
-    const sortedSnus = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 7)
-        .map(([id, count]) => {
-            const snusInfo = globalSnusData.find(s => String(s.id) === String(id));
-            return { snusInfo, count };
-        })
-        .filter(item => item.snusInfo != null);
-
-    // Helper: score color
     const scoreColor = (v) => {
         if (!v && v !== 0) return 'text-[#8E8E93]';
         const n = parseFloat(v);
@@ -1688,63 +1761,110 @@ async function loadMostScannedThisWeek() {
         return 'text-[#32ADE6]';
     };
 
-    // Render HTML
+    const scoreRingColor = (v) => {
+        if (!v && v !== 0) return 'border-[#8E8E93]/40';
+        const n = parseFloat(v);
+        if (n <= 3.9) return 'border-[#FF3B30]/40';
+        if (n <= 6.9) return 'border-[#FFCC00]/40';
+        if (n <= 8.9) return 'border-[#34C759]/40';
+        return 'border-[#32ADE6]/40';
+    };
+
+    const createCircle = (label, val) => {
+        const valueDisplay = (val !== null && val !== undefined) ? parseFloat(val).toFixed(1) : '—';
+        return `
+        <div class="flex flex-col items-center">
+            <div class="w-8 h-8 rounded-full border-[1.5px] ${scoreRingColor(val)} flex items-center justify-center bg-black/30 mb-1.5 shadow-inner">
+                <span class="text-[10px] font-bold ${scoreColor(val)}">${valueDisplay}</span>
+            </div>
+            <span class="text-[8px] text-[#8E8E93] uppercase tracking-wider font-semibold">${label}</span>
+        </div>
+        `;
+    };
+
     let listHTML = `
         <div class="mb-6">
             <div class="flex items-center justify-between mb-2.5">
-                <span class="text-[13px] text-[#8E8E93] font-semibold uppercase tracking-wider">Most Scanned (7 Tage)</span>
+                <span class="text-[13px] text-[#8E8E93] font-semibold uppercase tracking-wider">${title}</span>
+                <button onclick="cycleSocialListMode()" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 active:bg-white/20 transition-colors rounded-full text-white text-[10px] font-bold tracking-wider">
+                    MODUS WECHSELN
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                </button>
             </div>
             <div class="bg-[#1C1C1E] rounded-[16px] border border-white/5 overflow-hidden shadow-lg">
     `;
 
     for (let i = 0; i < 7; i++) {
         const rank = i + 1;
-        if (i < sortedSnus.length) {
-            const item = sortedSnus[i];
+        if (i < items.length) {
+            const item = items[i];
             const snus = item.snusInfo;
             const name = snus.name || '—';
             const imgUrl = snus.image ? `${GITHUB_BASE}${snus.image}` : '';
-            // overall_score may not exist; use avg_score or computed field; fallback to '—'
-            const rawScore = snus.overall_score ?? snus.avg_score ?? snus.score ?? null;
+            const rawScore = item.score ?? snus.overall_score ?? snus.avg_score ?? snus.score ?? null;
             const scoreDisplay = (rawScore !== null && rawScore !== undefined) ? parseFloat(rawScore).toFixed(1) : '—';
             const colorClass = scoreColor(rawScore);
 
+            let countText = '';
+            if (_socialListMode === 2) {
+                countText = `Platz ${rank}`;
+            } else {
+                countText = `${item.count} ${countLabel}${item.count !== 1 ? 's' : ''}`;
+            }
+
             listHTML += `
-                <div class="flex items-center gap-3 p-3 border-b border-white/5 last:border-0 active:bg-white/5 cursor-pointer transition-colors" onclick="openSnusDetail(${snus.id})">
-                    <span class="text-[13px] font-bold text-[#8E8E93] w-5 text-center flex-shrink-0">${rank}</span>
-                    <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                        ${imgUrl ? `<img src="${imgUrl}" class="h-full w-full object-contain" onerror="this.style.display='none'">` : '<div class="w-10 h-10 rounded-md bg-[#2C2C2E]"></div>'}
+                <div class="border-b border-white/5 last:border-0 opacity-0" style="animation: fadeViewIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards ${i * 0.05}s">
+                    <div class="flex items-center gap-3 p-3 active:bg-white/5 cursor-pointer transition-colors" onclick="openSnusDetail(${snus.id})">
+                        <span class="text-[13px] font-bold text-[#8E8E93] w-5 text-center flex-shrink-0">${rank}</span>
+                        <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                            ${imgUrl ? `<img src="${imgUrl}" class="h-full w-full object-contain" onerror="this.style.display='none'">` : '<div class="w-10 h-10 rounded-md bg-[#2C2C2E]"></div>'}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-white text-[15px] font-semibold truncate tracking-tight leading-tight">${name}</h4>
+                            <p class="text-[#8E8E93] text-[11px] tracking-wider mt-0.5">${countText}</p>
+                        </div>
+                        <button onclick="event.stopPropagation(); toggleListScore(this, '${snus.id}_${i}')" class="flex-shrink-0 flex flex-col items-center justify-center min-w-[48px] px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 active:bg-white/10 active:scale-95 transition-all">
+                            <span class="text-[17px] font-bold ${colorClass} leading-none">${scoreDisplay}</span>
+                            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-medium mt-1 flex items-center gap-0.5">Score <svg class="w-2.5 h-2.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg></span>
+                        </button>
                     </div>
-                    <div class="flex-1 min-w-0">
-                        <h4 class="text-white text-[15px] font-semibold truncate tracking-tight leading-tight">${name}</h4>
-                        <p class="text-[#8E8E93] text-[11px] tracking-wider mt-0.5">${item.count} Scan${item.count > 1 ? 's' : ''} diese Woche</p>
-                    </div>
-                    <div class="flex-shrink-0 flex flex-col items-center justify-center min-w-[40px]">
-                        <span class="text-[17px] font-bold ${colorClass}">${scoreDisplay}</span>
-                        <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-medium">Score</span>
+                    <!-- Details Dropdown -->
+                    <div id="score-details-${snus.id}_${i}" class="hidden bg-black/20 border-t border-white/5 p-3">
+                        <div class="grid grid-cols-6 gap-1 pt-1 pb-1">
+                            ${createCircle('Vis.', item.ratings?.visuals)}
+                            ${createCircle('Smell', item.ratings?.smell)}
+                            ${createCircle('Taste', item.ratings?.taste)}
+                            ${createCircle('Bite', item.ratings?.bite)}
+                            ${createCircle('Drip', item.ratings?.drip)}
+                            ${createCircle('Str.', item.ratings?.strength)}
+                        </div>
                     </div>
                 </div>
             `;
         } else {
-            // Empty placeholder row
             listHTML += `
-                <div class="flex items-center gap-3 p-3 border-b border-white/5 last:border-0 opacity-30">
-                    <span class="text-[13px] font-bold text-[#8E8E93] w-5 text-center flex-shrink-0">${rank}</span>
-                    <div class="w-10 h-10 rounded-md bg-[#2C2C2E] flex-shrink-0"></div>
-                    <div class="flex-1 min-w-0">
-                        <h4 class="text-[#8E8E93] text-[14px] italic tracking-tight">Noch keine Daten</h4>
+                <div class="border-b border-white/5 last:border-0 opacity-0" style="animation: fadeViewIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards ${i * 0.05}s">
+                    <div class="flex items-center gap-3 p-3 opacity-30">
+                        <span class="text-[13px] font-bold text-[#8E8E93] w-5 text-center flex-shrink-0">${rank}</span>
+                        <div class="w-10 h-10 rounded-md bg-[#2C2C2E] flex-shrink-0"></div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-[#8E8E93] text-[14px] italic tracking-tight">Noch keine Daten</h4>
+                        </div>
                     </div>
                 </div>
             `;
         }
     }
 
-    listHTML += `
-            </div>
-        </div>
-    `;
+    listHTML += `</div></div>`;
+    wrapper.innerHTML = listHTML;
 
-    container.innerHTML += listHTML;
+    // Update Cache
+    const topContainer = document.getElementById('top-snus-container');
+    if (topContainer) {
+        _socialCacheData = topContainer.innerHTML;
+        _socialCacheTime = Date.now();
+    }
 }
 
 function getScoreColor(score) {
@@ -4159,8 +4279,30 @@ function filterDex() {
         // Observer für Chunking abschalten, da wir hier horizontales Scrollen nutzen
         if (dexObserver) dexObserver.disconnect();
 
-        const groupedData = groupAndSortByBrand(filtered);
-        renderDexGrouped(groupedData);
+        // Zeige sofort Skeleton Loader, um schwarzes Flackern zu verhindern
+        grid.innerHTML = `
+            ${[1,2,3].map(i => `
+            <div class="brand-section mb-4 w-[calc(100%+40px)] -mx-[20px] px-5 opacity-50 animate-pulse" style="contain-intrinsic-size: 0 200px;">
+                <div class="flex justify-between items-end mb-3 mt-6">
+                    <div class="h-6 w-32 bg-white/10 rounded-md"></div>
+                    <div class="h-5 w-12 bg-white/10 rounded-full"></div>
+                </div>
+                <div class="flex gap-[3vw] overflow-hidden pb-4 pt-3">
+                    <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-white/5 rounded-[20px] border border-white/5"></div>
+                    <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-white/5 rounded-[20px] border border-white/5"></div>
+                    <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-white/5 rounded-[20px] border border-white/5"></div>
+                    <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-white/5 rounded-[20px] border border-white/5"></div>
+                </div>
+            </div>`).join('')}
+        `;
+
+        // Verarbeitung auf den nächsten Frame schieben, damit Skeleton gezeichnet wird
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const groupedData = groupAndSortByBrand(filtered);
+                renderDexGrouped(groupedData);
+            });
+        });
 
     } else {
         // --- BESTEHEND: Sort by ID (Grid Layout) ---
@@ -5162,8 +5304,9 @@ function renderDexGrouped(groupedData) {
     // Bestehende Carousel-Scroll-Listener aufräumen
     _brandScrollListeners.forEach(({ el, fn }) => el.removeEventListener('scroll', fn));
     _brandScrollListeners = [];
-
-    grid.innerHTML = '';
+    
+    // grid.innerHTML = ''; wird jetzt im ersten Chunk von renderNextBrandChunk gemacht, 
+    // damit das Skeleton stehen bleibt bis der erste echte Content kommt.
     const glowActive = localStorage.getItem('dexGlow') === 'true';
 
     if (!imageLazyObserver) initImageLazyLoadObserver();
@@ -5184,16 +5327,23 @@ function renderDexGrouped(groupedData) {
 
         const fragment = document.createDocumentFragment();
 
-        chunk.forEach(brandData => {
+        // Wenn dies der erste Chunk ist, löschen wir das Skeleton Loading
+        if (brandIndex === 0) {
+            grid.innerHTML = '';
+        }
+
+        chunk.forEach((brandData, index) => {
             const section = document.createElement('div');
             section.className = 'brand-section mb-4';
-            // Bricht aus dem px-5 Eltern-Container aus → Carousel geht bis zum Bildschirmrand
             section.style.marginLeft = '-20px';
             section.style.marginRight = '-20px';
             section.style.width = 'calc(100% + 40px)';
-            // Dem Browser erlauben, Off-Screen-Sections zu überspringen (reduziert Reflow-Kosten)
             section.style.contentVisibility = 'auto';
             section.style.containIntrinsicSize = '0 200px';
+
+            // Individuelle Fade-In Animation für das Segment
+            section.style.opacity = '0';
+            section.style.animation = `fadeViewIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards ${index * 0.1}s`;
 
             const header = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
             let cardsHTML = '';
