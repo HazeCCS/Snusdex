@@ -705,7 +705,7 @@ function loadMoreDexItems(chunkOverride) {
     // DocumentFragment für performantes Batch-Insert
     const fragment = document.createDocumentFragment();
 
-    nextChunk.forEach(snus => {
+    nextChunk.forEach((snus, index) => {
         const isUnlocked = !!globalUserCollection[snus.id];
         const formattedId = '#' + String(snus.id).padStart(3, '0');
         const rarity = (snus.rarity || 'common').toLowerCase().trim();
@@ -730,6 +730,8 @@ function loadMoreDexItems(chunkOverride) {
         const imgSrcAttr = isCached ? `src="${imgUrl}"` : `data-src="${imgUrl}"`;
 
         const wrapper = document.createElement('div');
+        wrapper.style.opacity = '0';
+        wrapper.style.animation = `fadeViewIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards ${index * 0.03}s`;
         wrapper.innerHTML = `
             <div onclick="openSnusDetail(${snus.id})" class="dex-anim-card cursor-pointer group h-full w-full transition-all duration-200 ease-out origin-center will-change-transform">
                 <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] transition-all group-active:scale-95 shadow-md overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale' : ''}" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
@@ -4307,10 +4309,22 @@ function filterDex() {
     } else {
         // --- BESTEHEND: Sort by ID (Grid Layout) ---
         const cols = localStorage.getItem('dexColumns') || '3';
-        grid.classList.add('grid', cols === '2' ? 'grid-cols-2' : 'grid-cols-3', 'gap-3');
+        const is2Cols = cols === '2';
+        grid.classList.add('grid', is2Cols ? 'grid-cols-2' : 'grid-cols-3', 'gap-3');
+        
+        // Show grid skeletons
+        grid.innerHTML = `
+            ${[...Array(12)].map(() => `
+                <div class="aspect-[1/1.2] rounded-[20px] bg-white/5 border border-white/5 animate-pulse opacity-50"></div>
+            `).join('')}
+        `;
 
-        filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
-        renderDexGrid(filtered); // Lädt Chunks & triggert Observer neu
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+                renderDexGrid(filtered); // Lädt Chunks & triggert Observer neu
+            });
+        });
     }
 }
 
