@@ -4664,25 +4664,15 @@ function closeAllScansModal(isDragging = false) {
 // ALL-SCANS MODAL – GESTURE ENGINE (einzige Definition)
 // ==========================================
 
-let _allScansStartY = 0;
-let _allScansStartScrollTop = 0;
-let _allScansTouchStartTime = 0;
-let _allScansDragging = false;   // aktive Drag-to-close Geste
-let _allScansScrolling = false;  // aktive Scroll-Geste im Content
-let _allScansIntentSet = false;  // Intent einmalig festgelegt für diese Geste
-let _allScansRafId = null;
-
 function initAllScansGestures() {
     const card = document.getElementById('all-scans-card');
     const scrollArea = document.getElementById('all-scans-scroll-area');
     const dragHandle = document.getElementById('all-scans-drag-handle');
     if (!card || !scrollArea) return;
 
-    function resetState() {
-        _allScansDragging = false;
-        _allScansScrolling = false;
-        _allScansIntentSet = false;
-        if (_allScansRafId) { cancelAnimationFrame(_allScansRafId); _allScansRafId = null; }
+    function applyRelease(startY, startTime, rafId) {
+        if (rafId) cancelAnimationFrame(rafId);
+        return { rafId: null };
     }
 
     function snapBack() {
@@ -4692,80 +4682,97 @@ function initAllScansGestures() {
         setTimeout(() => { card.style.transform = ''; card.style.transition = ''; }, 400);
     }
 
-    card.addEventListener('touchstart', (e) => {
-        resetState();
-        const touch = e.touches[0];
-        _allScansStartY = touch.clientY;
-        _allScansTouchStartTime = Date.now();
-        _allScansStartScrollTop = scrollArea.scrollTop;
-
-        // Drag-Handle: Geste immer sofort als Drag einordnen
-        if (dragHandle && dragHandle.contains(e.target)) {
-            _allScansDragging = true;
-            _allScansIntentSet = true;
-            card.style.transition = 'none';
-            card.style.willChange = 'transform';
-        }
-    }, { passive: true });
-
-    card.addEventListener('touchmove', (e) => {
-        const deltaY = e.touches[0].clientY - _allScansStartY;
-
-        // Intent noch nicht bestimmt – 5px Deadzone abwarten
-        if (!_allScansIntentSet) {
-            if (Math.abs(deltaY) < 5) return;
-
-            if (deltaY > 0 && _allScansStartScrollTop <= 0) {
-                // Wisch nach unten ab ScrollTop 0 → Drag-to-close
-                _allScansDragging = true;
-                card.style.transition = 'none';
-                card.style.willChange = 'transform';
-            } else {
-                // Content wird gescrollt oder Wisch nach oben → normales Scroll
-                _allScansScrolling = true;
-            }
-            _allScansIntentSet = true;
-        }
-
-        if (_allScansDragging && deltaY > 0) {
-            if (e.cancelable) e.preventDefault();
-            if (_allScansRafId) cancelAnimationFrame(_allScansRafId);
-            _allScansRafId = requestAnimationFrame(() => {
-                card.style.transform = `translate3d(0, ${deltaY}px, 0)`;
-            });
-        }
-        // Scrolling: Browser übernimmt → kein preventDefault
-    }, { passive: false });
-
-    function onRelease(e) {
-        if (_allScansRafId) { cancelAnimationFrame(_allScansRafId); _allScansRafId = null; }
-
-        if (!_allScansDragging) {
-            // War Scroll oder undetermined → sicherstellen dass Card korrekt sitzt
-            card.style.willChange = 'auto';
-            resetState();
-            return;
-        }
-
-        const endY = (e.changedTouches || e.touches)[0]?.clientY ?? _allScansStartY;
-        const deltaY = endY - _allScansStartY;
-        const velocity = deltaY / Math.max(1, Date.now() - _allScansTouchStartTime); // px/ms
-
+    function dismiss() {
         card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
+        card.style.transform = 'translate3d(0, 100%, 0)';
         card.style.willChange = 'auto';
-
-        // Schließen wenn: ≥120px ODER schnelle Wischgeste (>0.4 px/ms) mit mind. 20px
-        if (deltaY >= 120 || (deltaY >= 20 && velocity > 0.4)) {
-            card.style.transform = 'translate3d(0, 100%, 0)';
-            closeAllScansModal(true);
-        } else {
-            snapBack();
-        }
-        resetState();
+        closeAllScansModal(true);
     }
 
-    card.addEventListener('touchend', onRelease, { passive: true });
-    card.addEventListener('touchcancel', () => { snapBack(); resetState(); card.style.willChange = 'auto'; }, { passive: true });
+    function decide(deltaY, velocity) {
+        if (deltaY >= 120 || (deltaY >= 20 && velocity > 0.4)) dismiss();
+        else snapBack();
+    }
+
+    // --- Drag Handle: immer Drag-to-close ---
+    let _hStartY = 0, _hStartTime = 0, _hDragging = false, _hRafId = null;
+
+    dragHandle.addEventListener('touchstart', (e) => {
+        _hStartY = e.touches[0].clientY;
+        _hStartTime = Date.now();
+        _hDragging = true;
+        card.style.transition = 'none';
+        card.style.willChange = 'transform';
+    }, { passive: true });
+
+    dragHandle.addEventListener('touchmove', (e) => {
+        if (!_hDragging) return;
+        const dy = e.touches[0].clientY - _hStartY;
+        if (dy <= 0) return;
+        if (e.cancelable) e.preventDefault();
+        if (_hRafId) cancelAnimationFrame(_hRafId);
+        _hRafId = requestAnimationFrame(() => { card.style.transform = `translate3d(0, ${dy}px, 0)`; });
+    }, { passive: false });
+
+    dragHandle.addEventListener('touchend', (e) => {
+        if (!_hDragging) return;
+        if (_hRafId) { cancelAnimationFrame(_hRafId); _hRafId = null; }
+        const dy = e.changedTouches[0].clientY - _hStartY;
+        const vel = dy / Math.max(1, Date.now() - _hStartTime);
+        _hDragging = false;
+        decide(dy, vel);
+    }, { passive: true });
+
+    dragHandle.addEventListener('touchcancel', () => {
+        _hDragging = false;
+        if (_hRafId) { cancelAnimationFrame(_hRafId); _hRafId = null; }
+        snapBack();
+    }, { passive: true });
+
+    // --- Scroll Area: Drag-to-close nur ab scrollTop 0 nach unten ---
+    let _sStartY = 0, _sStartTop = 0, _sStartTime = 0;
+    let _sDragging = false, _sIntentSet = false, _sRafId = null;
+
+    scrollArea.addEventListener('touchstart', (e) => {
+        _sStartY = e.touches[0].clientY;
+        _sStartTop = scrollArea.scrollTop;
+        _sStartTime = Date.now();
+        _sDragging = false;
+        _sIntentSet = false;
+        if (_sRafId) { cancelAnimationFrame(_sRafId); _sRafId = null; }
+    }, { passive: true });
+
+    scrollArea.addEventListener('touchmove', (e) => {
+        const dy = e.touches[0].clientY - _sStartY;
+        if (!_sIntentSet) {
+            if (Math.abs(dy) < 8) return;
+            _sIntentSet = true;
+            if (dy > 0 && _sStartTop <= 0) {
+                _sDragging = true;
+                card.style.transition = 'none';
+                card.style.willChange = 'transform';
+            }
+        }
+        if (_sDragging && dy > 0) {
+            if (e.cancelable) e.preventDefault();
+            if (_sRafId) cancelAnimationFrame(_sRafId);
+            _sRafId = requestAnimationFrame(() => { card.style.transform = `translate3d(0, ${dy}px, 0)`; });
+        }
+    }, { passive: false });
+
+    scrollArea.addEventListener('touchend', (e) => {
+        if (_sRafId) { cancelAnimationFrame(_sRafId); _sRafId = null; }
+        if (!_sDragging) { card.style.willChange = 'auto'; return; }
+        const dy = e.changedTouches[0].clientY - _sStartY;
+        const vel = dy / Math.max(1, Date.now() - _sStartTime);
+        _sDragging = false;
+        decide(dy, vel);
+    }, { passive: true });
+
+    scrollArea.addEventListener('touchcancel', () => {
+        if (_sRafId) { cancelAnimationFrame(_sRafId); _sRafId = null; }
+        if (_sDragging) { _sDragging = false; snapBack(); }
+    }, { passive: true });
 }
 
 document.addEventListener('DOMContentLoaded', initAllScansGestures);
