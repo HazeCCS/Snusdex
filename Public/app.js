@@ -440,7 +440,15 @@ function switchTab(tabId) {
     }
 
     if (tabId === 'social') {
-        loadTopSnusOfWeek();
+        // Nur neu laden wenn Cache abgelaufen oder leer
+        const now = Date.now();
+        if (!_socialCacheData || (now - _socialCacheTime) > SOCIAL_CACHE_TTL) {
+            loadTopSnusOfWeek();
+        } else {
+            // Cache-Daten sofort rendern (kein Netzwerk-Wait)
+            renderSocialFromCache();
+        }
+        // Badges immer aus Cache laden (sehr schnell)
         loadBadges();
     }
 
@@ -487,6 +495,13 @@ function switchTab(tabId) {
 let globalSnusData = [];
 let globalUserCollection = {};
 
+// ==========================================
+// SESSION CACHE FÜR SOCIAL TAB
+// ==========================================
+let _socialCacheData = null;
+let _socialCacheTime = 0;
+const SOCIAL_CACHE_TTL = 5 * 60 * 1000; // 5 Minuten
+
 async function loadDex() {
     const {
         data: {
@@ -523,9 +538,8 @@ async function loadDex() {
     updateLivePerformance();
     updateDexSortButtonUI();
     filterDex();
-    loadTopSnusOfWeek();
+    // NOTE: loadTopSnusOfWeek wird nur beim Social-Tab-Wechsel geladen, nicht hier
     renderSuggestions();
-
 }
 
 let currentDexRenderCount = 0;
@@ -675,6 +689,7 @@ function loadMoreDexItems(chunkOverride) {
     const chunkSize = chunkOverride || DEX_CHUNK_SIZE;
     const nextChunk = currentDexItems.slice(currentDexRenderCount, currentDexRenderCount + chunkSize);
 
+    // localStorage einmal pro Chunk lesen statt pro Item
     const cols = localStorage.getItem('dexColumns') || '3';
     const is2Cols = cols === '2';
     const glowActive = localStorage.getItem('dexGlow') === 'true';
@@ -1281,6 +1296,9 @@ async function collectCurrentSnus() {
         }
         renderDexGrid(globalSnusData);
         closeSnusDetail();
+        // Social Cache invalidieren, da neue Kollektion hinzugekommen ist
+        _socialCacheData = null;
+        _socialCacheTime = 0;
     } else {
         alert("Fehler beim Speichern: " + error.message);
     }
@@ -1493,14 +1511,53 @@ document.addEventListener('DOMContentLoaded', () => {
 // 9. TOP SNUS OF THE WEEK & SOCIAL
 // ==========================================
 
+// Rendert den gecachten Social-Inhalt sofort ohne Netzwerkzugriff
+function renderSocialFromCache() {
+    const container = document.getElementById('top-snus-container');
+    if (!container || !_socialCacheData) return;
+    container.innerHTML = _socialCacheData;
+}
+
 async function loadTopSnusOfWeek() {
+    const container = document.getElementById('top-snus-container');
+    if (!container) return;
+
+    // Skeleton-Loading anzeigen
+    container.innerHTML = `
+        <div class="space-y-4">
+            <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/5 animate-pulse">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="h-6 w-32 bg-white/10 rounded-full"></div>
+                    <div class="h-5 w-16 bg-white/10 rounded-md"></div>
+                </div>
+                <div class="flex gap-4 mb-5">
+                    <div class="w-24 h-24 bg-white/10 rounded-2xl flex-shrink-0"></div>
+                    <div class="flex-1 space-y-2 pt-2">
+                        <div class="h-5 w-3/4 bg-white/10 rounded-full"></div>
+                        <div class="h-4 w-1/2 bg-white/10 rounded-full"></div>
+                        <div class="h-7 w-20 bg-white/10 rounded-full mt-3"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-[#1C1C1E] rounded-[16px] border border-white/5 overflow-hidden">
+                ${[1,2,3,4,5].map(i => `
+                <div class="flex items-center gap-3 p-3 border-b border-white/5 animate-pulse">
+                    <div class="w-5 h-4 bg-white/10 rounded flex-shrink-0"></div>
+                    <div class="w-10 h-10 bg-white/10 rounded-xl flex-shrink-0"></div>
+                    <div class="flex-1 space-y-1.5">
+                        <div class="h-4 w-2/3 bg-white/10 rounded-full"></div>
+                        <div class="h-3 w-1/3 bg-white/10 rounded-full"></div>
+                    </div>
+                    <div class="h-5 w-8 bg-white/10 rounded flex-shrink-0"></div>
+                </div>`).join('')}
+            </div>
+        </div>
+    `;
+
     const {
         data,
         error
     } = await supabaseClient.rpc('get_social_stats');
-
-    const container = document.getElementById('top-snus-container');
-    if (!container) return;
 
     if (error) {
         console.error("Error fetching social stats:", error);
@@ -1571,6 +1628,10 @@ async function loadTopSnusOfWeek() {
 
     // Load Most Scanned List
     await loadMostScannedThisWeek();
+
+    // Cache das gerenderte HTML + Timestamp
+    _socialCacheData = container.innerHTML;
+    _socialCacheTime = Date.now();
 }
 
 async function loadMostScannedThisWeek() {
@@ -2037,9 +2098,17 @@ function closeBadgeUnlock() {
     const overlay = document.getElementById('badge-unlock-overlay');
     if (!overlay) return;
 
-    overlay.classList.remove('flex');
-    overlay.classList.add('hidden');
-    overlay.onclick = null;
+    // Smooth Fade-Out Animation
+    overlay.style.transition = 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    overlay.style.opacity = '0';
+
+    setTimeout(() => {
+        overlay.classList.remove('flex');
+        overlay.classList.add('hidden');
+        overlay.style.transition = '';
+        overlay.style.opacity = '';
+        overlay.onclick = null;
+    }, 400);
 
     if (typeof loadUserStats === 'function') {
         supabaseClient.auth.getUser().then(({ data: { user } }) => {
@@ -3163,7 +3232,7 @@ async function openScanModal() {
                         if (foundSnus) {
                             openSnusDetail(foundSnus.id, true);
                         } else {
-                            console.log(`code ${decodedText} konnte nicht gefunden werden`);
+                            openNotFoundModal();
                         }
                     }, 400);
                 },
@@ -3267,6 +3336,52 @@ function closeScanModal(isDragging = false) {
         }
 
     }, 400);
+}
+
+// ==========================================
+// NOT-FOUND MODAL
+// ==========================================
+function openNotFoundModal() {
+    const modal = document.getElementById('not-found-modal');
+    const backdrop = document.getElementById('not-found-backdrop');
+    const card = document.getElementById('not-found-card');
+    if (!modal || !backdrop || !card) return;
+
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+
+    // Force reflow then animate in
+    void modal.offsetWidth;
+    backdrop.classList.remove('opacity-0');
+    backdrop.classList.add('opacity-100');
+    card.classList.remove('scale-95', 'opacity-0');
+    card.classList.add('scale-100', 'opacity-100');
+}
+
+function closeNotFoundModal() {
+    const modal = document.getElementById('not-found-modal');
+    const backdrop = document.getElementById('not-found-backdrop');
+    const card = document.getElementById('not-found-card');
+    if (!modal || !backdrop || !card) return;
+
+    backdrop.classList.remove('opacity-100');
+    backdrop.classList.add('opacity-0');
+    card.classList.remove('scale-100', 'opacity-100');
+    card.classList.add('scale-95', 'opacity-0');
+
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }, 300);
+}
+
+function retryScan() {
+    closeNotFoundModal();
+    setTimeout(() => openScanModal(), 350);
+}
+
+function reportMissingSnus() {
+    closeNotFoundModal();
 }
 
 async function toggleScanFlashlight() {
