@@ -402,6 +402,11 @@ function switchTab(tabId) {
         // kein schwarzes Frame, weil Dex sofort im Flow erscheint.
         dexTab.classList.remove('tab-dex-hidden');
 
+        // Animation neu auslösen (Fade In)
+        dexTab.style.animation = 'none';
+        void dexTab.offsetWidth; // Trigger reflow
+        dexTab.style.animation = '';
+
         // Erst DANACH alte Tabs ausblenden (synchron im selben JS-Tick)
         document.querySelectorAll('.tab-content').forEach(tab => {
             if (tab.id === 'tab-dex') return;
