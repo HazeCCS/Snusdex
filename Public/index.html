@@ -595,6 +595,17 @@
         .tracking-tight {
             letter-spacing: -0.025em;
         }
+
+        @keyframes sk-shimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position:  200% 0; }
+        }
+        .sk {
+            background: linear-gradient(90deg, #2C2C2E 25%, #3A3A3C 50%, #2C2C2E 75%);
+            background-size: 200% 100%;
+            animation: sk-shimmer 1.4s ease-in-out infinite;
+            border-radius: 6px;
+        }
     </style>
 </head>
 
@@ -862,12 +873,15 @@
             <div id="suggestions-container"
                 class="flex gap-[2vw] overflow-x-auto px-[6vw] pb-6 pt-3 snap-x snap-mandatory scroll-smooth"
                 style="touch-action: pan-x; -webkit-overflow-scrolling: touch;">
-                <!-- Skeleton-Karten: gleiche Größe wie echte Karten → kein Layout-Shift beim Nachladen -->
-                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="relative flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden animate-pulse" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="h-2.5 w-6 bg-white/10 rounded-full"></div><div class="w-2.5 h-2.5 rounded-full bg-white/10"></div></div><div class="w-full aspect-square mt-1 bg-white/5"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="h-3 w-[70%] bg-white/10 rounded-full"></div></div></div></div>
-                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="relative flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden animate-pulse" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="h-2.5 w-6 bg-white/10 rounded-full"></div><div class="w-2.5 h-2.5 rounded-full bg-white/10"></div></div><div class="w-full aspect-square mt-1 bg-white/5"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="h-3 w-[70%] bg-white/10 rounded-full"></div></div></div></div>
-                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="relative flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden animate-pulse" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="h-2.5 w-6 bg-white/10 rounded-full"></div><div class="w-2.5 h-2.5 rounded-full bg-white/10"></div></div><div class="w-full aspect-square mt-1 bg-white/5"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="h-3 w-[70%] bg-white/10 rounded-full"></div></div></div></div>
-                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="relative flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden animate-pulse" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="h-2.5 w-6 bg-white/10 rounded-full"></div><div class="w-2.5 h-2.5 rounded-full bg-white/10"></div></div><div class="w-full aspect-square mt-1 bg-white/5"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="h-3 w-[70%] bg-white/10 rounded-full"></div></div></div></div>
-                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="relative flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden animate-pulse" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="h-2.5 w-6 bg-white/10 rounded-full"></div><div class="w-2.5 h-2.5 rounded-full bg-white/10"></div></div><div class="w-full aspect-square mt-1 bg-white/5"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="h-3 w-[70%] bg-white/10 rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
             </div>
         </div>
 
@@ -1284,6 +1298,7 @@
             <div id="modal-views-wrapper" class="w-full pt-2 px-6">
                 <div id="modal-view-info" class="fade-view">
                     <div class="w-full flex justify-center mb-4 h-60 relative">
+                        <div id="modal-img-skeleton" class="sk absolute inset-0 rounded-2xl z-10" style="transition:opacity 0.3s ease"></div>
                         <img id="modal-image" src="" alt="Snus"
                             class="h-full w-full object-contain scale-110 drop-shadow-2xl z-20">
                     </div>

@@ -510,7 +510,33 @@ let _socialCacheData = null;
 let _socialCacheTime = 0;
 const SOCIAL_CACHE_TTL = 5 * 60 * 1000; // 5 Minuten
 
+// ==========================================
+// SKELETON LOADING HELPER
+// ==========================================
+const _skeletonTemplates = {
+    // Matches loadMoreDexItems() exactly: one div per grid cell, aspect-square image, same padding
+    'dex-card': `<div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-7 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex-1 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div>`,
+
+    // Matches renderSocialCard() exactly: p-5, shadow-lg, border-white/10, mb-5,
+    // header badges, w-24 h-24 image, 2-line name, sub, score row, 6 score circles
+    'social-featured': `<div class="bg-[#1C1C1E] rounded-[24px] p-5 shadow-lg border border-white/10 mb-5"><div class="mb-4 flex justify-between items-center"><div class="sk h-7 w-36 rounded-full"></div><div class="sk h-6 w-14 rounded-md"></div></div><div class="flex items-center gap-4 mb-5"><div class="sk w-24 h-24 rounded-2xl flex-shrink-0"></div><div class="flex-1 flex flex-col justify-center gap-2"><div class="sk h-[22px] w-[85%] rounded-md"></div><div class="sk h-[22px] w-[60%] rounded-md"></div><div class="sk h-[14px] w-[45%] rounded-full"></div><div class="flex items-end gap-1.5 mt-1"><div class="sk h-[26px] w-12 rounded-md"></div><div class="sk h-[14px] w-16 rounded-full mb-0.5"></div></div></div></div><div class="pt-4 border-t border-white/5 grid grid-cols-6 gap-1">${Array(6).fill('<div class="flex flex-col items-center"><div class="sk w-10 h-10 rounded-full mb-1"></div><div class="sk h-[9px] w-7 rounded-full"></div></div>').join('')}</div></div>`,
+
+    // Matches renderSocialListUI() list item exactly: p-3 gap-3, w-10 h-10 img,
+    // flex-1 text column, score button with min-w-[48px] and two inner lines
+    'social-list-item': `<div class="border-b border-white/5 last:border-0"><div class="flex items-center gap-3 p-3"><div class="sk w-5 h-[14px] rounded flex-shrink-0"></div><div class="sk w-10 h-10 rounded-xl flex-shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="sk h-[18px] w-[65%] rounded-full"></div><div class="sk h-[13px] w-[40%] rounded-full"></div></div><div class="flex-shrink-0 min-w-[48px] px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center gap-1"><div class="sk h-[17px] w-8 rounded-md"></div><div class="sk h-[9px] w-7 rounded-full"></div></div></div></div>`,
+};
+
+function skeletonHTML(type, count) {
+    const tpl = _skeletonTemplates[type] || '';
+    return Array(count || 1).fill(tpl).join('');
+}
+
 async function loadDex() {
+    const grid = document.getElementById('dex-grid');
+    if (grid && !globalSnusData.length) {
+        grid.innerHTML = skeletonHTML('dex-card', 12);
+    }
+
     const { data: { user } } = await supabaseClient.auth.getUser();
 
     // Beide Queries parallel starten – halbiert die Netzwerkwartezeit
@@ -1100,9 +1126,17 @@ function openSnusDetail(id, isFromScan = false) {
         <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${rarity}</span>
     `);
 
-    // Bild laden
+    // Bild laden + Skeleton-Overlay steuern
     const modalImg = document.getElementById('modal-image');
+    const imgSkeleton = document.getElementById('modal-img-skeleton');
     if (modalImg) {
+        if (imgSkeleton) { imgSkeleton.style.opacity = '1'; imgSkeleton.style.transition = 'none'; }
+        modalImg.onload = () => {
+            if (imgSkeleton) { imgSkeleton.style.transition = 'opacity 0.3s ease'; imgSkeleton.style.opacity = '0'; }
+        };
+        modalImg.onerror = () => {
+            if (imgSkeleton) imgSkeleton.style.opacity = '0';
+        };
         modalImg.src = snus.image ? `${GITHUB_BASE}${snus.image}` : 'placeholder.png';
     }
 
@@ -1465,34 +1499,17 @@ async function loadTopSnusOfWeek() {
     const container = document.getElementById('top-snus-container');
     if (!container) return;
 
-    // Skeleton-Loading anzeigen
+    // Two featured cards (each has mb-5 built-in matching renderSocialCard)
+    // + list section matching renderSocialListUI wrapper structure
     container.innerHTML = `
-        <div class="space-y-4">
-            <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/5 animate-pulse">
-                <div class="flex justify-between items-center mb-4">
-                    <div class="h-6 w-32 bg-white/10 rounded-full"></div>
-                    <div class="h-5 w-16 bg-white/10 rounded-md"></div>
-                </div>
-                <div class="flex gap-4 mb-5">
-                    <div class="w-24 h-24 bg-white/10 rounded-2xl flex-shrink-0"></div>
-                    <div class="flex-1 space-y-2 pt-2">
-                        <div class="h-5 w-3/4 bg-white/10 rounded-full"></div>
-                        <div class="h-4 w-1/2 bg-white/10 rounded-full"></div>
-                        <div class="h-7 w-20 bg-white/10 rounded-full mt-3"></div>
-                    </div>
-                </div>
+        ${skeletonHTML('social-featured', 2)}
+        <div class="mb-6">
+            <div class="flex items-center justify-between mb-2.5">
+                <div class="sk h-4 w-32 rounded-full"></div>
+                <div class="sk h-7 w-28 rounded-full"></div>
             </div>
-            <div class="bg-[#1C1C1E] rounded-[16px] border border-white/5 overflow-hidden">
-                ${[1,2,3,4,5].map(i => `
-                <div class="flex items-center gap-3 p-3 border-b border-white/5 animate-pulse">
-                    <div class="w-5 h-4 bg-white/10 rounded flex-shrink-0"></div>
-                    <div class="w-10 h-10 bg-white/10 rounded-xl flex-shrink-0"></div>
-                    <div class="flex-1 space-y-1.5">
-                        <div class="h-4 w-2/3 bg-white/10 rounded-full"></div>
-                        <div class="h-3 w-1/3 bg-white/10 rounded-full"></div>
-                    </div>
-                    <div class="h-5 w-8 bg-white/10 rounded flex-shrink-0"></div>
-                </div>`).join('')}
+            <div class="bg-[#1C1C1E] rounded-[16px] border border-white/5 overflow-hidden shadow-lg">
+                ${skeletonHTML('social-list-item', 7)}
             </div>
         </div>
     `;
@@ -1625,9 +1642,25 @@ async function loadMostScannedThisWeek() {
     const container = document.getElementById('top-snus-container');
     if (!container) return;
 
-    // Wir fügen einen Wrapper für die dynamische Liste hinzu
+    // Wrapper anhängen falls noch nicht vorhanden
     if (!document.getElementById('social-dynamic-list-wrapper')) {
         container.innerHTML += `<div id="social-dynamic-list-wrapper"></div>`;
+    }
+
+    // Skeleton für die Liste zeigen, solange der RPC läuft
+    const listWrapper = document.getElementById('social-dynamic-list-wrapper');
+    if (listWrapper && !listWrapper.innerHTML.trim()) {
+        listWrapper.innerHTML = `
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-2.5">
+                    <div class="sk h-4 w-32 rounded-full"></div>
+                    <div class="sk h-7 w-28 rounded-full"></div>
+                </div>
+                <div class="bg-[#1C1C1E] rounded-[16px] border border-white/5 overflow-hidden shadow-lg">
+                    ${skeletonHTML('social-list-item', 7)}
+                </div>
+            </div>
+        `;
     }
 
     // Call the RPC that bypasses RLS and returns all 3 lists with ratings
