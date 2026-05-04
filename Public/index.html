@@ -139,14 +139,10 @@
             }
         }
 
-        .fade-view {
-            animation: fadeViewIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        }
-
         @keyframes fadeViewIn {
             from {
                 opacity: 0;
-                transform: translateY(10px);
+                transform: translateY(8px);
             }
 
             to {
@@ -1297,7 +1293,7 @@
 
             <div id="modal-views-wrapper" class="w-full pt-2 px-6">
                 <div id="modal-view-info" class="fade-view">
-                    <div class="w-full flex justify-center mb-4 h-60 relative">
+                    <div class="w-full flex justify-center mb-4 h-60 relative overflow-hidden rounded-2xl">
                         <div id="modal-img-skeleton" class="sk absolute inset-0 rounded-2xl z-10" style="transition:opacity 0.3s ease"></div>
                         <img id="modal-image" src="" alt="Snus"
                             class="h-full w-full object-contain scale-110 drop-shadow-2xl z-20">

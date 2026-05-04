@@ -405,11 +405,6 @@ function switchTab(tabId) {
         // kein schwarzes Frame, weil Dex sofort im Flow erscheint.
         dexTab.classList.remove('tab-dex-hidden');
 
-        // Animation neu auslösen (Fade In)
-        dexTab.style.animation = 'none';
-        void dexTab.offsetWidth; // Trigger reflow
-        dexTab.style.animation = '';
-
         // Erst DANACH alte Tabs ausblenden (synchron im selben JS-Tick)
         document.querySelectorAll('.tab-content').forEach(tab => {
             if (tab.id === 'tab-dex') return;
@@ -636,41 +631,43 @@ function preloadAllDexImages(items) {
 function initImageLazyLoadObserver() {
     if (imageLazyObserver) return;
 
-    // rootMargin: 1200px = weit voraus laden für smoothes Scrollen
     imageLazyObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 const img = entry.target;
                 const src = img.getAttribute('data-src');
+                if (!src) return;
 
-                if (src) {
-                    const container = img.closest('.dex-image-container');
-                    const shimmer = container ? container.querySelector('.dex-placeholder') : null;
+                const container = img.closest('.dex-image-container');
+                const shimmer = container ? container.querySelector('.dex-placeholder') : null;
 
-                    const showImage = () => {
-                        img.classList.remove('opacity-0');
-                        dexImageCache.set(src, 'loaded');
-                        if (shimmer) shimmer.remove();
-                    };
+                const showImage = () => {
+                    img.classList.remove('opacity-0');
+                    dexImageCache.set(src, 'loaded');
+                    if (shimmer) shimmer.remove();
+                };
 
-                    img.onload = showImage;
+                img.removeAttribute('data-src');
+                observer.unobserve(img);
 
-                    img.onerror = () => {
-                        img.src = 'https://via.placeholder.com/150/000000/FFFFFF?text=?';
-                        dexImageCache.set(src, 'error');
-                        img.classList.remove('opacity-0');
-                        if (shimmer) shimmer.remove();
-                    };
-
+                // Already in browser cache → show synchronously, skip onload wait
+                if (dexImageCache.get(src) === 'loaded') {
                     img.src = src;
-                    img.removeAttribute('data-src');
-                    observer.unobserve(img);
+                    showImage();
+                    return;
                 }
+
+                img.onload = showImage;
+                img.onerror = () => {
+                    img.src = 'https://via.placeholder.com/150/000000/FFFFFF?text=?';
+                    dexImageCache.set(src, 'error');
+                    img.classList.remove('opacity-0');
+                    if (shimmer) shimmer.remove();
+                };
+                img.src = src;
             }
         });
-    }, {
-        rootMargin: '0px 0px 1200px 0px'
-    });
+    }, { rootMargin: '0px 0px 1200px 0px' });
 }
 
 function initDexObserver() {
@@ -698,20 +695,19 @@ const DEX_FIRST_CHUNK = 9;
 function renderDexGrid(items) {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
-    
+
     currentDexItems = items;
     currentDexRenderCount = 0;
 
-    // Erster Chunk (sichtbarer Bereich)
-    loadMoreDexItems(DEX_FIRST_CHUNK, true); 
+    // Erster Chunk: animiert rein, setzt grid sichtbar
+    loadMoreDexItems(DEX_FIRST_CHUNK, true);
     initDexObserver();
 
-    // Hintergrund-Preload + Rest-Rendering nach erstem Paint starten
+    // Restliche Chunks ohne Animation nach erstem Paint
     requestAnimationFrame(() => {
         preloadAllDexImages(items);
-        // Nächsten Chunk sofort bereitstellen, damit Scrollen sofort klappt
         if (currentDexRenderCount < currentDexItems.length) {
-            loadMoreDexItems(); // Normal-Chunk (30 Items) nach erstem Paint
+            loadMoreDexItems();
         }
     });
 }
@@ -720,19 +716,17 @@ function loadMoreDexItems(chunkOverride, shouldClear = false) {
     const grid = document.getElementById('dex-grid');
     if (!grid || currentDexRenderCount >= currentDexItems.length) return;
 
-    if (shouldClear) {
-        grid.innerHTML = '';
-    }
+    if (shouldClear) grid.innerHTML = '';
 
+    // Nur der erste Chunk (shouldClear=true) bekommt Stagger-Animation
+    const isFirstChunk = shouldClear;
     const chunkSize = chunkOverride || DEX_CHUNK_SIZE;
     const nextChunk = currentDexItems.slice(currentDexRenderCount, currentDexRenderCount + chunkSize);
 
-    // localStorage einmal pro Chunk lesen statt pro Item
     const cols = localStorage.getItem('dexColumns') || '3';
     const is2Cols = cols === '2';
     const glowActive = localStorage.getItem('dexGlow') === 'true';
 
-    // DocumentFragment für performantes Batch-Insert
     const fragment = document.createDocumentFragment();
 
     nextChunk.forEach((snus, index) => {
@@ -741,35 +735,31 @@ function loadMoreDexItems(chunkOverride, shouldClear = false) {
         const rarity = (snus.rarity || 'common').toLowerCase().trim();
         const boxShadow = glowActive ? `box-shadow: 0 0px 20px -8px var(--${rarity}, var(--common));` : '';
         const imgUrl = GITHUB_BASE + snus.image;
-        const isCached = dexImageCache.has(imgUrl);
 
-        const rarityIndicator = is2Cols ?
-            `<span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>` :
-            `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
+        const rarityIndicator = is2Cols
+            ? `<span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>`
+            : `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
 
-        // Loading-Placeholder: Shimmer-Effekt (sk)
-        const placeholderHTML = isCached ? '' :
-            `<div class="dex-placeholder absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div class="w-[60%] h-[60%] rounded-xl sk"></div>
-            </div>`;
+        // Alle Bilder starten unsichtbar – verhindert Flash bei gecachten Bildern
+        const placeholderHTML = `<div class="dex-placeholder absolute inset-0 flex items-center justify-center pointer-events-none"><div class="w-[60%] h-[60%] rounded-xl sk"></div></div>`;
+        const imgClass = `dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-300`;
 
-        // Wenn gecacht → sofort sichtbar (kein opacity-0, kein lazy loading nötig)
-        const imgClass = isCached
-            ? `dex-img-cached w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10`
-            : `dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-500`;
-        const imgSrcAttr = isCached ? `src="${imgUrl}"` : `data-src="${imgUrl}"`;
+        // Karten-Animation nur für ersten Chunk
+        const cardAnim = isFirstChunk
+            ? `opacity-0" style="animation: fadeViewIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards ${Math.floor(index / 3) * 0.08}s`
+            : `opacity-1"`;
 
         const wrapper = document.createElement('div');
         wrapper.innerHTML = `
-            <div onclick="openSnusDetail(${snus.id})" class="dex-anim-card cursor-pointer group h-full w-full transition-all duration-200 ease-out origin-center will-change-transform opacity-0" style="animation: fadeViewIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards ${Math.floor(index / 3) * 0.1}s">
+            <div onclick="openSnusDetail(${snus.id})" class="dex-anim-card cursor-pointer group h-full w-full transition-all duration-200 ease-out origin-center will-change-transform ${cardAnim}">
                 <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] transition-all group-active:scale-95 shadow-md overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale' : ''}" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
                     <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
                         <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
                         ${rarityIndicator}
                     </div>
-                    <div class="dex-image-container w-full aspect-square flex items-center justify-center relative mt-1">
+                    <div class="dex-image-container w-full aspect-square flex items-center justify-center relative mt-1 overflow-hidden">
                         ${placeholderHTML}
-                        <img ${imgSrcAttr} class="${imgClass}">
+                        <img data-src="${imgUrl}" class="${imgClass}">
                     </div>
                     <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
                         <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
@@ -783,28 +773,19 @@ function loadMoreDexItems(chunkOverride, shouldClear = false) {
     grid.appendChild(fragment);
     currentDexRenderCount += chunkSize;
 
-    // Layout-Reads + Observer-Setup nach dem Paint (kein erzwungener Reflow)
+    // Grid erst sichtbar machen wenn erster echter Content drin ist
+    if (isFirstChunk) grid.style.opacity = '1';
+
     if (!imageLazyObserver) initImageLazyLoadObserver();
     requestAnimationFrame(() => {
-        // Recalc haptic threshold from real rendered row height after first chunk
-        if (currentDexRenderCount <= chunkSize + DEX_CHUNK_SIZE) {
-            recalcHapticThreshold();
-        }
+        if (currentDexRenderCount <= chunkSize + DEX_CHUNK_SIZE) recalcHapticThreshold();
 
-        // Lazy-Observer für neue Bilder registrieren
         grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
             img.classList.add('observed');
             imageLazyObserver.observe(img);
         });
 
         updateDexScale();
-        
-        // Cache speichern, wenn keine Suche aktiv ist
-        const term = document.getElementById('dex-search')?.value.trim();
-        if (!term) {
-            if (typeof _dexCache === 'undefined') window._dexCache = {};
-            window._dexCache[dexSortMode + (dexFilterUnlocked ? '_unlocked' : '')] = grid.innerHTML;
-        }
     });
 }
 
@@ -1142,11 +1123,14 @@ function openSnusDetail(id, isFromScan = false) {
     const imgSkeleton = document.getElementById('modal-img-skeleton');
     if (modalImg) {
         if (imgSkeleton) { imgSkeleton.style.opacity = '1'; imgSkeleton.style.transition = 'none'; }
+        modalImg.style.opacity = '0';
         modalImg.onload = () => {
             if (imgSkeleton) { imgSkeleton.style.transition = 'opacity 0.3s ease'; imgSkeleton.style.opacity = '0'; }
+            modalImg.style.opacity = '1';
         };
         modalImg.onerror = () => {
             if (imgSkeleton) imgSkeleton.style.opacity = '0';
+            modalImg.style.opacity = '1';
         };
         modalImg.src = snus.image ? `${GITHUB_BASE}${snus.image}` : 'placeholder.png';
     }
@@ -1794,8 +1778,11 @@ function renderSocialListUI() {
                 <div class="border-b border-white/5 last:border-0 opacity-0" style="animation: fadeViewIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards ${i * 0.05}s">
                     <div class="flex items-center gap-3 p-3 active:bg-white/5 cursor-pointer transition-colors" onclick="openSnusDetail(${snus.id})">
                         <span class="text-[13px] font-bold text-[#8E8E93] w-5 text-center flex-shrink-0">${rank}</span>
-                        <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                            ${imgUrl ? `<img src="${imgUrl}" class="h-full w-full object-contain" onerror="this.style.display='none'">` : '<div class="w-10 h-10 rounded-md bg-[#2C2C2E]"></div>'}
+                        <div class="w-10 h-10 flex items-center justify-center flex-shrink-0 relative overflow-hidden bg-[#2C2C2E] rounded-md">
+                            ${imgUrl ? `
+                                <div class="sk absolute inset-0 opacity-10"></div>
+                                <img src="${imgUrl}" class="h-full w-full object-contain relative z-10" onerror="this.style.display='none'">
+                            ` : '<div class="w-10 h-10 rounded-md bg-[#2C2C2E]"></div>'}
                         </div>
                         <div class="flex-1 min-w-0">
                             <h4 class="text-white text-[15px] font-semibold truncate tracking-tight leading-tight">${name}</h4>
@@ -4224,100 +4211,81 @@ function filterDex() {
     if (!grid) return;
 
     const isSearch = searchWords.length > 0;
-    const cacheKey = dexSortMode + (dexFilterUnlocked ? '_unlocked' : '');
     const searchKey = searchWords.join(' ');
-    
-    // Cache-Check: Wenn keine Suche und Cache vorhanden, sofort laden
-    if (!isSearch && window._dexCache && window._dexCache[cacheKey]) {
+
+    // Smooth fade-out des Grids, dann neu aufbauen
+    grid.style.transition = 'opacity 0.15s ease-out';
+    grid.style.opacity = '0';
+
+    setTimeout(() => {
+        // Klassen sauber zurücksetzen – kein fade-view-out/fade-view Klassendurcheinander
         if (dexSortMode === 'alpha') {
-            grid.className = 'fade-view flex flex-col w-full';
+            grid.className = 'flex flex-col w-full';
             if (dexObserver) dexObserver.disconnect();
         } else {
             const cols = localStorage.getItem('dexColumns') || '3';
-            grid.className = 'fade-view grid ' + (cols === '2' ? 'grid-cols-2' : 'grid-cols-3') + ' gap-3';
+            const is2Cols = cols === '2';
+            grid.className = `grid ${is2Cols ? 'grid-cols-2' : 'grid-cols-3'} gap-3`;
         }
-        grid.innerHTML = window._dexCache[cacheKey];
-        
-        requestAnimationFrame(() => {
-             if (dexSortMode === 'alpha') {
-                 const groupedData = groupAndSortByBrand(filtered);
-                 renderDexGrouped(groupedData);
-             } else {
-                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
-                 renderDexGrid(filtered);
-             }
-        });
-        return;
-    }
+        // Transition zurücksetzen, damit das Grid beim nächsten Wechsel wieder faden kann
+        grid.style.transition = '';
 
-    const hasItems = grid.querySelectorAll('.dex-anim-card, .brand-section').length > 0;
-    const showSkeletons = !hasItems || (isSearch && grid.dataset.lastSearch !== searchKey);
-    grid.dataset.lastSearch = searchKey;
+        const hasItems = grid.querySelectorAll('.dex-anim-card, .brand-section').length > 0;
+        const showSkeletons = !hasItems || (isSearch && grid.dataset.lastSearch !== searchKey);
+        grid.dataset.lastSearch = searchKey;
 
-    // Reset der Layout-Klassen für saubere Wechsel
-    grid.className = 'fade-view';
+        if (dexSortMode === 'alpha') {
+            if (showSkeletons) {
+                grid.innerHTML = `
+                ${[1, 2, 3].map(() => `
+                <div class="brand-section mb-4 w-[calc(100%+40px)] -mx-[20px] px-5 opacity-50" style="contain-intrinsic-size: 0 200px;">
+                    <div class="flex justify-between items-end mb-3 mt-6 px-1">
+                        <div class="sk h-6 w-32 rounded-md"></div>
+                        <div class="sk h-5 w-12 rounded-full"></div>
+                    </div>
+                    <div class="flex gap-[3vw] overflow-hidden pb-4 pt-3">
+                        ${[1, 2, 3, 4].map(() => `
+                            <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-[#2A2A2E] rounded-[20px] border border-white/5 overflow-hidden">
+                                <div class="flex justify-between p-2.5"><div class="sk h-2.5 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div>
+                                <div class="flex-1 flex items-center justify-center"><div class="sk w-[60%] h-[60%] rounded-xl"></div></div>
+                                <div class="p-2 flex justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`).join('')}
+                `;
+            }
 
-    if (dexSortMode === 'alpha') {
-        // --- NEU: Sort by Name (Grouped Layout) ---
-        grid.classList.add('flex', 'flex-col', 'w-full');
+            // Grid bleibt unsichtbar – renderDexGrouped setzt opacity nach erstem Chunk
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const groupedData = groupAndSortByBrand(filtered);
+                    renderDexGrouped(groupedData);
+                });
+            });
 
-        // Observer für Chunking abschalten, da wir hier horizontales Scrollen nutzen
-        if (dexObserver) dexObserver.disconnect();
-
-        if (showSkeletons) {
-            grid.innerHTML = `
-            ${[1, 2, 3].map(i => `
-            <div class="brand-section mb-4 w-[calc(100%+40px)] -mx-[20px] px-5 opacity-50" style="contain-intrinsic-size: 0 200px;">
-                <div class="flex justify-between items-end mb-3 mt-6 px-1">
-                    <div class="sk h-6 w-32 rounded-md"></div>
-                    <div class="sk h-5 w-12 rounded-full"></div>
-                </div>
-                <div class="flex gap-[3vw] overflow-hidden pb-4 pt-3">
-                    ${[1, 2, 3, 4].map(() => `
-                        <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-[#2A2A2E] rounded-[20px] border border-white/5 overflow-hidden">
+        } else {
+            if (showSkeletons) {
+                grid.innerHTML = `
+                    ${[...Array(12)].map(() => `
+                        <div class="aspect-[1/1.2] bg-[#2A2A2E] rounded-[20px] border border-white/5 overflow-hidden flex flex-col">
                             <div class="flex justify-between p-2.5"><div class="sk h-2.5 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div>
                             <div class="flex-1 flex items-center justify-center"><div class="sk w-[60%] h-[60%] rounded-xl"></div></div>
                             <div class="p-2 flex justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div>
                         </div>
                     `).join('')}
-                </div>
-            </div>`).join('')}
-            `;
-        }
+                `;
+            }
 
-        // Verarbeitung auf den nächsten Frame schieben, damit Skeleton gezeichnet wird
-        requestAnimationFrame(() => {
+            // Grid bleibt unsichtbar – loadMoreDexItems setzt opacity nach erstem Chunk
             requestAnimationFrame(() => {
-                const groupedData = groupAndSortByBrand(filtered);
-                renderDexGrouped(groupedData);
+                requestAnimationFrame(() => {
+                    filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+                    renderDexGrid(filtered);
+                });
             });
-        });
-
-    } else {
-        // --- BESTEHEND: Sort by ID (Grid Layout) ---
-        const cols = localStorage.getItem('dexColumns') || '3';
-        const is2Cols = cols === '2';
-        grid.classList.add('grid', is2Cols ? 'grid-cols-2' : 'grid-cols-3', 'gap-3');
-
-        if (showSkeletons) {
-            grid.innerHTML = `
-                ${[...Array(12)].map(() => `
-                    <div class="aspect-[1/1.2] bg-[#2A2A2E] rounded-[20px] border border-white/5 overflow-hidden flex flex-col">
-                        <div class="flex justify-between p-2.5"><div class="sk h-2.5 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div>
-                        <div class="flex-1 flex items-center justify-center"><div class="sk w-[60%] h-[60%] rounded-xl"></div></div>
-                        <div class="p-2 flex justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div>
-                    </div>
-                `).join('')}
-            `;
         }
-
-        requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
-                renderDexGrid(filtered); // Lädt Chunks & triggert Observer neu
-            });
-        });
-    }
+    }, 150);
 }
 
 async function setupProfile(user) {
@@ -4893,8 +4861,9 @@ function renderSuggestions() {
                         <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
                         ${rarityIndicator}
                     </div>
-                    <div class="w-full aspect-square flex items-center justify-center relative mt-1">
-                        <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10" loading="lazy" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
+                    <div class="w-full aspect-square flex items-center justify-center relative mt-1 overflow-hidden">
+                        <div class="sk absolute inset-0 opacity-10"></div>
+                        <img src="${GITHUB_BASE}${snus.image}" class="w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 relative" loading="lazy" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">
                     </div>
                     <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
                         <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 text-white">${snus.name}</h5>
@@ -5333,17 +5302,10 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
     const boxShadow = glowActive ? `box-shadow: 0 0px 20px -8px var(--${rarity}, var(--common));` : '';
     const rarityIndicator = `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
     const imgUrl = GITHUB_BASE + snus.image;
-    const isCached = dexImageCache.has(imgUrl);
 
-    // Loading-Placeholder: Shimmer-Effekt (sk)
-    const placeholderHTML = isCached ? '' :
-        `<div class="dex-placeholder absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div class="w-[60%] h-[60%] rounded-xl sk"></div>
-            </div>`;
-    const imgClass = isCached
-        ? `dex-img-cached w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10`
-        : `dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-500`;
-    const imgSrcAttr = isCached ? `src="${imgUrl}"` : `data-src="${imgUrl}"`;
+    // Immer opacity-0 starten – verhindert Flash bei gecachten Bildern im Brand-Carousel
+    const placeholderHTML = `<div class="dex-placeholder absolute inset-0 flex items-center justify-center pointer-events-none"><div class="w-[60%] h-[60%] rounded-xl sk"></div></div>`;
+    const imgClass = `dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-300`;
 
     return `
         <div onclick="openSnusDetail(${snus.id})" class="brand-anim-card cursor-pointer group flex-shrink-0 w-[28vw] max-w-[120px] snap-center transition-all duration-200 ease-out origin-center will-change-transform">
@@ -5352,9 +5314,9 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
                     <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
                     ${rarityIndicator}
                 </div>
-                <div class="dex-image-container w-full aspect-square flex items-center justify-center relative mt-1">
+                <div class="dex-image-container w-full aspect-square flex items-center justify-center relative mt-1 overflow-hidden">
                     ${placeholderHTML}
-                    <img ${imgSrcAttr} class="${imgClass}">
+                    <img data-src="${imgUrl}" class="${imgClass}">
                 </div>
                 <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
                     <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 ${isUnlocked ? 'text-white' : 'text-[#8E8E93]'}">${snus.name}</h5>
@@ -5397,12 +5359,15 @@ function renderDexGrouped(groupedData) {
 
         const fragment = document.createDocumentFragment();
 
-        // Wenn dies der erste Chunk ist, löschen wir das Skeleton Loading
+        // Ersten Chunk: Skeleton clearen, Grid sichtbar machen
         if (brandIndex === 0) {
             grid.innerHTML = '';
+            // Grid erst sichtbar wenn echter Content bereit ist
+            grid.style.opacity = '1';
         }
 
-        chunk.forEach((brandData, index) => {
+        chunk.forEach((brandData, chunkLocalIndex) => {
+            const globalIndex = brandIndex + chunkLocalIndex;
             const section = document.createElement('div');
             section.className = 'brand-section mb-4';
             section.style.marginLeft = '-20px';
@@ -5411,9 +5376,9 @@ function renderDexGrouped(groupedData) {
             section.style.contentVisibility = 'auto';
             section.style.containIntrinsicSize = '0 200px';
 
-            // Individuelle Fade-In Animation für das Segment
+            // Individuelle Fade-In Animation für das Segment (global gestaffelt)
             section.style.opacity = '0';
-            section.style.animation = `fadeViewIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards ${index * 0.1}s`;
+            section.style.animation = `fadeViewIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards ${Math.min(globalIndex * 0.06, 0.4)}s`;
 
             const header = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
             let cardsHTML = '';
