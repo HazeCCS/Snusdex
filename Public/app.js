@@ -5585,3 +5585,7 @@ function getBrandStats() {
 //░░░▀▀▀▀▀▀▀▀░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 //░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 // ==========================================
+
+window.addEventListener('sdx-open-camera', () => {
+    if (typeof openScanModal === 'function') openScanModal();
+});
