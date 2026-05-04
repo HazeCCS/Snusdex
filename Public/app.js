@@ -11,6 +11,9 @@ const SUPABASE_URL = 'https://aqyjrvukfuyuhlidpoxr.supabase.co';
 // Hier definieren wir den Client (darf nicht 'supabase' heißen, da das CDN dies blockiert)
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Globale Caches für Dex-Views & Performance
+window._dexCache = {};
+
 // ==========================================
 // 1.5. SPLASH SCREEN / LOADING
 // ==========================================
@@ -601,7 +604,7 @@ async function preloadBadgeImages() {
                 const blob = await resp.blob();
                 badgeImageCache.set(url, URL.createObjectURL(blob));
             }
-        } catch (e) {}
+        } catch (e) { }
     }));
 }
 
@@ -695,13 +698,12 @@ const DEX_FIRST_CHUNK = 9;
 function renderDexGrid(items) {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
-    grid.innerHTML = '';
-
+    
     currentDexItems = items;
     currentDexRenderCount = 0;
 
-    // Erster Chunk (sichtbarer Bereich) sofort rendern
-    loadMoreDexItems(DEX_FIRST_CHUNK);
+    // Erster Chunk (sichtbarer Bereich)
+    loadMoreDexItems(DEX_FIRST_CHUNK, true); 
     initDexObserver();
 
     // Hintergrund-Preload + Rest-Rendering nach erstem Paint starten
@@ -714,9 +716,13 @@ function renderDexGrid(items) {
     });
 }
 
-function loadMoreDexItems(chunkOverride) {
+function loadMoreDexItems(chunkOverride, shouldClear = false) {
     const grid = document.getElementById('dex-grid');
     if (!grid || currentDexRenderCount >= currentDexItems.length) return;
+
+    if (shouldClear) {
+        grid.innerHTML = '';
+    }
 
     const chunkSize = chunkOverride || DEX_CHUNK_SIZE;
     const nextChunk = currentDexItems.slice(currentDexRenderCount, currentDexRenderCount + chunkSize);
@@ -741,10 +747,10 @@ function loadMoreDexItems(chunkOverride) {
             `<span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>` :
             `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
 
-        // Loading-Placeholder: CSS-Shimmer statt Video (kein RAM/CPU-Overhead)
+        // Loading-Placeholder: Shimmer-Effekt (sk)
         const placeholderHTML = isCached ? '' :
             `<div class="dex-placeholder absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div class="w-[60%] h-[60%] rounded-xl bg-white/5 animate-pulse"></div>
+                <div class="w-[60%] h-[60%] rounded-xl sk"></div>
             </div>`;
 
         // Wenn gecacht → sofort sichtbar (kein opacity-0, kein lazy loading nötig)
@@ -754,10 +760,8 @@ function loadMoreDexItems(chunkOverride) {
         const imgSrcAttr = isCached ? `src="${imgUrl}"` : `data-src="${imgUrl}"`;
 
         const wrapper = document.createElement('div');
-        wrapper.style.opacity = '0';
-        wrapper.style.animation = `fadeViewIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards ${index * 0.03}s`;
         wrapper.innerHTML = `
-            <div onclick="openSnusDetail(${snus.id})" class="dex-anim-card cursor-pointer group h-full w-full transition-all duration-200 ease-out origin-center will-change-transform">
+            <div onclick="openSnusDetail(${snus.id})" class="dex-anim-card cursor-pointer group h-full w-full transition-all duration-200 ease-out origin-center will-change-transform opacity-0" style="animation: fadeViewIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards ${Math.floor(index / 3) * 0.1}s">
                 <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] transition-all group-active:scale-95 shadow-md overflow-hidden ${!isUnlocked ? 'opacity-40 grayscale' : ''}" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
                     <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
                         <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
@@ -794,6 +798,13 @@ function loadMoreDexItems(chunkOverride) {
         });
 
         updateDexScale();
+        
+        // Cache speichern, wenn keine Suche aktiv ist
+        const term = document.getElementById('dex-search')?.value.trim();
+        if (!term) {
+            if (typeof _dexCache === 'undefined') window._dexCache = {};
+            window._dexCache[dexSortMode + (dexFilterUnlocked ? '_unlocked' : '')] = grid.innerHTML;
+        }
     });
 }
 
@@ -1451,7 +1462,6 @@ function updateDexSortButtonUI() {
 
 function toggleDexSort() {
     dexSortMode = (dexSortMode === 'id') ? 'alpha' : 'id';
-
     updateDexSortButtonUI();
     filterDex();
 }
@@ -1593,27 +1603,27 @@ async function loadTopSnusOfWeek() {
 let _socialListMode = 0; // 0: 7 Days, 1: Today, 2: Top Rated
 let _socialListData = { days7: [], today: [], topRated: [] };
 
-window.cycleSocialListMode = function() {
+window.cycleSocialListMode = function () {
     _socialListMode = (_socialListMode + 1) % 3;
     triggerHapticFeedback();
     renderSocialListUI();
 };
 
-window.toggleListScore = function(btn, id) {
+window.toggleListScore = function (btn, id) {
     triggerHapticFeedback();
     const detailsDiv = document.getElementById(`score-details-${id}`);
     if (detailsDiv) {
         const isHidden = detailsDiv.classList.contains('hidden');
-        
+
         if (isHidden) {
             detailsDiv.classList.remove('hidden');
             detailsDiv.style.opacity = '0';
             detailsDiv.style.transform = 'translateY(-10px)';
             detailsDiv.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-            
+
             // Force reflow
             void detailsDiv.offsetWidth;
-            
+
             detailsDiv.style.opacity = '1';
             detailsDiv.style.transform = 'translateY(0)';
         } else {
@@ -1629,7 +1639,7 @@ window.toggleListScore = function(btn, id) {
             svg.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
             svg.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
         }
-        
+
         // Cache aktualisieren, da sich das DOM verändert hat
         setTimeout(() => {
             const topContainer = document.getElementById('top-snus-container');
@@ -1705,7 +1715,7 @@ function renderSocialListUI() {
     let items = [];
     let title = '';
     let countLabel = '';
-    
+
     if (_socialListMode === 0) {
         items = _socialListData.days7;
         title = 'Most Scanned (7 Tage)';
@@ -2079,7 +2089,7 @@ function renderBadgeSelectorItems() {
         const item = document.createElement('div');
         item.className = 'badge-sel-item flex-shrink-0 flex flex-col items-center gap-2';
         item.dataset.badgeId = String(badge.id);
-        item.onclick = function() { triggerHapticFeedback(); selectFeaturedBadge(badge.id, this); };
+        item.onclick = function () { triggerHapticFeedback(); selectFeaturedBadge(badge.id, this); };
         const displayName = badge.name.replace(/\bcollector\b/i, '').trim();
         item.innerHTML = `
             <div class="sel-ring w-14 h-14 rounded-full border-2 border-white/20 flex items-center justify-center bg-[#1C1C1E] transition-all duration-200 overflow-hidden p-1">
@@ -4213,8 +4223,39 @@ function filterDex() {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
 
+    const isSearch = searchWords.length > 0;
+    const cacheKey = dexSortMode + (dexFilterUnlocked ? '_unlocked' : '');
+    const searchKey = searchWords.join(' ');
+    
+    // Cache-Check: Wenn keine Suche und Cache vorhanden, sofort laden
+    if (!isSearch && window._dexCache && window._dexCache[cacheKey]) {
+        if (dexSortMode === 'alpha') {
+            grid.className = 'fade-view flex flex-col w-full';
+            if (dexObserver) dexObserver.disconnect();
+        } else {
+            const cols = localStorage.getItem('dexColumns') || '3';
+            grid.className = 'fade-view grid ' + (cols === '2' ? 'grid-cols-2' : 'grid-cols-3') + ' gap-3';
+        }
+        grid.innerHTML = window._dexCache[cacheKey];
+        
+        requestAnimationFrame(() => {
+             if (dexSortMode === 'alpha') {
+                 const groupedData = groupAndSortByBrand(filtered);
+                 renderDexGrouped(groupedData);
+             } else {
+                 filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+                 renderDexGrid(filtered);
+             }
+        });
+        return;
+    }
+
+    const hasItems = grid.querySelectorAll('.dex-anim-card, .brand-section').length > 0;
+    const showSkeletons = !hasItems || (isSearch && grid.dataset.lastSearch !== searchKey);
+    grid.dataset.lastSearch = searchKey;
+
     // Reset der Layout-Klassen für saubere Wechsel
-    grid.className = ''; // Löscht alle bestehenden Klassen des Containers
+    grid.className = 'fade-view';
 
     if (dexSortMode === 'alpha') {
         // --- NEU: Sort by Name (Grouped Layout) ---
@@ -4223,22 +4264,26 @@ function filterDex() {
         // Observer für Chunking abschalten, da wir hier horizontales Scrollen nutzen
         if (dexObserver) dexObserver.disconnect();
 
-        // Zeige sofort Skeleton Loader, um schwarzes Flackern zu verhindern
-        grid.innerHTML = `
-            ${[1,2,3].map(i => `
-            <div class="brand-section mb-4 w-[calc(100%+40px)] -mx-[20px] px-5 opacity-50 animate-pulse" style="contain-intrinsic-size: 0 200px;">
-                <div class="flex justify-between items-end mb-3 mt-6">
-                    <div class="h-6 w-32 bg-white/10 rounded-md"></div>
-                    <div class="h-5 w-12 bg-white/10 rounded-full"></div>
+        if (showSkeletons) {
+            grid.innerHTML = `
+            ${[1, 2, 3].map(i => `
+            <div class="brand-section mb-4 w-[calc(100%+40px)] -mx-[20px] px-5 opacity-50" style="contain-intrinsic-size: 0 200px;">
+                <div class="flex justify-between items-end mb-3 mt-6 px-1">
+                    <div class="sk h-6 w-32 rounded-md"></div>
+                    <div class="sk h-5 w-12 rounded-full"></div>
                 </div>
                 <div class="flex gap-[3vw] overflow-hidden pb-4 pt-3">
-                    <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-white/5 rounded-[20px] border border-white/5"></div>
-                    <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-white/5 rounded-[20px] border border-white/5"></div>
-                    <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-white/5 rounded-[20px] border border-white/5"></div>
-                    <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-white/5 rounded-[20px] border border-white/5"></div>
+                    ${[1, 2, 3, 4].map(() => `
+                        <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-[#2A2A2E] rounded-[20px] border border-white/5 overflow-hidden">
+                            <div class="flex justify-between p-2.5"><div class="sk h-2.5 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div>
+                            <div class="flex-1 flex items-center justify-center"><div class="sk w-[60%] h-[60%] rounded-xl"></div></div>
+                            <div class="p-2 flex justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div>
+                        </div>
+                    `).join('')}
                 </div>
             </div>`).join('')}
-        `;
+            `;
+        }
 
         // Verarbeitung auf den nächsten Frame schieben, damit Skeleton gezeichnet wird
         requestAnimationFrame(() => {
@@ -4253,13 +4298,18 @@ function filterDex() {
         const cols = localStorage.getItem('dexColumns') || '3';
         const is2Cols = cols === '2';
         grid.classList.add('grid', is2Cols ? 'grid-cols-2' : 'grid-cols-3', 'gap-3');
-        
-        // Show grid skeletons
-        grid.innerHTML = `
-            ${[...Array(12)].map(() => `
-                <div class="aspect-[1/1.2] rounded-[20px] bg-white/5 border border-white/5 animate-pulse opacity-50"></div>
-            `).join('')}
-        `;
+
+        if (showSkeletons) {
+            grid.innerHTML = `
+                ${[...Array(12)].map(() => `
+                    <div class="aspect-[1/1.2] bg-[#2A2A2E] rounded-[20px] border border-white/5 overflow-hidden flex flex-col">
+                        <div class="flex justify-between p-2.5"><div class="sk h-2.5 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div>
+                        <div class="flex-1 flex items-center justify-center"><div class="sk w-[60%] h-[60%] rounded-xl"></div></div>
+                        <div class="p-2 flex justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div>
+                    </div>
+                `).join('')}
+            `;
+        }
 
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
@@ -5285,10 +5335,10 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
     const imgUrl = GITHUB_BASE + snus.image;
     const isCached = dexImageCache.has(imgUrl);
 
-    // Loading-Placeholder: CSS-Shimmer statt Video (kein RAM/CPU-Overhead)
+    // Loading-Placeholder: Shimmer-Effekt (sk)
     const placeholderHTML = isCached ? '' :
         `<div class="dex-placeholder absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div class="w-[60%] h-[60%] rounded-xl bg-white/5 animate-pulse"></div>
+                <div class="w-[60%] h-[60%] rounded-xl sk"></div>
             </div>`;
     const imgClass = isCached
         ? `dex-img-cached w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10`
@@ -5324,7 +5374,7 @@ function renderDexGrouped(groupedData) {
     // Bestehende Carousel-Scroll-Listener aufräumen
     _brandScrollListeners.forEach(({ el, fn }) => el.removeEventListener('scroll', fn));
     _brandScrollListeners = [];
-    
+
     // grid.innerHTML = ''; wird jetzt im ersten Chunk von renderNextBrandChunk gemacht, 
     // damit das Skeleton stehen bleibt bis der erste echte Content kommt.
     const glowActive = localStorage.getItem('dexGlow') === 'true';
@@ -5382,6 +5432,15 @@ function renderDexGrouped(groupedData) {
         });
 
         grid.appendChild(fragment);
+
+        if (brandIndex + BRAND_CHUNK >= groupedData.length) {
+            // Cache speichern am Ende
+            const term = document.getElementById('dex-search')?.value.trim();
+            if (!term) {
+                if (typeof _dexCache === 'undefined') window._dexCache = {};
+                window._dexCache['alpha' + (dexFilterUnlocked ? '_unlocked' : '')] = grid.innerHTML;
+            }
+        }
 
         // Lazy-Loading für neue Bilder registrieren
         grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
