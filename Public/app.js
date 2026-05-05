@@ -183,24 +183,208 @@ async function checkUser() {
 }
 
 // ==========================================
+// AUTH ERROR ANIMATIONS
+// ==========================================
+function showAuthFieldError(containerId, msgId, message, maxHeight) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (msgId) {
+        const msg = document.getElementById(msgId);
+        if (msg) msg.textContent = message;
+    }
+    if (!el.classList.contains('hidden')) return;
+    el.classList.remove('hidden');
+    el.style.transition = 'none';
+    el.style.maxHeight = '0';
+    el.style.opacity = '0';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            el.style.transition = 'max-height 0.38s cubic-bezier(0.34, 1.15, 0.64, 1), opacity 0.28s ease';
+            el.style.maxHeight = maxHeight || '80px';
+            el.style.opacity = '1';
+        });
+    });
+}
+
+function hideAuthFieldError(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el || el.classList.contains('hidden')) return;
+    el.style.transition = 'max-height 0.22s ease, opacity 0.18s ease';
+    el.style.maxHeight = '0';
+    el.style.opacity = '0';
+    setTimeout(() => el.classList.add('hidden'), 220);
+}
+
+function showPwMismatchError() {
+    const el = document.getElementById('auth-pw-error');
+    if (!el) return;
+    if (!el.classList.contains('hidden')) return;
+    el.classList.remove('hidden');
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-4px)';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        });
+    });
+}
+
+function hidePwMismatchError() {
+    const el = document.getElementById('auth-pw-error');
+    if (!el || el.classList.contains('hidden')) return;
+    el.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-4px)';
+    setTimeout(() => el.classList.add('hidden'), 180);
+}
+
+window.hidePwGroupError = function() {
+    const pwGroup = document.getElementById('auth-pw-group');
+    if (pwGroup) pwGroup.style.borderColor = '';
+    hidePwMismatchError();
+};
+
+// ── Password strength checklist ──
+const _pwReqs = [
+    { id: 'req-length', test: pw => pw.length >= 6 },
+    { id: 'req-upper',  test: pw => /[A-Z]/.test(pw) },
+    { id: 'req-number', test: pw => /[0-9]/.test(pw) },
+];
+
+function setPwReqMet(reqId, met) {
+    const row = document.getElementById(reqId);
+    if (!row) return;
+    const circle = row.querySelector('.req-circle');
+    const check  = row.querySelector('.req-check');
+    const warn   = row.querySelector('.req-warn');
+    const text   = row.querySelector('.req-text');
+    if (met) {
+        circle.style.backgroundColor = '#30D158';
+        circle.style.borderColor = '#30D158';
+        check.style.opacity = '1';
+        if (warn) warn.style.opacity = '0';
+        text.style.color = '#30D158';
+    } else {
+        circle.style.backgroundColor = '';
+        circle.style.borderColor = 'rgba(255,255,255,0.2)';
+        check.style.opacity = '0';
+        if (warn) warn.style.opacity = '0';
+        text.style.color = 'rgba(255,255,255,0.4)';
+    }
+}
+
+function flashPwReqWarn(reqId) {
+    const row = document.getElementById(reqId);
+    if (!row) return;
+    const circle = row.querySelector('.req-circle');
+    const check  = row.querySelector('.req-check');
+    const warn   = row.querySelector('.req-warn');
+    const text   = row.querySelector('.req-text');
+    circle.style.backgroundColor = '#FF9F0A';
+    circle.style.borderColor = '#FF9F0A';
+    if (check) check.style.opacity = '0';
+    if (warn)  warn.style.opacity = '1';
+    text.style.color = '#FF9F0A';
+    setTimeout(() => setPwReqMet(reqId, false), 700);
+}
+
+function updatePwChecklist(pw) {
+    const el = document.getElementById('auth-pw-checklist');
+    if (!el || el.classList.contains('hidden')) return;
+    _pwReqs.forEach(req => setPwReqMet(req.id, req.test(pw)));
+}
+
+function showPwChecklist() {
+    if (isLoginMode) return;
+    const el = document.getElementById('auth-pw-checklist');
+    if (!el || !el.classList.contains('hidden')) return;
+    el.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        });
+    });
+}
+
+function hidePwChecklist() {
+    const el = document.getElementById('auth-pw-checklist');
+    if (!el || el.classList.contains('hidden')) return;
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-4px)';
+    setTimeout(() => {
+        el.classList.add('hidden');
+        _pwReqs.forEach(req => setPwReqMet(req.id, false));
+    }, 250);
+}
+
+window.onPwFocus = function() {
+    showPwChecklist();
+    const pw = document.getElementById('auth-password');
+    if (pw) updatePwChecklist(pw.value);
+};
+
+// ── Username field error ──
+function showUsernameError(msg) {
+    const group = document.getElementById('auth-username-group');
+    if (group) group.style.borderColor = 'rgba(255,59,48,0.5)';
+    const el = document.getElementById('auth-username-error');
+    if (!el) return;
+    el.textContent = msg;
+    if (!el.classList.contains('hidden')) return;
+    el.classList.remove('hidden');
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-4px)';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        });
+    });
+}
+
+function hideUsernameError() {
+    const group = document.getElementById('auth-username-group');
+    if (group) group.style.borderColor = '';
+    const el = document.getElementById('auth-username-error');
+    if (!el || el.classList.contains('hidden')) return;
+    el.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-4px)';
+    setTimeout(() => el.classList.add('hidden'), 180);
+}
+window.hideUsernameError = hideUsernameError;
+
+function checkAndHideAllFieldsError() {
+    const email    = (document.getElementById('auth-email')?.value    || '').trim();
+    const password = (document.getElementById('auth-password')?.value || '');
+    const username = !isLoginMode
+        ? (document.getElementById('auth-username')?.value || '').trim()
+        : 'ok';
+    if (email && password && username) hideAuthFieldError('auth-error');
+}
+window.checkAndHideAllFieldsError = checkAndHideAllFieldsError;
+
+// ==========================================
 // NEU: USERNAME SETUP NACH GOOGLE LOGIN
 // ==========================================
 async function saveSetupUsername() {
     const usernameInput = document.getElementById('setup-username').value.trim();
-    const errorEl = document.getElementById('setup-username-error');
     const btn = document.getElementById('setup-username-btn');
 
     if (!usernameInput) {
-        errorEl.innerText = "Please enter a username.";
-        errorEl.classList.remove('hidden');
+        showAuthFieldError('setup-username-error', 'setup-username-error-msg', 'Please enter a username.');
         return;
     }
 
-    // Only letters, numbers, underscores (2-30 chars)
     const usernameRegex = /^[a-zA-Z0-9_]{2,30}$/;
     if (!usernameRegex.test(usernameInput)) {
-        errorEl.innerText = "Only letters, numbers and _ allowed (2–30 chars).";
-        errorEl.classList.remove('hidden');
+        showAuthFieldError('setup-username-error', 'setup-username-error-msg', 'Only letters, numbers and _ allowed (2–30 chars).');
         return;
     }
 
@@ -218,11 +402,10 @@ async function saveSetupUsername() {
             await supabaseClient.from('profiles').update({ username: usernameInput }).eq('id', userData.user.id);
         }
 
-        errorEl.classList.add('hidden');
+        hideAuthFieldError('setup-username-error');
         checkUser();
     } catch (error) {
-        errorEl.innerText = error.message;
-        errorEl.classList.remove('hidden');
+        showAuthFieldError('setup-username-error', 'setup-username-error-msg', error.message);
         btn.disabled = false;
         btn.innerText = "Continue";
     }
@@ -256,11 +439,13 @@ function toggleAuthMode() {
     const mainBtn = document.getElementById('auth-main-btn');
     const toggleText = document.getElementById('toggle-text');
     const toggleBtnText = document.querySelector('#auth-toggle-btn span.font-semibold');
-    const errorEl = document.getElementById('auth-error');
     const googleBtnText = document.getElementById('google-btn-text');
     const appleBtnText = document.getElementById('apple-btn-text');
 
-    errorEl.classList.add('hidden');
+    hideAuthFieldError('auth-error');
+    hidePwGroupError();
+    hidePwChecklist();
+    hideUsernameError();
 
     if (isLoginMode) {
         registerFields.classList.add('hidden');
@@ -290,17 +475,14 @@ async function handleLoginWrapper() {
     triggerHapticFeedback();
     const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
-    const errorEl = document.getElementById('auth-error');
     const mainBtn = document.getElementById('auth-main-btn');
 
     if (!email || !password) {
-        errorEl.innerText = "Please fill in all fields.";
-        errorEl.classList.remove('hidden');
+        showAuthFieldError('auth-error', 'auth-error-msg', 'Please fill in all fields.');
         triggerHapticFeedback();
         return;
     }
 
-    // Disable button while loading
     mainBtn.disabled = true;
     mainBtn.innerHTML = `<div class="flex items-center justify-center h-[26px]"><svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`;
 
@@ -309,13 +491,12 @@ async function handleLoginWrapper() {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
         if (error) {
-            errorEl.innerText = "Incorrect email or password.";
-            errorEl.classList.remove('hidden');
+            showAuthFieldError('auth-error', 'auth-error-msg', 'Incorrect email or password.');
             triggerHapticFeedback();
             mainBtn.disabled = false;
-            mainBtn.innerText = "Sign In";
+            mainBtn.innerText = 'Sign In';
         } else {
-            errorEl.classList.add('hidden');
+            hideAuthFieldError('auth-error');
             checkUser();
         }
     } else {
@@ -323,14 +504,47 @@ async function handleLoginWrapper() {
         const username = document.getElementById('auth-username').value.trim();
         const passwordConfirm = document.getElementById('auth-password-confirm').value;
 
-        if (password !== passwordConfirm) {
-            errorEl.innerText = "Passwords do not match.";
-            errorEl.classList.remove('hidden');
-            triggerHapticFeedback();
+        // 1. Username must be present
+        if (!username) {
+            showAuthFieldError('auth-error', 'auth-error-msg', 'Please fill in all fields.');
             mainBtn.disabled = false;
-            mainBtn.innerText = "Register";
+            mainBtn.innerText = 'Register';
             return;
         }
+        if (!/^[a-zA-Z0-9_]{2,30}$/.test(username)) {
+            showUsernameError('2–30 chars: letters, numbers and _');
+            mainBtn.disabled = false;
+            mainBtn.innerText = 'Register';
+            return;
+        }
+
+        // 2. Password requirements must all be met
+        const unmetReqs = _pwReqs.filter(req => !req.test(password));
+        if (unmetReqs.length > 0) {
+            showPwChecklist();
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                unmetReqs.forEach(req => flashPwReqWarn(req.id));
+            }));
+            triggerHapticFeedback();
+            mainBtn.disabled = false;
+            mainBtn.innerText = 'Register';
+            return;
+        }
+
+        // 3. Passwords must match
+        if (password !== passwordConfirm) {
+            const pwGroup = document.getElementById('auth-pw-group');
+            if (pwGroup) pwGroup.style.borderColor = 'rgba(255,59,48,0.5)';
+            showPwMismatchError();
+            hideAuthFieldError('auth-error');
+            triggerHapticFeedback();
+            mainBtn.disabled = false;
+            mainBtn.innerText = 'Register';
+            return;
+        }
+
+        // Passwords match → clear any pw error before submit
+        hidePwGroupError();
 
         const { data, error } = await supabaseClient.auth.signUp({
             email: email,
@@ -339,18 +553,18 @@ async function handleLoginWrapper() {
         });
 
         if (error) {
-            errorEl.innerText = error.message.includes('already registered')
-                ? "This email is already in use."
-                : error.message;
-            errorEl.classList.remove('hidden');
+            showAuthFieldError('auth-error', 'auth-error-msg',
+                error.message.includes('already registered')
+                    ? 'This email is already in use.'
+                    : error.message
+            );
             triggerHapticFeedback();
             mainBtn.disabled = false;
-            mainBtn.innerText = "Register";
+            mainBtn.innerText = 'Register';
         } else {
-            // Show email-check screen
             showEmailCheckScreen(email);
             mainBtn.disabled = false;
-            mainBtn.innerText = "Register";
+            mainBtn.innerText = 'Register';
         }
     }
 }
@@ -5585,7 +5799,3 @@ function getBrandStats() {
 //░░░▀▀▀▀▀▀▀▀░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 //░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 // ==========================================
-
-window.addEventListener('sdx-open-camera', () => {
-    if (typeof openScanModal === 'function') openScanModal();
-});
