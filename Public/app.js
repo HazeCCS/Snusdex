@@ -615,20 +615,36 @@ function switchTab(tabId) {
     }
 
     if (isDexTarget) {
-        // DEX ZUERST sichtbar machen (synchron, vor dem Paint) →
-        // kein schwarzes Frame, weil Dex sofort im Flow erscheint.
-        dexTab.classList.remove('tab-dex-hidden');
-
-        // Erst DANACH alte Tabs ausblenden (synchron im selben JS-Tick)
+        // 1. Alte Tabs sofort ausblenden
         document.querySelectorAll('.tab-content').forEach(tab => {
             if (tab.id === 'tab-dex') return;
             tab.classList.add('hidden');
         });
 
-        // Scroll + Scale-Animation einmalig nach dem Paint
+        // 2. Dex einblenden – opacity wird via CSS-Animation gehandhabt
+        dexTab.classList.remove('tab-dex-hidden');
+
+        // 3. Forced reflow so animation fires fresh every time
+        void dexTab.offsetWidth;
+
+        // 4. Fade-in Animation forcieren: Klasse kurz entfernen + neu setzen
+        dexTab.style.opacity = '0';
+        dexTab.style.transform = 'scale(0.98)';
+        dexTab.style.transition = 'opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)';
+
         requestAnimationFrame(() => {
-            window.scrollTo(0, 0);
-            updateDexScale();
+            requestAnimationFrame(() => {
+                dexTab.style.opacity = '1';
+                dexTab.style.transform = 'scale(1)';
+                window.scrollTo(0, 0);
+                updateDexScale();
+                // Clean up inline styles after animation completes
+                setTimeout(() => {
+                    dexTab.style.transition = '';
+                    dexTab.style.opacity = '';
+                    dexTab.style.transform = '';
+                }, 320);
+            });
         });
     } else {
         // Nicht-Dex: Dex layout-erhaltend ausblenden, neuen Tab einblenden.
@@ -643,6 +659,10 @@ function switchTab(tabId) {
         });
 
         // Dex layout-erhaltend verstecken (kein display:none → kein Reflow)
+        // Reset any leftover inline styles first
+        dexTab.style.transition = '';
+        dexTab.style.opacity = '';
+        dexTab.style.transform = '';
         dexTab.classList.add('tab-dex-hidden');
 
         // Scroll nach oben
@@ -4427,12 +4447,19 @@ function filterDex() {
     const isSearch = searchWords.length > 0;
     const searchKey = searchWords.join(' ');
 
-    // Smooth fade-out des Grids, dann neu aufbauen
-    grid.style.transition = 'opacity 0.15s ease-out';
-    grid.style.opacity = '0';
+    // Cancel any in-flight fade timer
+    if (grid._fadeTimer) clearTimeout(grid._fadeTimer);
 
-    setTimeout(() => {
-        // Klassen sauber zurücksetzen – kein fade-view-out/fade-view Klassendurcheinander
+    // Smooth fade-out of grid only (search bar is outside grid, stays intact)
+    grid.style.transition = 'opacity 0.2s ease-out';
+    grid.style.opacity = '0';
+    grid.style.pointerEvents = 'none';
+
+    grid._fadeTimer = setTimeout(() => {
+        grid.style.transition = 'none';
+        grid.style.pointerEvents = '';
+
+        // Klassen sauber zurücksetzen
         if (dexSortMode === 'alpha') {
             grid.className = 'flex flex-col w-full';
             if (dexObserver) dexObserver.disconnect();
@@ -4441,8 +4468,6 @@ function filterDex() {
             const is2Cols = cols === '2';
             grid.className = `grid ${is2Cols ? 'grid-cols-2' : 'grid-cols-3'} gap-3`;
         }
-        // Transition zurücksetzen, damit das Grid beim nächsten Wechsel wieder faden kann
-        grid.style.transition = '';
 
         const hasItems = grid.querySelectorAll('.dex-anim-card, .brand-section').length > 0;
         const showSkeletons = !hasItems || (isSearch && grid.dataset.lastSearch !== searchKey);
@@ -4469,13 +4494,13 @@ function filterDex() {
                 </div>`).join('')}
                 `;
             }
+            // Always make grid visible before rendering (skeleton or existing content)
+            grid.style.opacity = '1';
 
-            // Grid bleibt unsichtbar – renderDexGrouped setzt opacity nach erstem Chunk
+            // Single RAF – avoid double RAF jank on iPhone
             requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    const groupedData = groupAndSortByBrand(filtered);
-                    renderDexGrouped(groupedData);
-                });
+                const groupedData = groupAndSortByBrand(filtered);
+                renderDexGrouped(groupedData);
             });
 
         } else {
@@ -4490,16 +4515,16 @@ function filterDex() {
                     `).join('')}
                 `;
             }
+            // Always make grid visible before rendering
+            grid.style.opacity = '1';
 
-            // Grid bleibt unsichtbar – loadMoreDexItems setzt opacity nach erstem Chunk
+            // Single RAF – avoid double RAF jank on iPhone
             requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
-                    renderDexGrid(filtered);
-                });
+                filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+                renderDexGrid(filtered);
             });
         }
-    }, 150);
+    }, 200);
 }
 
 async function setupProfile(user) {
@@ -5551,37 +5576,29 @@ function renderDexGrouped(groupedData) {
     _brandScrollListeners.forEach(({ el, fn }) => el.removeEventListener('scroll', fn));
     _brandScrollListeners = [];
 
-    // grid.innerHTML = ''; wird jetzt im ersten Chunk von renderNextBrandChunk gemacht, 
-    // damit das Skeleton stehen bleibt bis der erste echte Content kommt.
     const glowActive = localStorage.getItem('dexGlow') === 'true';
 
     if (!imageLazyObserver) initImageLazyLoadObserver();
 
-    // Alle Bilder im Hintergrund vorladen (für Alpha-Sort genauso wichtig wie für ID-Sort)
-    // Flache Liste aller Items aus den Brand-Gruppen erstellen
+    // Preload all images in background after first paint
     const allAlphaItems = groupedData.flatMap(b => b.items);
-    // Nach erstem Paint starten, damit erste Brands sofort gezeigt werden
     requestAnimationFrame(() => preloadAllDexImages(allAlphaItems));
 
-    // Chunked async rendering – 2 Brands pro Frame für maximal smooth Progressive Reveal
-    const BRAND_CHUNK = 2;
-    let brandIndex = 0;
+    // Clear skeleton, show grid immediately
+    grid.innerHTML = '';
+    grid.style.opacity = '1';
+    grid.style.transition = '';
 
-    function renderNextBrandChunk() {
-        const chunk = groupedData.slice(brandIndex, brandIndex + BRAND_CHUNK);
-        if (chunk.length === 0) return;
+    // Pulse animation: render each brand individually with staggered setTimeout
+    // This creates a smooth wave/pulse effect on iPhone – each brand pops in after the previous
+    const PULSE_DELAY_MS = 60; // ms between each brand appearing
 
-        const fragment = document.createDocumentFragment();
+    groupedData.forEach((brandData, globalIndex) => {
+        const delay = globalIndex * PULSE_DELAY_MS;
 
-        // Ersten Chunk: Skeleton clearen, Grid sichtbar machen
-        if (brandIndex === 0) {
-            grid.innerHTML = '';
-            // Grid erst sichtbar wenn echter Content bereit ist
-            grid.style.opacity = '1';
-        }
+        setTimeout(() => {
+            if (!document.contains(grid)) return; // Guard: grid might be replaced
 
-        chunk.forEach((brandData, chunkLocalIndex) => {
-            const globalIndex = brandIndex + chunkLocalIndex;
             const section = document.createElement('div');
             section.className = 'brand-section mb-4';
             section.style.marginLeft = '-20px';
@@ -5590,9 +5607,11 @@ function renderDexGrouped(groupedData) {
             section.style.contentVisibility = 'auto';
             section.style.containIntrinsicSize = '0 200px';
 
-            // Individuelle Fade-In Animation für das Segment (global gestaffelt)
+            // Each brand fades+slides in individually – no cumulative delay offset,
+            // because setTimeout already handles the stagger.
             section.style.opacity = '0';
-            section.style.animation = `fadeViewIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards ${Math.min(globalIndex * 0.06, 0.4)}s`;
+            section.style.transform = 'translateY(10px)';
+            section.style.transition = 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
 
             const header = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
             let cardsHTML = '';
@@ -5607,41 +5626,42 @@ function renderDexGrouped(groupedData) {
                     ${cardsHTML}
                 </div>
             `;
-            fragment.appendChild(section);
-        });
 
-        grid.appendChild(fragment);
+            grid.appendChild(section);
 
-        if (brandIndex + BRAND_CHUNK >= groupedData.length) {
-            // Cache speichern am Ende
-            const term = document.getElementById('dex-search')?.value.trim();
-            if (!term) {
-                if (typeof _dexCache === 'undefined') window._dexCache = {};
-                window._dexCache['alpha' + (dexFilterUnlocked ? '_unlocked' : '')] = grid.innerHTML;
+            // Trigger transition on next frame (needs to be in DOM first)
+            requestAnimationFrame(() => {
+                section.style.opacity = '1';
+                section.style.transform = 'translateY(0)';
+                // Clean up transition after it completes
+                setTimeout(() => {
+                    section.style.transition = '';
+                }, 350);
+            });
+
+            // Register lazy loading for newly appended images
+            section.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
+                img.classList.add('observed');
+                imageLazyObserver.observe(img);
+            });
+
+            // Register scroll animation for this carousel
+            const carousel = section.querySelector('.brand-carousel:not(.anim-init)');
+            if (carousel) {
+                carousel.classList.add('anim-init');
+                initBrandScrollAnimation(carousel);
             }
-        }
 
-        // Lazy-Loading für neue Bilder registrieren
-        grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
-            img.classList.add('observed');
-            imageLazyObserver.observe(img);
-        });
-
-        // Scroll-Animation für neue Carousels registrieren
-        const newCarousels = grid.querySelectorAll('.brand-carousel:not(.anim-init)');
-        newCarousels.forEach(carousel => {
-            carousel.classList.add('anim-init');
-            initBrandScrollAnimation(carousel);
-        });
-
-        brandIndex += BRAND_CHUNK;
-
-        if (brandIndex < groupedData.length) {
-            requestAnimationFrame(renderNextBrandChunk);
-        }
-    }
-
-    renderNextBrandChunk();
+            // Save cache after last brand is appended
+            if (globalIndex === groupedData.length - 1) {
+                const term = document.getElementById('dex-search')?.value.trim();
+                if (!term) {
+                    if (typeof _dexCache === 'undefined') window._dexCache = {};
+                    window._dexCache['alpha' + (dexFilterUnlocked ? '_unlocked' : '')] = grid.innerHTML;
+                }
+            }
+        }, delay);
+    });
 }
 
 // Horizontale Scroll-Animation für Brand-Carousels
