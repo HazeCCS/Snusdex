@@ -146,7 +146,11 @@ async function checkUser() {
             }
 
             overlay.classList.add('opacity-0');
-            setTimeout(() => overlay.classList.add('hidden'), 500);
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                const nav = document.getElementById('main-nav');
+                if (nav) { nav.style.opacity = '1'; nav.style.pointerEvents = ''; }
+            }, 500);
 
             // Scroll home to top after login
             window.scrollTo(0, 0);
