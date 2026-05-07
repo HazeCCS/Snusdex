@@ -3718,7 +3718,10 @@ let _scanHelpVVListening = false;
 function _onScanHelpVVResize() {
     const modal = document.getElementById('scan-help-modal');
     if (!modal || modal.classList.contains('hidden')) return;
-    const kbHeight = Math.max(0, window.innerHeight - window.visualViewport.height);
+    const vv = window.visualViewport;
+    // vv.offsetTop is how far iOS has auto-scrolled the viewport to show the focused input.
+    // Without subtracting it, both our bottom offset AND the iOS scroll stack — pushing too high.
+    const kbHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
     modal.style.bottom = kbHeight + 'px';
 }
 
