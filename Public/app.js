@@ -3494,6 +3494,7 @@ async function openScanModal() {
 
     scanModal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
+    startScanHelpTimer();
 
     setTimeout(() => {
         scanModalBackdrop.classList.remove('opacity-0');
@@ -3526,6 +3527,8 @@ async function openScanModal() {
                 (decodedText, decodedResult) => {
                     if (isProcessingScan) return;
                     isProcessingScan = true;
+                    clearScanHelpTimer();
+                    dismissScanHelpPrompt();
 
                     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
                     closeScanModal();
@@ -3567,16 +3570,30 @@ async function openScanModal() {
             }
         } catch (err) {
             console.error("Kamera-Zugriff verweigert:", err);
-            const loadingScreen = document.getElementById('camera-loading');
-            if (loadingScreen) {
-                loadingScreen.innerHTML = '<p class="text-[#FF453A] text-sm font-medium">Kamera nicht verfügbar</p>';
-            }
+            setTimeout(() => {
+                const loadingScreen = document.getElementById('camera-loading');
+                if (loadingScreen) {
+                    loadingScreen.style.transition = 'opacity 0.3s ease';
+                    loadingScreen.style.opacity = '0';
+                }
+                setTimeout(() => {
+                    if (loadingScreen) loadingScreen.classList.add('pointer-events-none');
+                    const errState = document.getElementById('camera-error-state');
+                    if (errState) {
+                        errState.classList.remove('pointer-events-none');
+                        errState.style.opacity = '1';
+                        errState.style.transform = 'translateY(0)';
+                    }
+                }, 320);
+            }, 1000);
         }
     }, 300);
 }
 
 
 function closeScanModal(isDragging = false) {
+    clearScanHelpTimer();
+    dismissScanHelpPrompt();
     // Turn off flashlight when closing
     if (scanFlashlightOn && scanCurrentTrack) {
         try { scanCurrentTrack.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) { }
@@ -3617,8 +3634,18 @@ function closeScanModal(isDragging = false) {
 
         const loadingScreen = document.getElementById('camera-loading');
         const loadingBar = document.getElementById('loading-bar-fill');
+        const errState = document.getElementById('camera-error-state');
 
-        if (loadingScreen) loadingScreen.classList.remove('opacity-0', 'pointer-events-none');
+        if (loadingScreen) {
+            loadingScreen.classList.remove('opacity-0', 'pointer-events-none');
+            loadingScreen.style.transition = '';
+            loadingScreen.style.opacity = '';
+        }
+        if (errState) {
+            errState.style.opacity = '0';
+            errState.style.transform = 'translateY(16px)';
+            errState.classList.add('pointer-events-none');
+        }
 
         if (loadingBar) {
             loadingBar.style.transition = 'none';
@@ -3640,6 +3667,164 @@ function closeScanModal(isDragging = false) {
 
     }, 400);
 }
+
+// ==========================================
+// SCAN HELP SYSTEM (30-second prompt + Help Center)
+// ==========================================
+let _scanHelpTimer = null;
+
+function startScanHelpTimer() {
+    clearScanHelpTimer();
+    _scanHelpTimer = setTimeout(showScanHelpPrompt, 30000);
+}
+
+function clearScanHelpTimer() {
+    if (_scanHelpTimer) { clearTimeout(_scanHelpTimer); _scanHelpTimer = null; }
+}
+
+function showScanHelpPrompt() {
+    const el = document.getElementById('scan-help-prompt');
+    const inner = document.getElementById('scan-help-inner');
+    if (!el || !inner) return;
+    el.classList.remove('hidden');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        inner.style.transform = 'translateY(0)';
+        inner.style.opacity = '1';
+    }));
+}
+
+function dismissScanHelpPrompt() {
+    const el = document.getElementById('scan-help-prompt');
+    const inner = document.getElementById('scan-help-inner');
+    if (!inner || !el) return;
+    inner.style.transform = 'translateY(20px)';
+    inner.style.opacity = '0';
+    setTimeout(() => {
+        el.classList.add('hidden');
+        inner.style.transform = 'translateY(20px)';
+        inner.style.opacity = '0';
+    }, 380);
+}
+window.dismissScanHelpPrompt = dismissScanHelpPrompt;
+
+function openScanHelpModal() {
+    dismissScanHelpPrompt();
+    const modal = document.getElementById('scan-help-modal');
+    const backdrop = document.getElementById('scan-help-backdrop');
+    const card = document.getElementById('scan-help-card');
+    if (!modal || !backdrop || !card) return;
+    const searchInput = document.getElementById('scan-help-search');
+    const results = document.getElementById('scan-help-results');
+    if (searchInput) searchInput.value = '';
+    if (results) results.innerHTML = '<p class="text-[#8E8E93] text-[14px] text-center py-5 px-4">Tippe um das Sortiment zu durchsuchen</p>';
+    // Always drive position with inline styles to avoid class/inline specificity conflicts
+    card.style.transition = 'none';
+    card.style.transform = 'translateY(100%)';
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100');
+        card.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
+        card.style.transform = 'translateY(0)';
+    }, 10);
+    initScanHelpGestures();
+}
+window.openScanHelpModal = openScanHelpModal;
+
+function closeScanHelpModal() {
+    const modal = document.getElementById('scan-help-modal');
+    const backdrop = document.getElementById('scan-help-backdrop');
+    const card = document.getElementById('scan-help-card');
+    if (!modal || !backdrop || !card) return;
+    // Always animate with inline styles — Tailwind classes are ignored when inline style is present
+    card.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
+    card.style.transform = 'translateY(100%)';
+    backdrop.classList.remove('opacity-100');
+    backdrop.classList.add('opacity-0');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        card.style.transition = 'none';
+    }, 420);
+}
+window.closeScanHelpModal = closeScanHelpModal;
+
+function initScanHelpGestures() {
+    const handle = document.getElementById('scan-help-handle');
+    const card = document.getElementById('scan-help-card');
+    if (!handle || !card || handle._helpGestureInit) return;
+    handle._helpGestureInit = true;
+    let startY = 0, startTime = 0, dragging = false;
+    handle.addEventListener('touchstart', e => {
+        startY = e.touches[0].clientY;
+        startTime = Date.now();
+        dragging = true;
+        card.style.transition = 'none';
+    }, { passive: true });
+    handle.addEventListener('touchmove', e => {
+        if (!dragging) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy < 0) return;
+        card.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+    handle.addEventListener('touchend', e => {
+        if (!dragging) return;
+        dragging = false;
+        const dy = e.changedTouches[0].clientY - startY;
+        const velocity = dy / Math.max(1, Date.now() - startTime);
+        if (dy > 100 || velocity > 0.5) {
+            closeScanHelpModal();
+        } else {
+            card.style.transition = 'transform 0.35s cubic-bezier(0.32,0.72,0,1)';
+            card.style.transform = 'translateY(0)';
+        }
+    }, { passive: true });
+}
+
+function onScanHelpSearch(query) {
+    const container = document.getElementById('scan-help-results');
+    if (!container) return;
+    const q = query.trim().toLowerCase();
+    if (!q) {
+        container.innerHTML = '<p class="text-[#8E8E93] text-[14px] text-center py-5 px-4">Tippe um das Sortiment zu durchsuchen</p>';
+        return;
+    }
+    const matches = (globalSnusData || []).filter(s =>
+        (s.brand || '').toLowerCase().includes(q) || (s.name || '').toLowerCase().includes(q)
+    ).slice(0, 30);
+    if (!matches.length) {
+        container.innerHTML = `
+            <div class="px-4 pt-4 pb-5">
+                <p class="text-[#8E8E93] text-[14px] text-center mb-4 leading-snug">Nicht in unserem Sortiment gefunden.<br>Sollen wir es hinzufügen?</p>
+                <div class="space-y-2 mb-3">
+                    <input id="req-brand" type="text" placeholder="Marke (z.B. Lyft)"
+                        class="w-full bg-[#3A3A3C] text-white text-[15px] px-4 py-3 rounded-[12px] focus:outline-none placeholder-white/25" autocomplete="off">
+                    <input id="req-flavor" type="text" placeholder="Geschmack / Name (z.B. Ice Cool)"
+                        class="w-full bg-[#3A3A3C] text-white text-[15px] px-4 py-3 rounded-[12px] focus:outline-none placeholder-white/25" autocomplete="off">
+                </div>
+                <button onclick="submitProductRequest()"
+                    class="w-full py-3 bg-white text-black text-[15px] font-semibold rounded-[12px] active:scale-95 transition-transform">
+                    Anfrage senden
+                </button>
+            </div>`;
+        return;
+    }
+    container.innerHTML = matches.map((s, i) =>
+        `<div class="flex items-center px-4 py-3${i < matches.length - 1 ? ' border-b border-white/5' : ''}">
+            <div class="flex-1 min-w-0">
+                <span class="text-white text-[15px] font-medium">${s.brand}</span>
+                <span class="text-[#8E8E93] text-[15px]"> · ${s.name}</span>
+            </div>
+            <span class="text-[#8E8E93] text-[13px] ml-3 flex-shrink-0">${s.nicotine} mg/g</span>
+        </div>`
+    ).join('');
+}
+window.onScanHelpSearch = onScanHelpSearch;
+
+function submitProductRequest() {
+    triggerHapticFeedback();
+    // TODO: implement submission feature
+}
+window.submitProductRequest = submitProductRequest;
 
 // ==========================================
 // NOT-FOUND MODAL
