@@ -3709,6 +3709,26 @@ function dismissScanHelpPrompt() {
 }
 window.dismissScanHelpPrompt = dismissScanHelpPrompt;
 
+// ── visualViewport keyboard handler for the help modal ──
+// On iOS, fixed elements sit behind the keyboard because they're positioned
+// against the layout viewport, not the visual viewport. This listener pushes
+// the modal up by exactly the keyboard height so the card always sits above it.
+let _scanHelpVVListening = false;
+
+function _onScanHelpVVResize() {
+    const modal = document.getElementById('scan-help-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+    const kbHeight = Math.max(0, window.innerHeight - window.visualViewport.height);
+    modal.style.bottom = kbHeight + 'px';
+}
+
+function _attachScanHelpVV() {
+    if (_scanHelpVVListening || !window.visualViewport) return;
+    _scanHelpVVListening = true;
+    window.visualViewport.addEventListener('resize', _onScanHelpVVResize);
+    window.visualViewport.addEventListener('scroll', _onScanHelpVVResize);
+}
+
 function openScanHelpModal() {
     dismissScanHelpPrompt();
     const modal = document.getElementById('scan-help-modal');
@@ -3719,10 +3739,11 @@ function openScanHelpModal() {
     const results = document.getElementById('scan-help-results');
     if (searchInput) searchInput.value = '';
     if (results) results.innerHTML = '<p class="text-[#8E8E93] text-[14px] text-center py-5 px-4">Tippe um das Sortiment zu durchsuchen</p>';
-    // Always drive position with inline styles to avoid class/inline specificity conflicts
+    modal.style.bottom = '';
     card.style.transition = 'none';
     card.style.transform = 'translateY(100%)';
     modal.classList.remove('hidden');
+    _attachScanHelpVV();
     setTimeout(() => {
         backdrop.classList.remove('opacity-0');
         backdrop.classList.add('opacity-100');
@@ -3738,13 +3759,13 @@ function closeScanHelpModal() {
     const backdrop = document.getElementById('scan-help-backdrop');
     const card = document.getElementById('scan-help-card');
     if (!modal || !backdrop || !card) return;
-    // Always animate with inline styles — Tailwind classes are ignored when inline style is present
     card.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
     card.style.transform = 'translateY(100%)';
     backdrop.classList.remove('opacity-100');
     backdrop.classList.add('opacity-0');
     setTimeout(() => {
         modal.classList.add('hidden');
+        modal.style.bottom = '';
         card.style.transition = 'none';
     }, 420);
 }
