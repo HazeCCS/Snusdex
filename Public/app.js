@@ -3719,10 +3719,11 @@ function _onScanHelpVVResize() {
     const modal = document.getElementById('scan-help-modal');
     if (!modal || modal.classList.contains('hidden')) return;
     const vv = window.visualViewport;
-    // vv.offsetTop is how far iOS has auto-scrolled the viewport to show the focused input.
-    // Without subtracting it, both our bottom offset AND the iOS scroll stack — pushing too high.
+    // Use paddingBottom on the flex container instead of changing `bottom` —
+    // this keeps the modal inset-0 (backdrop covers full screen) while pushing
+    // the card up above the keyboard. vv.offsetTop cancels iOS's auto-scroll.
     const kbHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-    modal.style.bottom = kbHeight + 'px';
+    modal.style.paddingBottom = kbHeight + 'px';
 }
 
 function _attachScanHelpVV() {
@@ -3742,7 +3743,7 @@ function openScanHelpModal() {
     const results = document.getElementById('scan-help-results');
     if (searchInput) searchInput.value = '';
     if (results) results.innerHTML = '<p class="text-[#8E8E93] text-[14px] text-center py-5 px-4">Tippe um das Sortiment zu durchsuchen</p>';
-    modal.style.bottom = '';
+    modal.style.paddingBottom = '';
     card.style.transition = 'none';
     card.style.transform = 'translateY(100%)';
     modal.classList.remove('hidden');
@@ -3768,7 +3769,7 @@ function closeScanHelpModal() {
     backdrop.classList.add('opacity-0');
     setTimeout(() => {
         modal.classList.add('hidden');
-        modal.style.bottom = '';
+        modal.style.paddingBottom = '';
         card.style.transition = 'none';
     }, 420);
 }
