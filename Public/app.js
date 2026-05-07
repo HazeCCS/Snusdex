@@ -3719,11 +3719,21 @@ function _onScanHelpVVResize() {
     const modal = document.getElementById('scan-help-modal');
     if (!modal || modal.classList.contains('hidden')) return;
     const vv = window.visualViewport;
-    // Use paddingBottom on the flex container instead of changing `bottom` —
-    // this keeps the modal inset-0 (backdrop covers full screen) while pushing
-    // the card up above the keyboard. vv.offsetTop cancels iOS's auto-scroll.
-    const kbHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-    modal.style.paddingBottom = kbHeight + 'px';
+    // Resize the modal to exactly the visual viewport (above keyboard).
+    // backdrop is absolute inset-0 inside modal → always fills this exact area → no bleed-through.
+    // card is flex justify-end → sits at the bottom of this area → above keyboard.
+    modal.style.top    = vv.offsetTop + 'px';
+    modal.style.height = vv.height + 'px';
+    modal.style.bottom = 'auto';
+    const card = document.getElementById('scan-help-card');
+    if (card) card.style.maxHeight = Math.round(vv.height * 0.92) + 'px';
+}
+
+function _resetScanHelpVV() {
+    const modal = document.getElementById('scan-help-modal');
+    const card  = document.getElementById('scan-help-card');
+    if (modal) { modal.style.top = ''; modal.style.height = ''; modal.style.bottom = ''; }
+    if (card)  { card.style.maxHeight = ''; }
 }
 
 function _attachScanHelpVV() {
@@ -3743,7 +3753,7 @@ function openScanHelpModal() {
     const results = document.getElementById('scan-help-results');
     if (searchInput) searchInput.value = '';
     if (results) results.innerHTML = '<p class="text-[#8E8E93] text-[14px] text-center py-5 px-4">Tippe um das Sortiment zu durchsuchen</p>';
-    modal.style.paddingBottom = '';
+    _resetScanHelpVV();
     card.style.transition = 'none';
     card.style.transform = 'translateY(100%)';
     modal.classList.remove('hidden');
@@ -3769,7 +3779,7 @@ function closeScanHelpModal() {
     backdrop.classList.add('opacity-0');
     setTimeout(() => {
         modal.classList.add('hidden');
-        modal.style.paddingBottom = '';
+        _resetScanHelpVV();
         card.style.transition = 'none';
     }, 420);
 }
