@@ -1735,6 +1735,12 @@
                 </div>
             </div>
 
+            <!-- Help Center button – always pinned to bottom of card -->
+            <button onclick="triggerHapticFeedback(); openScanHelpModal()"
+                class="w-full text-center text-[#8E8E93] text-[13px] font-medium pb-2 pt-1 active:opacity-40 transition-opacity mt-auto">
+                Help Center öffnen
+            </button>
+
             <!-- ── Camera unavailable error state ── -->
             <div id="camera-error-state"
                 class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#1C1C1E] rounded-t-[32px] pointer-events-none"
@@ -1753,7 +1759,7 @@
                         class="px-6 py-3 bg-white/10 rounded-full text-white text-[15px] font-medium active:scale-95 transition-transform">
                         Schließen
                     </button>
-                    <button onclick="triggerHapticFeedback(); window.location.href='app-settings:'"
+                    <button onclick="triggerHapticFeedback(); window.open('app-settings:', '_blank')"
                         class="px-6 py-3 bg-white rounded-full text-black text-[15px] font-semibold active:scale-95 transition-transform">
                         Einstellungen
                     </button>

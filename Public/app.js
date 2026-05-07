@@ -3675,7 +3675,7 @@ let _scanHelpTimer = null;
 
 function startScanHelpTimer() {
     clearScanHelpTimer();
-    _scanHelpTimer = setTimeout(showScanHelpPrompt, 30000);
+    _scanHelpTimer = setTimeout(showScanHelpPrompt, 20000);
 }
 
 function clearScanHelpTimer() {
@@ -3686,8 +3686,13 @@ function showScanHelpPrompt() {
     const el = document.getElementById('scan-help-prompt');
     const inner = document.getElementById('scan-help-inner');
     if (!el || !inner) return;
+    // Force starting state with no transition so the browser paints it before animating
+    inner.style.transition = 'none';
+    inner.style.transform = 'translateY(20px)';
+    inner.style.opacity = '0';
     el.classList.remove('hidden');
     requestAnimationFrame(() => requestAnimationFrame(() => {
+        inner.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1), opacity 0.3s ease';
         inner.style.transform = 'translateY(0)';
         inner.style.opacity = '1';
     }));
@@ -3696,14 +3701,11 @@ function showScanHelpPrompt() {
 function dismissScanHelpPrompt() {
     const el = document.getElementById('scan-help-prompt');
     const inner = document.getElementById('scan-help-inner');
-    if (!inner || !el) return;
+    if (!el || el.classList.contains('hidden')) return;
+    inner.style.transition = 'transform 0.35s cubic-bezier(0.32,0.72,0,1), opacity 0.25s ease';
     inner.style.transform = 'translateY(20px)';
     inner.style.opacity = '0';
-    setTimeout(() => {
-        el.classList.add('hidden');
-        inner.style.transform = 'translateY(20px)';
-        inner.style.opacity = '0';
-    }, 380);
+    setTimeout(() => el.classList.add('hidden'), 350);
 }
 window.dismissScanHelpPrompt = dismissScanHelpPrompt;
 
