@@ -3710,26 +3710,31 @@ function dismissScanHelpPrompt() {
 window.dismissScanHelpPrompt = dismissScanHelpPrompt;
 
 // ── visualViewport keyboard handler for the help modal ──
-// On iOS, fixed elements sit behind the keyboard because they're positioned
-// against the layout viewport, not the visual viewport. This listener pushes
-// the modal up by exactly the keyboard height so the card always sits above it.
+// On iOS WKWebView, position:fixed elements don't lift above the keyboard.
+// We resize the modal to exactly match the visual viewport (above keyboard)
+// using vv.offsetTop + vv.height. WebKit bug #237851: the resize event fires
+// before vv values update, so we read values inside a requestAnimationFrame.
 let _scanHelpVVListening = false;
+let _scanHelpVVRafId = null;
 
 function _onScanHelpVVResize() {
-    const modal = document.getElementById('scan-help-modal');
-    if (!modal || modal.classList.contains('hidden')) return;
-    const vv = window.visualViewport;
-    // Resize the modal to exactly the visual viewport (above keyboard).
-    // backdrop is absolute inset-0 inside modal → always fills this exact area → no bleed-through.
-    // card is flex justify-end → sits at the bottom of this area → above keyboard.
-    modal.style.top    = vv.offsetTop + 'px';
-    modal.style.height = vv.height + 'px';
-    modal.style.bottom = 'auto';
-    const card = document.getElementById('scan-help-card');
-    if (card) card.style.maxHeight = Math.round(vv.height * 0.92) + 'px';
+    if (_scanHelpVVRafId) cancelAnimationFrame(_scanHelpVVRafId);
+    _scanHelpVVRafId = requestAnimationFrame(() => {
+        _scanHelpVVRafId = null;
+        const modal = document.getElementById('scan-help-modal');
+        if (!modal || modal.classList.contains('hidden')) return;
+        const vv = window.visualViewport;
+        // backdrop is absolute inset-0 inside modal → fills this exact area → no bleed-through.
+        modal.style.top    = vv.offsetTop + 'px';
+        modal.style.height = vv.height + 'px';
+        modal.style.bottom = 'auto';
+        const card = document.getElementById('scan-help-card');
+        if (card) card.style.maxHeight = Math.round(vv.height * 0.92) + 'px';
+    });
 }
 
 function _resetScanHelpVV() {
+    if (_scanHelpVVRafId) { cancelAnimationFrame(_scanHelpVVRafId); _scanHelpVVRafId = null; }
     const modal = document.getElementById('scan-help-modal');
     const card  = document.getElementById('scan-help-card');
     if (modal) { modal.style.top = ''; modal.style.height = ''; modal.style.bottom = ''; }
@@ -3740,7 +3745,12 @@ function _attachScanHelpVV() {
     if (_scanHelpVVListening || !window.visualViewport) return;
     _scanHelpVVListening = true;
     window.visualViewport.addEventListener('resize', _onScanHelpVVResize);
-    window.visualViewport.addEventListener('scroll', _onScanHelpVVResize);
+    // iOS 17+: after keyboard dismissal vv.height stays stale; re-read after focusout settles
+    const card = document.getElementById('scan-help-card');
+    if (card && !card._focusOutBound) {
+        card._focusOutBound = true;
+        card.addEventListener('focusout', () => setTimeout(_onScanHelpVVResize, 300));
+    }
 }
 
 function openScanHelpModal() {
