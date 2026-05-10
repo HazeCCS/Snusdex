@@ -38,6 +38,14 @@ document.addEventListener('DOMContentLoaded', () => {
     checkUser();
     initDexScrollAnimation();
     loadBadgesFromCache();
+
+    const trackingModeEl = document.getElementById('tracking-mode-preview');
+    if (trackingModeEl) {
+        const storedMode = localStorage.getItem('snusTrackingMode') || 'full';
+        const key = storedMode === 'individual' ? 'tracking.modeIndividual' : 'tracking.modeFull';
+        trackingModeEl.setAttribute('data-i18n', key);
+        trackingModeEl.innerText = t(key);
+    }
 });
 
 // ==========================================
@@ -51,7 +59,7 @@ function updateGreeting() {
     const greetingElement = document.getElementById('greeting');
     if (!greetingElement) return;
 
-    const displayIdent = currentUsername || 'Collector';
+    const displayIdent = currentUsername || t('home.collectorId');
     const hour = new Date().getHours();
     let message = '';
 
@@ -79,7 +87,7 @@ async function signInWithGoogle() {
 
     try {
         // UI Feedback
-        btnText.innerText = "Opening Google...";
+        btnText.innerText = t('auth.openingGoogle');
         btn.disabled = true;
         btn.style.opacity = "0.7";
         const redirectUrl = window.location.origin + window.location.pathname;
@@ -106,7 +114,7 @@ async function signInWithGoogle() {
         alert("Login error: " + error.message);
 
         // Reset label depending on current mode
-        btnText.innerText = isLoginMode ? "Sign in with Google" : "Register with Google";
+        btnText.innerText = isLoginMode ? t('auth.signInWithGoogle') : t('auth.registerWithGoogle');
         btn.disabled = false;
         btn.style.opacity = "1";
     }
@@ -141,7 +149,7 @@ async function checkUser() {
                 document.getElementById('auth-main-view')?.classList.add('hidden');
                 document.getElementById('auth-verify-view')?.classList.add('hidden');
                 usernameView.classList.remove('hidden');
-                if (document.getElementById('auth-subtitle')) document.getElementById('auth-subtitle').innerText = "Almost there";
+                if (document.getElementById('auth-subtitle')) document.getElementById('auth-subtitle').innerText = t('auth.almostThere');
                 return;
             }
 
@@ -384,18 +392,18 @@ async function saveSetupUsername() {
     const btn = document.getElementById('setup-username-btn');
 
     if (!usernameInput) {
-        showAuthFieldError('setup-username-error', 'setup-username-error-msg', 'Please enter a username.');
+        showAuthFieldError('setup-username-error', 'setup-username-error-msg', t('auth.enterUsername'));
         return;
     }
 
     const usernameRegex = /^[a-zA-Z0-9_]{2,30}$/;
     if (!usernameRegex.test(usernameInput)) {
-        showAuthFieldError('setup-username-error', 'setup-username-error-msg', 'Only letters, numbers and _ allowed (2–30 chars).');
+        showAuthFieldError('setup-username-error', 'setup-username-error-msg', t('auth.usernameFormat'));
         return;
     }
 
     btn.disabled = true;
-    btn.innerText = "Saving...";
+    btn.innerText = t('editProfile.saving');
 
     try {
         const { error: updateError } = await supabaseClient.auth.updateUser({
@@ -413,13 +421,13 @@ async function saveSetupUsername() {
     } catch (error) {
         showAuthFieldError('setup-username-error', 'setup-username-error-msg', error.message);
         btn.disabled = false;
-        btn.innerText = "Continue";
+        btn.innerText = t('auth.continue');
     }
 }
 
 async function handleLogout(btn) {
     if (btn) {
-        btn.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-[#FF3B30]/10 flex items-center justify-center"><svg class="animate-spin h-4 w-4 text-[#FF3B30]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div><span class="text-[#FF3B30] text-[17px] font-medium">Signing Out</span></div>`;
+        btn.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-[#FF3B30]/10 flex items-center justify-center"><svg class="animate-spin h-4 w-4 text-[#FF3B30]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div><span class="text-[#FF3B30] text-[17px] font-medium">${t('auth.signingOut')}</span></div>`;
         btn.disabled = true;
     }
     const {
@@ -456,21 +464,23 @@ function toggleAuthMode() {
     if (isLoginMode) {
         registerFields.classList.add('hidden');
         registerConfirmWrap?.classList.add('hidden');
-        subtitle.innerText = "Welcome back";
-        mainBtn.innerText = "Sign In";
-        toggleText.innerText = "Don't have an account? ";
-        if (toggleBtnText) toggleBtnText.innerText = "Register";
-        if (googleBtnText) googleBtnText.innerText = "Sign in with Google";
-        if (appleBtnText) appleBtnText.innerText = "Sign in with Apple";
+        subtitle.setAttribute('data-i18n', 'auth.welcomeBack');
+        subtitle.innerText = t('auth.welcomeBack');
+        mainBtn.innerText = t('auth.signIn');
+        toggleText.innerText = t('auth.dontHaveAccount');
+        if (toggleBtnText) toggleBtnText.innerText = t('auth.register');
+        if (googleBtnText) googleBtnText.innerText = t('auth.signInWithGoogle');
+        if (appleBtnText) appleBtnText.innerText = t('auth.signInWithApple');
     } else {
         registerFields.classList.remove('hidden');
         registerConfirmWrap?.classList.remove('hidden');
-        subtitle.innerText = "Create your account";
-        mainBtn.innerText = "Register";
-        toggleText.innerText = "Already have an account? ";
-        if (toggleBtnText) toggleBtnText.innerText = "Sign In";
-        if (googleBtnText) googleBtnText.innerText = "Register with Google";
-        if (appleBtnText) appleBtnText.innerText = "Register with Apple";
+        subtitle.setAttribute('data-i18n', 'auth.createAccount');
+        subtitle.innerText = t('auth.createAccount');
+        mainBtn.innerText = t('auth.register');
+        toggleText.innerText = t('auth.alreadyHaveAccount');
+        if (toggleBtnText) toggleBtnText.innerText = t('auth.signIn');
+        if (googleBtnText) googleBtnText.innerText = t('auth.registerWithGoogle');
+        if (appleBtnText) appleBtnText.innerText = t('auth.registerWithApple');
     }
 }
 
@@ -484,7 +494,7 @@ async function handleLoginWrapper() {
     const mainBtn = document.getElementById('auth-main-btn');
 
     if (!email || !password) {
-        showAuthFieldError('auth-error', 'auth-error-msg', 'Please fill in all fields.');
+        showAuthFieldError('auth-error', 'auth-error-msg', t('auth.fillAllFields'));
         triggerHapticFeedback();
         return;
     }
@@ -497,10 +507,10 @@ async function handleLoginWrapper() {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
         if (error) {
-            showAuthFieldError('auth-error', 'auth-error-msg', 'Incorrect email or password.');
+            showAuthFieldError('auth-error', 'auth-error-msg', t('auth.incorrectCredentials'));
             triggerHapticFeedback();
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Sign In';
+            mainBtn.innerText = t('auth.signIn');
         } else {
             hideAuthFieldError('auth-error');
             checkUser();
@@ -512,15 +522,15 @@ async function handleLoginWrapper() {
 
         // 1. Username must be present
         if (!username) {
-            showAuthFieldError('auth-error', 'auth-error-msg', 'Please fill in all fields.');
+            showAuthFieldError('auth-error', 'auth-error-msg', t('auth.fillAllFields'));
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Register';
+            mainBtn.innerText = t('auth.register');
             return;
         }
         if (!/^[a-zA-Z0-9_]{2,30}$/.test(username)) {
-            showUsernameError('2–30 chars: letters, numbers and _');
+            showUsernameError(t('auth.usernameFormat'));
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Register';
+            mainBtn.innerText = t('auth.register');
             return;
         }
 
@@ -533,7 +543,7 @@ async function handleLoginWrapper() {
             }));
             triggerHapticFeedback();
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Register';
+            mainBtn.innerText = t('auth.register');
             return;
         }
 
@@ -545,7 +555,7 @@ async function handleLoginWrapper() {
             hideAuthFieldError('auth-error');
             triggerHapticFeedback();
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Register';
+            mainBtn.innerText = t('auth.register');
             return;
         }
 
@@ -561,16 +571,16 @@ async function handleLoginWrapper() {
         if (error) {
             showAuthFieldError('auth-error', 'auth-error-msg',
                 error.message.includes('already registered')
-                    ? 'This email is already in use.'
+                    ? t('auth.emailInUse')
                     : error.message
             );
             triggerHapticFeedback();
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Register';
+            mainBtn.innerText = t('auth.register');
         } else {
             showEmailCheckScreen(email);
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Register';
+            mainBtn.innerText = t('auth.register');
         }
     }
 }
@@ -977,7 +987,7 @@ function loadMoreDexItems(chunkOverride, shouldClear = false) {
         const imgUrl = GITHUB_BASE + snus.image;
 
         const rarityIndicator = is2Cols
-            ? `<span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${rarity}</span>`
+            ? `<span class="text-[10px] font-bold tracking-wide uppercase" style="color: var(--${rarity}, var(--common)); text-shadow: 0px 0px 8px var(--${rarity}, var(--common));">${tRarity(snus.rarity)}</span>`
             : `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
 
         // Alle Bilder starten unsichtbar – verhindert Flash bei gecachten Bildern
@@ -1052,11 +1062,11 @@ function renderActiveCansUI() {
                     </div>
                     <div class="min-w-0">
                         <h4 class="text-white text-[15px] font-semibold truncate">${snusName}</h4>
-                        <p class="text-[11px] text-[#8E8E93] tracking-wider">Open since ${new Date(can.opened_at).toLocaleDateString()}</p>
+                        <p class="text-[11px] text-[#8E8E93] tracking-wider">${t('activeCan.openSince')} ${new Date(can.opened_at).toLocaleDateString()}</p>
                     </div>
                 </div>
                 <button onclick="triggerHapticFeedback(); this.innerHTML='<div class=\\'flex items-center justify-center w-[34px] h-[16px]\\'><svg class=\\'animate-spin h-3.5 w-3.5 text-black\\' xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\'><circle class=\\'opacity-25\\' cx=\\'12\\' cy=\\'12\\' r=\\'10\\' stroke=\\'currentColor\\' stroke-width=\\'4\\'></circle><path class=\\'opacity-75\\' fill=\\'currentColor\\' d=\\'M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z\\'></path></svg></div>'; this.disabled=true; this.classList.add('opacity-50'); finishSpecificCan('${can.id}')" class="bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full active:scale-95 transition-all">
-                    Empty
+                    ${t('activeCan.empty')}
                 </button>
             </div>
         `;
@@ -1190,7 +1200,7 @@ function updateRatingStepUI() {
 
     if (!title) return;
 
-    title.innerText = RATING_STEPS[currentRatingStepIndex];
+    title.innerText = t('rating.' + RATING_STEPS[currentRatingStepIndex]);
     indicator.innerText = `${currentRatingStepIndex + 1}/${RATING_STEPS.length}`;
 
     if (currentRatingStepIndex === 0) {
@@ -1304,12 +1314,12 @@ function showSavedRating() {
     };
 
     document.getElementById('saved-rating-bars').innerHTML =
-        createBar("Visuals", ratings.visuals, ratings.visuals_text) +
-        createBar("Smell", ratings.smell, ratings.smell_text) +
-        createBar("Taste", ratings.taste, ratings.taste_text) +
-        createBar("Bite", ratings.bite, ratings.bite_text) +
-        createBar("Drip", ratings.drip, ratings.drip_text) +
-        createBar("Strength", ratings.strength, ratings.strength_text);
+        createBar(t('rating.visuals'), ratings.visuals, ratings.visuals_text) +
+        createBar(t('rating.smell'), ratings.smell, ratings.smell_text) +
+        createBar(t('rating.taste'), ratings.taste, ratings.taste_text) +
+        createBar(t('rating.bite'), ratings.bite, ratings.bite_text) +
+        createBar(t('rating.drip'), ratings.drip, ratings.drip_text) +
+        createBar(t('rating.strength'), ratings.strength, ratings.strength_text);
 }
 
 function hideAllViews() {
@@ -1318,6 +1328,12 @@ function hideAllViews() {
     document.getElementById('modal-view-rating').classList.remove('flex');
     document.getElementById('modal-view-saved-rating').classList.add('hidden');
     document.getElementById('modal-view-saved-rating').classList.remove('flex');
+}
+
+function tRarity(rarity) {
+    const key = 'rarity.' + (rarity || 'common').toLowerCase().trim();
+    const tr = t(key);
+    return tr !== key ? tr : rarity;
 }
 
 function openSnusDetail(id, isFromScan = false) {
@@ -1346,7 +1362,7 @@ function openSnusDetail(id, isFromScan = false) {
 
     // ID Formatieren (z.B. #001)
     setText('modal-id', '#' + String(snus.id).padStart(3, '0'));
-    setText('modal-name', snus.name || 'Unbekannter Snus');
+    setText('modal-name', snus.name || t('common.unknownSnus'));
 
     // Rarity & Nicotine
     const rarity = (snus.rarity || 'Common').trim();
@@ -1354,8 +1370,8 @@ function openSnusDetail(id, isFromScan = false) {
     const nicotine = snus.nicotine || '??';
 
     setHTML('modal-nicotine', `
-        <span class="px-3 py-1.5 bg-white/10 border border-white/5 rounded-full text-[13px] font-semibold text-white tracking-wide shadow-sm">${nicotine} MG/G</span>
-        <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${rarity}</span>
+        <span class="px-3 py-1.5 bg-white/10 border border-white/5 rounded-full text-[13px] font-semibold text-white tracking-wide shadow-sm">${nicotine} ${t('unit.mgPerG')}</span>
+        <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${tRarity(rarity)}</span>
     `);
 
     // Bild laden + Skeleton-Overlay steuern
@@ -1577,7 +1593,7 @@ async function collectCurrentSnus() {
         _socialCacheData = null;
         _socialCacheTime = 0;
     } else {
-        alert("Fehler beim Speichern: " + error.message);
+        alert(t('error.saveFailed', { msg: error.message }));
     }
 
     setTimeout(() => {
@@ -1755,7 +1771,7 @@ async function loadTopSnusOfWeek() {
 
     if (error) {
         console.error("Error fetching social stats:", error);
-        container.innerHTML = '<div class="p-6 text-center text-[#FF3B30] text-[15px]">Could not load social stats.</div>';
+        container.innerHTML = `<div class="p-6 text-center text-[#FF3B30] text-[15px]">${t('social.errorLoad')}</div>`;
         return;
     }
 
@@ -1784,7 +1800,7 @@ async function loadTopSnusOfWeek() {
                 };
                 const overall = (top_rated.avg_score || 0).toFixed(1);
                 const count = top_rated.rating_count || 0;
-                container.innerHTML += renderSocialCard("Top Rated Snus 🏆", snusInfo, ratings, overall, count, 'Ratings');
+                container.innerHTML += renderSocialCard(t('social.topRatedCard'), snusInfo, ratings, overall, count, t('social.ratingsLabel'));
             }
         }
 
@@ -1815,7 +1831,7 @@ async function loadTopSnusOfWeek() {
                     popOverall = (most_popular_today.avg_score || 0).toFixed(1);
                 }
 
-                container.innerHTML += renderSocialCard("Most Popular Today 🔍", snusInfo, popAvgRatings, popOverall, most_popular_today.scan_count, 'Scans');
+                container.innerHTML += renderSocialCard(t('social.mostPopularCard'), snusInfo, popAvgRatings, popOverall, most_popular_today.scan_count, t('social.scansLabel'));
             }
         }
     }
@@ -1943,15 +1959,15 @@ function renderSocialListUI() {
     if (_socialListMode === 0) {
         items = _socialListData.days7;
         title = t('social.mostScanned7d');
-        countLabel = 'Scan';
+        countLabel = t('social.scansLabel');
     } else if (_socialListMode === 1) {
         items = _socialListData.today;
         title = t('social.mostScannedToday');
-        countLabel = 'Scan';
+        countLabel = t('social.scansLabel');
     } else {
         items = _socialListData.topRated;
         title = t('social.topRated');
-        countLabel = 'Score';
+        countLabel = t('social.scoreLabel');
     }
 
     const scoreColor = (v) => {
@@ -2011,7 +2027,7 @@ function renderSocialListUI() {
             if (_socialListMode === 2) {
                 countText = t('social.rank', { n: rank });
             } else {
-                countText = `${item.count} ${countLabel}${item.count !== 1 ? 's' : ''}`;
+                countText = `${item.count} ${countLabel}`;
             }
 
             listHTML += `
@@ -2030,18 +2046,18 @@ function renderSocialListUI() {
                         </div>
                         <button onclick="event.stopPropagation(); toggleListScore(this, '${snus.id}_${i}')" class="flex-shrink-0 flex flex-col items-center justify-center min-w-[48px] px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 active:bg-white/10 active:scale-95 transition-all">
                             <span class="text-[17px] font-bold ${colorClass} leading-none">${scoreDisplay}</span>
-                            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-medium mt-1 flex items-center gap-0.5">Score <svg class="w-2.5 h-2.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg></span>
+                            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-medium mt-1 flex items-center gap-0.5">${t('social.scoreLabel')} <svg class="w-2.5 h-2.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg></span>
                         </button>
                     </div>
                     <!-- Details Dropdown -->
                     <div id="score-details-${snus.id}_${i}" class="hidden bg-black/20 border-t border-white/5 p-3">
                         <div class="grid grid-cols-6 gap-1 pt-1 pb-1">
-                            ${createCircle('Vis.', item.ratings?.visuals)}
-                            ${createCircle('Smell', item.ratings?.smell)}
-                            ${createCircle('Taste', item.ratings?.taste)}
-                            ${createCircle('Bite', item.ratings?.bite)}
-                            ${createCircle('Drip', item.ratings?.drip)}
-                            ${createCircle('Str.', item.ratings?.strength)}
+                            ${createCircle(t('rating.vis'), item.ratings?.visuals)}
+                            ${createCircle(t('rating.smell'), item.ratings?.smell)}
+                            ${createCircle(t('rating.taste'), item.ratings?.taste)}
+                            ${createCircle(t('rating.bite'), item.ratings?.bite)}
+                            ${createCircle(t('rating.drip'), item.ratings?.drip)}
+                            ${createCircle(t('rating.str'), item.ratings?.strength)}
                         </div>
                     </div>
                 </div>
@@ -2115,22 +2131,22 @@ function renderSocialCard(title, snus, ratings, overall, count, countLabel = 'Sc
                 
                 <div class="flex-1 flex flex-col justify-center">
                     <h3 class="text-[18px] font-bold text-white tracking-tight leading-tight line-clamp-2 mb-1">${snus.name}</h3>
-                    <p class="text-[12px] text-[#8E8E93] font-medium mb-2">${snus.nicotine} MG/G • <span style="color: var(--${rarity}, var(--common)); text-shadow: 0 0 8px var(--${rarity}, var(--common));" class="uppercase">${snus.rarity || 'Common'}</span></p>
+                    <p class="text-[12px] text-[#8E8E93] font-medium mb-2">${snus.nicotine} ${t('unit.mgPerG')} • <span style="color: var(--${rarity}, var(--common)); text-shadow: 0 0 8px var(--${rarity}, var(--common));" class="uppercase">${tRarity(snus.rarity)}</span></p>
                     
                     <div class="flex items-end gap-1.5">
                         <span class="text-[26px] font-bold ${getScoreColor(overall)} leading-none">${overall}</span>
-                        <span class="text-[12px] text-[#8E8E93] font-medium pb-0.5">/ 10 Overall</span>
+                        <span class="text-[12px] text-[#8E8E93] font-medium pb-0.5">${t('social.overallSuffix')}</span>
                     </div>
                 </div>
             </div>
             
             <div class="pt-4 border-t border-white/5 grid grid-cols-6 gap-1">
-                ${createCircle('Vis.', ratings.visuals)}
-                ${createCircle('Smell', ratings.smell)}
-                ${createCircle('Taste', ratings.taste)}
-                ${createCircle('Bite', ratings.bite)}
-                ${createCircle('Drip', ratings.drip)}
-                ${createCircle('Str.', ratings.strength)}
+                ${createCircle(t('rating.vis'), ratings.visuals)}
+                ${createCircle(t('rating.smell'), ratings.smell)}
+                ${createCircle(t('rating.taste'), ratings.taste)}
+                ${createCircle(t('rating.bite'), ratings.bite)}
+                ${createCircle(t('rating.drip'), ratings.drip)}
+                ${createCircle(t('rating.str'), ratings.strength)}
             </div>
         </div>
     `;
@@ -2654,7 +2670,7 @@ async function acceptFollowRequest(requestId, targetId) {
         loadConnectionsData(); // Refresh all lists
     } else {
         if (parentDiv) parentDiv.style.opacity = '1';
-        alert("Fehler beim Akzeptieren der Anfrage.");
+        alert(t('error.acceptFailed'));
     }
 }
 
@@ -2676,7 +2692,7 @@ async function declineFollowRequest(requestId) {
         loadConnectionsData(); // Refresh counts
     } else {
         if (parentDiv) parentDiv.style.opacity = '1';
-        alert("Fehler beim Ablehnen der Anfrage.");
+        alert(t('error.declineFailed'));
     }
 }
 
@@ -3061,7 +3077,7 @@ async function startNewCanFromModal() {
         // Wir wechseln automatisch zum Home/Wallet-Tab, damit der User seine neue Dose sieht!
         switchTab('home');
     } else {
-        alert("Fehler beim Öffnen. Hast du das SQL-Update (mg_per_gram) in Supabase ausgeführt?");
+        alert(t('error.openCanFailed'));
     }
 
     if (btn) {
@@ -3155,7 +3171,7 @@ function renderActiveCansUI() {
                         </div>
                         <div class="min-w-0 flex-1 pr-2">
                             <h4 class="text-white text-[15px] font-semibold truncate leading-tight">${snusName}</h4>
-                            <p class="text-[11px] text-[#8E8E93] tracking-wider mt-0.5">${pouchesTaken} / ${pouchesTotal} Pouches Taken</p>
+                            <p class="text-[11px] text-[#8E8E93] tracking-wider mt-0.5">${pouchesTaken} / ${pouchesTotal} ${t('activeCan.pouchesTaken')}</p>
                         </div>
                     </div>
 
@@ -3190,7 +3206,7 @@ function renderActiveCansUI() {
                         </div>
                         <div class="min-w-0 flex-1">
                             <h4 class="text-white text-[15px] font-semibold truncate leading-tight">${snusName}</h4>
-                            <p class="text-[11px] text-[#8E8E93] tracking-wider mt-0.5">Open since ${new Date(can.opened_at).toLocaleDateString()}</p>
+                            <p class="text-[11px] text-[#8E8E93] tracking-wider mt-0.5">${t('activeCan.openSince')} ${new Date(can.opened_at).toLocaleDateString()}</p>
                         </div>
                     </div>
                     <div id="empty-container-${can.id}" class="relative flex-shrink-0 cursor-pointer ml-3"
@@ -3216,7 +3232,7 @@ function renderActiveCansUI() {
                         </svg>
 
                         <div id="empty-btn-${can.id}" class="relative bg-white text-black text-[11px] font-bold px-4 py-2 rounded-full pointer-events-none select-none whitespace-nowrap">
-                            Empty
+                            ${t('activeCan.empty')}
                         </div>
                     </div>
                 </div>
@@ -3380,9 +3396,9 @@ function calculateUsageStats(allLogs) {
     const activeCans = allLogs.filter(log => log.is_active);
 
     if (finishedCans.length === 0 && activeCans.length === 0) {
-        if (currentDashboardStats.flow !== 0) animateNumber('stat-flow', currentDashboardStats.flow, 0, 1500, " MG", false);
+        if (currentDashboardStats.flow !== 0) animateNumber('stat-flow', currentDashboardStats.flow, 0, 1500, ' ' + t('unit.mg'), false);
         if (currentDashboardStats.avgPouches !== 0) animateNumber('stat-avg-pouches', currentDashboardStats.avgPouches, 0, 1500, "", true);
-        if (currentDashboardStats.avgMg !== 0) animateNumber('stat-avg-mg', currentDashboardStats.avgMg, 0, 1500, " MG", false);
+        if (currentDashboardStats.avgMg !== 0) animateNumber('stat-avg-mg', currentDashboardStats.avgMg, 0, 1500, ' ' + t('unit.mg'), false);
 
         currentDashboardStats.flow = 0;
         currentDashboardStats.avgPouches = 0;
@@ -3438,7 +3454,7 @@ function calculateUsageStats(allLogs) {
     }
 
     if (currentDashboardStats.flow !== totalMgHistory) {
-        animateNumber('stat-flow', currentDashboardStats.flow, totalMgHistory, 1500, " MG", false);
+        animateNumber('stat-flow', currentDashboardStats.flow, totalMgHistory, 1500, ' ' + t('unit.mg'), false);
         currentDashboardStats.flow = totalMgHistory;
     }
     if (currentDashboardStats.avgPouches !== avgPouchesPerDay) {
@@ -3446,7 +3462,7 @@ function calculateUsageStats(allLogs) {
         currentDashboardStats.avgPouches = avgPouchesPerDay;
     }
     if (currentDashboardStats.avgMg !== avgMgPerDay) {
-        animateNumber('stat-avg-mg', currentDashboardStats.avgMg, avgMgPerDay, 1500, " MG", false);
+        animateNumber('stat-avg-mg', currentDashboardStats.avgMg, avgMgPerDay, 1500, ' ' + t('unit.mg'), false);
         currentDashboardStats.avgMg = avgMgPerDay;
     }
 }
@@ -3769,7 +3785,7 @@ function openScanHelpModal() {
     const searchInput = document.getElementById('scan-help-search');
     const results = document.getElementById('scan-help-results');
     if (searchInput) searchInput.value = '';
-    if (results) results.innerHTML = '<p class="text-[#8E8E93] text-[14px] text-center py-5 px-4">Tippe um das Sortiment zu durchsuchen</p>';
+    if (results) results.innerHTML = `<p class="text-[#8E8E93] text-[14px] text-center py-5 px-4">${t('scanHelp.typeToSearch')}</p>`;
     _resetScanHelpVV();
     card.style.transition = 'none';
     card.style.transform = 'translateY(100%)';
@@ -3841,7 +3857,7 @@ function onScanHelpSearch(query) {
     if (!container) return;
     const q = query.trim().toLowerCase();
     if (!q) {
-        container.innerHTML = '<p class="text-[#8E8E93] text-[14px] text-center py-5 px-4">Tippe um das Sortiment zu durchsuchen</p>';
+        container.innerHTML = `<p class="text-[#8E8E93] text-[14px] text-center py-5 px-4">${t('scanHelp.typeToSearch')}</p>`;
         return;
     }
     const matches = (globalSnusData || []).filter(s =>
@@ -4075,7 +4091,11 @@ function toggleTrackingMode(element) {
     const isActive = element.classList.contains('bg-white');
     localStorage.setItem('snusTrackingMode', isActive ? 'individual' : 'full');
     const preview = document.getElementById('tracking-mode-preview');
-    if (preview) preview.innerText = isActive ? 'Individual' : 'Full Tracking';
+    if (preview) {
+        const key = isActive ? 'tracking.modeIndividual' : 'tracking.modeFull';
+        preview.setAttribute('data-i18n', key);
+        preview.innerText = t(key);
+    }
     renderActiveCansUI();
 }
 
@@ -4084,7 +4104,15 @@ function openSettingsSubpage(type) {
     const titleObj = document.getElementById('subpage-title');
     const contentObj = document.getElementById('subpage-content');
 
-    titleObj.innerText = type;
+    const _subpageTitleMap = {
+        'Edit Profile': 'settings.editProfile', 'Stats': 'settings.stats',
+        'Notifications': 'settings.notifications', 'Privacy & Security': 'settings.privacy',
+        'Language': 'settings.language', 'Darstellung': 'settings.appearance',
+        'Tracking': 'settings.tracking', 'Help Center & FAQ': 'settings.helpCenter',
+        'Delete Account': 'settings.deleteAccount'
+    };
+    titleObj.innerText = t(_subpageTitleMap[type] || type);
+    window._currentSubpageType = type;
     let html = '';
 
     if (type === 'Edit Profile') {
@@ -4146,7 +4174,7 @@ function openSettingsSubpage(type) {
                 <!-- Username -->
                 <div class="px-5 pt-4 pb-3">
                     <div class="flex items-center justify-between mb-2">
-                        <label class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium">Username</label>
+                        <label class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium">${t('editProfile.username')}</label>
                         <span id="username-changes-left">${changesLabel}</span>
                     </div>
                     <input type="text" id="edit-username" value=""
@@ -4159,14 +4187,14 @@ function openSettingsSubpage(type) {
 
                 <!-- Email -->
                 <div class="px-5 py-4">
-                    <label class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium block mb-2">Email</label>
+                    <label class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium block mb-2">${t('editProfile.email')}</label>
                     <input type="email" id="edit-email" value="${cachedEmail}" disabled class="w-full bg-black/50 text-[#8E8E93] border border-white/5 rounded-[14px] px-4 py-3.5 text-[17px] outline-none cursor-not-allowed">
                 </div>
 
                 <!-- Save Changes inside the card -->
                 <div class="px-5 pb-4">
                     <button id="save-profile-btn" onclick="triggerHapticFeedback(); handleProfileSave(this)" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-all duration-300 shadow-[0_4px_14px_rgba(255,255,255,0.1)] flex justify-center items-center gap-2">
-                        <span>Save Changes</span>
+                        <span>${t('editProfile.saveChanges')}</span>
                     </button>
                 </div>
             </div>
@@ -4264,7 +4292,7 @@ function openSettingsSubpage(type) {
                     
                     <!-- Footer Info -->
                     <div class="w-full bg-white/5 rounded-xl py-1.5 px-3 flex justify-between items-center mt-auto">
-                        <span class="text-[11px] font-medium text-[#8E8E93] uppercase tracking-wider">Collected</span>
+                        <span class="text-[11px] font-medium text-[#8E8E93] uppercase tracking-wider">${t('stats.collected')}</span>
                         <span class="text-[13px] font-semibold text-white">
                             ${stat.unlocked} <span class="text-[#8E8E93] font-normal">/ ${stat.total}</span>
                         </span>
@@ -4285,34 +4313,34 @@ function openSettingsSubpage(type) {
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex items-center justify-between p-5">
-                    <span class="text-white text-[17px]">Push Notifications</span>
+                    <span class="text-white text-[17px]">${t('notifications.pushNotifications')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
                 <div class="flex items-center justify-between p-5">
-                    <span class="text-white text-[17px]">New Snus Drops (Dex)</span>
+                    <span class="text-white text-[17px]">${t('notifications.newSnusDrops')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
                 <div class="flex items-center justify-between p-5">
-                    <span class="text-white text-[17px]">Email Summaries</span>
+                    <span class="text-white text-[17px]">${t('notifications.emailSummaries')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-[#3A3A3C] rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm"></div></div>
                 </div>
             </div>
         `;
     } else if (type === 'Privacy & Security') {
         html = `
-            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">Profile Visibility</p>
+            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">${t('privacy.profileVisibility')}</p>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 mb-8">
                 <div class="flex items-center justify-between p-5">
-                    <span class="text-white text-[17px]">Private Profile</span>
+                    <span class="text-white text-[17px]">${t('privacy.privateProfile')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-[#3A3A3C] rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm"></div></div>
                 </div>
             </div>
-            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">Data</p>
+            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">${t('privacy.data')}</p>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex items-center justify-between p-5">
-                    <span class="text-white text-[17px]">Share Analytics</span>
+                    <span class="text-white text-[17px]">${t('privacy.shareAnalytics')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
                 </div>
             </div>
@@ -4413,25 +4441,25 @@ function openSettingsSubpage(type) {
         html = `
             <div class="space-y-4">
                 <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
-                    <h3 class="text-white font-medium mb-1">How does the Dex work?</h3>
-                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">Every time you scan a new can, it gets added to your permanent Snusdex collection. You earn XP for rarities.</p>
+                    <h3 class="text-white font-medium mb-1">${t('helpCenter.q1')}</h3>
+                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">${t('helpCenter.a1')}</p>
                 </div>
                 <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
-                    <h3 class="text-white font-medium mb-1">Can I manually add a Snus?</h3>
-                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">Currently, scanning the barcode is required to verify the product and maintain the integrity of the Dex.</p>
+                    <h3 class="text-white font-medium mb-1">${t('helpCenter.q2')}</h3>
+                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">${t('helpCenter.a2')}</p>
                 </div>
                 <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
-                    <h3 class="text-white font-medium mb-1">How do I level up?</h3>
-                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">Your Collector Level increases as you gain XP. Rarer Snus (like Epic or Mythic) yield significantly more XP than Common ones.</p>
+                    <h3 class="text-white font-medium mb-1">${t('helpCenter.q3')}</h3>
+                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">${t('helpCenter.a3')}</p>
                 </div>
                 <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
-                    <h3 class="text-white font-medium mb-1">How is my usage calculated?</h3>
-                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">When you mark a can as 'Active' and later 'Empty', we calculate your daily average pouches and nicotine intake based on the time it took to finish it.</p>
+                    <h3 class="text-white font-medium mb-1">${t('helpCenter.q4')}</h3>
+                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">${t('helpCenter.a4')}</p>
                 </div>
-                
+
                 <div class="mt-10 flex justify-center pb-8">
                     <button onclick="triggerHapticFeedback()" class="text-[#8E8E93] hover:text-white text-[14px] font-medium underline decoration-white/30 underline-offset-4 active:opacity-50 transition-all">
-                        Contact Support
+                        ${t('helpCenter.contactSupport')}
                     </button>
                 </div>
             </div>
@@ -4442,14 +4470,14 @@ function openSettingsSubpage(type) {
                 <div class="w-16 h-16 bg-[#FF3B30]/10 border border-[#FF3B30]/20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-8 h-8 text-[#FF3B30]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                 </div>
-                <h2 class="text-white text-[22px] font-bold tracking-tight mb-2">Delete Account?</h2>
-                <p class="text-[#8E8E93] text-[15px] px-4 leading-relaxed">This action is permanent and cannot be undone. All your Dex collections and stats will be lost forever.</p>
+                <h2 class="text-white text-[22px] font-bold tracking-tight mb-2">${t('deleteAccount.title')}</h2>
+                <p class="text-[#8E8E93] text-[15px] px-4 leading-relaxed">${t('deleteAccount.desc')}</p>
             </div>
             <button onclick="triggerHapticFeedback()" class="w-full bg-[#FF3B30] text-white font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform mb-3 shadow-[0_4px_14px_rgba(255,59,48,0.2)]">
-                Yes, delete my account
+                ${t('deleteAccount.confirm')}
             </button>
             <button onclick="triggerHapticFeedback(); closeSettingsSubpage()" class="w-full bg-[#1C1C1E] border border-white/10 text-white font-medium text-[17px] py-4 rounded-[14px] active:bg-white/5 transition-colors">
-                Cancel
+                ${t('deleteAccount.cancel')}
             </button>
         `;
     }
@@ -4678,14 +4706,15 @@ async function loadUserStats(userId) {
         scoreEl.innerHTML = `${xp} <span class="text-[20px] text-white/50 font-medium">XP</span>`;
     }
     if (homeLevelEl) {
-        homeLevelEl.innerText = `LVL ${level}`;
+        homeLevelEl.innerText = `${t('profile.level').toUpperCase()} ${level}`;
     }
 
     const profileXpEl = document.getElementById('profile-xp');
     const profileLevelEl = document.getElementById('profile-level');
 
+    window._currentUserLevel = level;
     if (profileXpEl) profileXpEl.innerText = `${xp} XP`;
-    if (profileLevelEl) profileLevelEl.innerText = `Lvl ${level}`;
+    if (profileLevelEl) profileLevelEl.innerText = `${t('profile.level')} ${level}`;
 }
 
 function filterDex() {
@@ -4813,7 +4842,7 @@ async function setupProfile(user) {
     const immediateUsername = user.user_metadata?.username || user.email.split('@')[0];
     currentUsername = immediateUsername;
 
-    if (emailEl) emailEl.innerText = currentUsername;
+    if (emailEl) { emailEl.removeAttribute('data-i18n'); emailEl.innerText = currentUsername; }
     if (initialsEl) initialsEl.innerText = currentUsername[0].toUpperCase();
     if (idEl) idEl.innerText = `ID #${user.id.split('-')[0].toUpperCase()}`;
     if (user.email === 'tarayannorman@gmail.com' && adminEl) adminEl.classList.remove('hidden');
@@ -4864,13 +4893,13 @@ async function handleProfileSave(btn) {
     // Validierung: nur Buchstaben, Zahlen, Unterstriche
     const usernameRegex = /^[a-zA-Z0-9_]{2,30}$/;
     if (!usernameRegex.test(newUsername)) {
-        if (errorEl) { errorEl.innerText = 'Nur Buchstaben, Zahlen und _ erlaubt (2–30 Zeichen).'; errorEl.classList.remove('hidden'); }
+        if (errorEl) { errorEl.innerText = t('editProfile.errorFormat'); errorEl.classList.remove('hidden'); }
         return;
     }
     if (errorEl) errorEl.classList.add('hidden');
 
     btn.disabled = true;
-    btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Saving...`;
+    btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> ${t('editProfile.saving')}`;
 
     try {
         const { data: { user } } = await supabaseClient.auth.getUser();
@@ -4888,14 +4917,14 @@ async function handleProfileSave(btn) {
         if (changesThisMonth >= 3) {
             const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
             const daysLeft = Math.ceil((nextMonth - now) / (1000 * 60 * 60 * 24));
-            if (errorEl) { errorEl.innerText = `Limit erreicht (3/3). Noch ${daysLeft} Tag(e) bis zur Freischaltung.`; errorEl.classList.remove('hidden'); }
+            if (errorEl) { errorEl.innerText = t('editProfile.errorLimitReached', { days: daysLeft }); errorEl.classList.remove('hidden'); }
             btn.disabled = false;
-            btn.innerHTML = `<span>Save Changes</span>`;
+            btn.innerHTML = `<span>${t('editProfile.saveChanges')}</span>`;
             return;
         }
 
         if (newUsername === currentUsername) {
-            btn.disabled = false; btn.innerHTML = `<span>Save Changes</span>`; return;
+            btn.disabled = false; btn.innerHTML = `<span>${t('editProfile.saveChanges')}</span>`; return;
         }
 
         // Supabase auth metadata updaten
@@ -4914,7 +4943,7 @@ async function handleProfileSave(btn) {
         currentUsername = newUsername;
         const emailEl = document.getElementById('profile-email');
         const initialsEl = document.getElementById('user-initials');
-        if (emailEl) emailEl.innerText = currentUsername;
+        if (emailEl) { emailEl.removeAttribute('data-i18n'); emailEl.innerText = currentUsername; }
         if (initialsEl) initialsEl.innerText = currentUsername[0].toUpperCase();
         updateGreeting();
 
@@ -4934,20 +4963,20 @@ async function handleProfileSave(btn) {
 
         btn.classList.remove('bg-white', 'text-black');
         btn.classList.add('bg-[#34C759]', 'text-white');
-        btn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg> Gespeichert`;
+        btn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg> ${t('editProfile.saved')}`;
         if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
         setTimeout(() => {
             btn.disabled = false;
             btn.classList.remove('bg-[#34C759]', 'text-white');
             btn.classList.add('bg-white', 'text-black');
-            btn.innerHTML = `<span>Save Changes</span>`;
+            btn.innerHTML = `<span>${t('editProfile.saveChanges')}</span>`;
         }, 2500);
 
     } catch (err) {
         if (errorEl) { errorEl.innerText = err.message; errorEl.classList.remove('hidden'); }
         btn.disabled = false;
-        btn.innerHTML = `<span>Save Changes</span>`;
+        btn.innerHTML = `<span>${t('editProfile.saveChanges')}</span>`;
     }
 }
 
@@ -4969,15 +4998,16 @@ async function loadUserStats(userId) {
 
     const profileXpEl = document.getElementById('profile-xp');
     const profileLevelEl = document.getElementById('profile-level');
+    window._currentUserLevel = level;
     if (profileXpEl) profileXpEl.innerText = `${xp} XP`;
-    if (profileLevelEl) profileLevelEl.innerText = `Lvl ${level}`;
+    if (profileLevelEl) profileLevelEl.innerText = `${t('profile.level')} ${level}`;
 
     if (displayedXp === null) {
         displayedXp = xp;
         const scoreEl = document.getElementById('score');
         const homeLevelEl = document.getElementById('home-level');
         if (scoreEl) scoreEl.innerHTML = `${xp} <span class="font-medium text-[20px] text-white/50">XP</span>`;
-        if (homeLevelEl) homeLevelEl.innerText = `LVL ${level}`;
+        if (homeLevelEl) homeLevelEl.innerText = `${t('profile.level').toUpperCase()} ${level}`;
     } else if (displayedXp !== actualXp) {
         const homeTab = document.getElementById('tab-home');
         if (!homeTab.classList.contains('hidden')) {
@@ -5009,7 +5039,7 @@ function animateXp(startValue, endValue, newLevel) {
             requestAnimationFrame(updateCounter);
         } else {
             displayedXp = endValue;
-            if (homeLevelEl) homeLevelEl.innerText = `LVL ${newLevel}`;
+            if (homeLevelEl) homeLevelEl.innerText = `${t('profile.level').toUpperCase()} ${newLevel}`;
 
             if (typeof triggerHapticFeedback === 'function') {
                 triggerHapticFeedback();
@@ -5467,13 +5497,13 @@ async function loadLatestGitHubCommit() {
 
             let timeString = "";
             if (diffDays > 0) {
-                timeString = `vor ${diffDays} Tag${diffDays > 1 ? 'en' : ''}`;
+                timeString = diffDays > 1 ? t('system.daysAgoPlural', { n: diffDays }) : t('system.daysAgo', { n: diffDays });
             } else if (diffHours > 0) {
-                timeString = `vor ${diffHours} Std`;
+                timeString = t('system.hoursAgo', { n: diffHours });
             } else if (diffMins > 0) {
-                timeString = `vor ${diffMins} Min`;
+                timeString = t('system.minutesAgo', { n: diffMins });
             } else {
-                timeString = `Gerade eben`;
+                timeString = t('system.justNow');
             }
 
             // --- HIER IST DIE WICHTIGE ÄNDERUNG ---
@@ -5493,7 +5523,7 @@ async function loadLatestGitHubCommit() {
         const timeElement = document.getElementById('latest-commit-time');
 
         if (msgElement) {
-            msgElement.innerText = 'Unavailable';
+            msgElement.innerText = t('system.unavailable');
         }
         if (timeElement) {
             timeElement.innerText = '';
@@ -5776,7 +5806,7 @@ window.confirmRemoveFavorite = function () {
 
         const subpage = document.getElementById('settings-subpage');
         const titleEl = document.getElementById('subpage-title');
-        if (titleEl && titleEl.innerText === 'Stats' && subpage && !subpage.classList.contains('translate-x-full')) {
+        if (window._currentSubpageType === 'Stats' && subpage && !subpage.classList.contains('translate-x-full')) {
             openSettingsSubpage('Stats');
         }
     }
@@ -6048,7 +6078,24 @@ function getBrandStats() {
     });
 }
 
+window.refreshStatUnits = function () {
+    const unit = ' ' + t('unit.mg');
+    ['stat-flow', 'stat-avg-mg'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const raw = el.innerText.replace(/[^0-9.,]/g, '').trim();
+        if (raw) el.innerText = raw + unit;
+    });
+};
 
+window.refreshLevelDisplay = function () {
+    const level = window._currentUserLevel;
+    if (!level) return;
+    const homeLevelEl = document.getElementById('home-level');
+    const profileLevelEl = document.getElementById('profile-level');
+    if (homeLevelEl) homeLevelEl.innerText = `${t('profile.level').toUpperCase()} ${level}`;
+    if (profileLevelEl) profileLevelEl.innerText = `${t('profile.level')} ${level}`;
+};
 
 
 

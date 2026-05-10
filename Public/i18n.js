@@ -32,6 +32,43 @@ const TRANSLATIONS = {
         'auth.verifyEmail': 'Verify your email',
         'auth.checkInbox': 'Check your inbox',
         'auth.emailSent': 'We sent a verification link to:',
+        'auth.continue': 'Continue',
+        'auth.signingOut': 'Signing Out',
+        'auth.or': 'or',
+        'auth.emailPlaceholder': 'Email',
+        'auth.passwordPlaceholder': 'Password',
+        'auth.confirmPasswordPlaceholder': 'Confirm Password',
+        'auth.usernamePlaceholder': 'Username',
+        'auth.passwordsNoMatchInline': 'Passwords do not match',
+        'auth.reqLength': 'At least 6 characters',
+        'auth.reqUpper': 'At least 1 uppercase letter',
+        'auth.reqNumber': 'At least 1 number',
+        'auth.confirmCode': 'Confirm Code',
+        'auth.resendCode': 'Resend Code',
+        'auth.backToSignIn': 'Back to Sign In',
+        'auth.verifyDesc': 'We sent you a 6-digit confirmation code. Please enter it below.',
+        'auth.chooseUsernameDesc': 'Choose your Dex username.',
+        'auth.openingGoogle': 'Opening Google...',
+        'auth.enterUsername': 'Please enter a username.',
+        'auth.checkEmail': 'Check your email',
+        'auth.emailSentDesc': 'We sent a confirmation link to {email}. Open the email and tap the link to activate your account.',
+        'auth.openMailApp': 'Open Mail App',
+        'auth.goToSignIn': 'Go to Sign In',
+        'auth.noEmailReceived': "Didn't receive an email? Check your spam folder or try again.",
+
+        // Common
+        'common.loading': 'Loading...',
+        'common.unknownSnus': 'Unknown Snus',
+        'home.collectorId': 'Collector ID',
+        'error.saveFailed': 'Save failed: {msg}',
+        'error.acceptFailed': 'Could not accept request.',
+        'error.declineFailed': 'Could not decline request.',
+        'error.openCanFailed': 'Failed to open can.',
+        'favorite.removeTitle': 'Remove Favorite?',
+        'favorite.removePrefix': 'Do you really want to remove',
+        'favorite.removeSuffix': 'from your favorites?',
+        'favorite.cancel': 'Cancel',
+        'favorite.remove': 'Remove',
 
         // Navigation
         'nav.home': 'Home',
@@ -45,10 +82,25 @@ const TRANSLATIONS = {
         'home.showAll': 'Show all',
         'home.noScans': 'No scans yet.',
         'home.canEmpty': 'Can Empty',
+        'home.collection': 'Collection',
+        'home.totalCans': 'Total Cans (Dex)',
+        'home.lifetimeTracked': 'Lifetime Tracked',
+        'home.totalNicotine': 'Total Nicotine',
+        'home.usage': 'Usage',
+        'home.avgPouchesDay': 'Avg Pouches / Day',
+        'home.intake': 'Intake',
+        'home.avgDailyMg': 'Avg Daily MG',
+        'home.exploreBrands': 'Explore Brands',
+        'home.activeCan': 'Active Can',
+        'home.currentlyUsing': 'Currently Using',
+        'home.allClosedCans': 'All closed cans',
 
         // Active cans
         'activeCan.noActive': 'No active cans.',
         'activeCan.openNext': 'Open next',
+        'activeCan.openSince': 'Open since',
+        'activeCan.empty': 'Empty',
+        'activeCan.pouchesTaken': 'Pouches Taken',
 
         // Modal – snus detail (info view)
         'modal.scanCan': 'Scan Can',
@@ -62,6 +114,8 @@ const TRANSLATIONS = {
         'modal.openNewCan': 'Open New Can',
 
         // Rating wizard
+        'rating.stepTitle': 'Rating',
+        'rating.scale': 'Rating (1-10)',
         'rating.notes': 'Notes (optional)',
         'rating.next': 'Next',
         'rating.save': 'Save',
@@ -72,16 +126,46 @@ const TRANSLATIONS = {
         'rating.drip.placeholder': 'How is the drip?',
         'rating.strength.placeholder': 'How strong is the nicotine hit?',
 
+        // Rating category labels
+        'rating.visuals': 'Visuals',
+        'rating.smell': 'Smell',
+        'rating.taste': 'Taste',
+        'rating.bite': 'Bite',
+        'rating.drip': 'Drip',
+        'rating.strength': 'Strength',
+        'rating.vis': 'Vis.',
+        'rating.str': 'Str.',
+
         // Dex
         'dex.searchPlaceholder': 'Search Snus...',
 
         // Social
+        'social.badges': 'Badges',
         'social.mostScanned7d': 'Most Scanned (7 days)',
         'social.mostScannedToday': 'Most Scanned (Today)',
         'social.topRated': 'Top Rated (All Time)',
         'social.switchMode': 'SWITCH MODE',
         'social.noData': 'No data yet.',
         'social.rank': 'Rank {n}',
+        'social.topRatedCard': 'Top Rated Snus 🏆',
+        'social.mostPopularCard': 'Most Popular Today 🔍',
+        'social.ratingsLabel': 'Ratings',
+        'social.scansLabel': 'Scans',
+        'social.scoreLabel': 'Score',
+        'social.overallSuffix': '/ 10 Overall',
+        'social.errorLoad': 'Could not load social stats.',
+
+        // Rarities
+        'rarity.common': 'Common',
+        'rarity.uncommon': 'Uncommon',
+        'rarity.rare': 'Rare',
+        'rarity.epic': 'Epic',
+        'rarity.mythic': 'Mythic',
+        'rarity.legendary': 'Legendary',
+
+        // Units
+        'unit.mg': 'MG',
+        'unit.mgPerG': 'MG/G',
 
         // Badges
         'badges.title': 'Your Badges',
@@ -164,13 +248,20 @@ const TRANSLATIONS = {
         'editProfile.changesPerMonth': '3 changes per month',
         'editProfile.email': 'Email',
         'editProfile.saveChanges': 'Save Changes',
+        'editProfile.saving': 'Saving...',
+        'editProfile.saved': 'Saved',
+        'editProfile.errorFormat': 'Only letters, numbers and _ allowed (2–30 chars).',
+        'editProfile.errorLimitReached': 'Limit reached (3/3). {days} day(s) until reset.',
 
         // Settings – Stats
         'stats.subtitle': 'Track your collector progress sorted by snus brand.',
+        'stats.collected': 'Collected',
 
         // Settings – Tracking
         'tracking.title': 'Individual Pouch Tracking',
         'tracking.desc': 'Track every single pouch instead of just the whole can at the end.',
+        'tracking.modeIndividual': 'Individual',
+        'tracking.modeFull': 'Full Tracking',
 
         // Settings – Appearance
         'appearance.defaultSort': 'Default Sort: Brand',
@@ -211,6 +302,18 @@ const TRANSLATIONS = {
         'notifications.pushNotifications': 'Push Notifications',
         'notifications.newFollower': 'New Follower',
         'notifications.friendActivity': 'Friend Activity',
+        'notifications.newSnusDrops': 'New Snus Drops (Dex)',
+        'notifications.emailSummaries': 'Email Summaries',
+
+        // System Info
+        'system.latestUpdate': 'Latest Update',
+        'system.fetching': 'Fetching...',
+        'system.unavailable': 'Unavailable',
+        'system.justNow': 'Just now',
+        'system.minutesAgo': '{n} min ago',
+        'system.hoursAgo': '{n} hr ago',
+        'system.daysAgo': '{n} day ago',
+        'system.daysAgoPlural': '{n} days ago',
 
         // Not found modal
         'notFound.title': 'Not Found',
@@ -240,6 +343,22 @@ const TRANSLATIONS = {
         'scanHelp.brandPlaceholder': 'Brand (e.g. Lyft)',
         'scanHelp.flavorPlaceholder': 'Flavor / Name (e.g. Ice Cool)',
         'scanHelp.submitRequest': 'Submit Request',
+        'scanHelp.title': 'Help Center',
+        'scanHelp.subtitle': "Let's get you scanning again.",
+        'scanHelp.quickFixes': 'Quick Fixes',
+        'scanHelp.restartApp': 'Restart the App',
+        'scanHelp.toggleFlashlight': 'Toggle Flashlight',
+        'scanHelp.switchCamera': 'Switch Camera',
+        'scanHelp.catalogCheck': 'Is it in our catalog?',
+        'scanHelp.searchPlaceholder': 'Search brand or flavor...',
+        'scanHelp.typeToSearch': 'Type to search our full catalog',
+        'scanHelp.stillNeedHelp': 'Still need help?',
+        'scanHelp.contactSupport': 'Contact Support',
+        'scanHelp.havingTrouble': 'Having trouble?',
+        'scanHelp.scanningDesc': 'Been scanning for a while — let us help you out.',
+        'scanHelp.noThanks': 'No thanks',
+        'scanHelp.getHelp': 'Get help',
+        'common.on': 'On',
     },
 
     de: {
@@ -271,6 +390,43 @@ const TRANSLATIONS = {
         'auth.verifyEmail': 'E-Mail bestätigen',
         'auth.checkInbox': 'Posteingang prüfen',
         'auth.emailSent': 'Wir haben einen Bestätigungslink gesendet an:',
+        'auth.continue': 'Weiter',
+        'auth.signingOut': 'Abmelden...',
+        'auth.or': 'oder',
+        'auth.emailPlaceholder': 'E-Mail',
+        'auth.passwordPlaceholder': 'Passwort',
+        'auth.confirmPasswordPlaceholder': 'Passwort bestätigen',
+        'auth.usernamePlaceholder': 'Nutzername',
+        'auth.passwordsNoMatchInline': 'Passwörter stimmen nicht überein',
+        'auth.reqLength': 'Mindestens 6 Zeichen',
+        'auth.reqUpper': 'Mindestens 1 Großbuchstabe',
+        'auth.reqNumber': 'Mindestens 1 Zahl',
+        'auth.confirmCode': 'Code bestätigen',
+        'auth.resendCode': 'Code erneut senden',
+        'auth.backToSignIn': 'Zurück zur Anmeldung',
+        'auth.verifyDesc': 'Wir haben dir einen 6-stelligen Bestätigungscode gesendet. Bitte gib ihn unten ein.',
+        'auth.chooseUsernameDesc': 'Wähle deinen Dex-Nutzernamen.',
+        'auth.openingGoogle': 'Google wird geöffnet...',
+        'auth.enterUsername': 'Bitte gib einen Nutzernamen ein.',
+        'auth.checkEmail': 'Überprüfe deine E-Mail',
+        'auth.emailSentDesc': 'Wir haben dir einen Bestätigungslink an {email} gesendet. Öffne die E-Mail und tippe den Link, um dein Konto zu aktivieren.',
+        'auth.openMailApp': 'Mail-App öffnen',
+        'auth.goToSignIn': 'Zur Anmeldung',
+        'auth.noEmailReceived': 'Keine E-Mail erhalten? Überprüfe deinen Spam-Ordner oder versuche es erneut.',
+
+        // Common
+        'common.loading': 'Laden...',
+        'common.unknownSnus': 'Unbekannter Snus',
+        'home.collectorId': 'Sammler-ID',
+        'error.saveFailed': 'Speichern fehlgeschlagen: {msg}',
+        'error.acceptFailed': 'Anfrage konnte nicht akzeptiert werden.',
+        'error.declineFailed': 'Anfrage konnte nicht abgelehnt werden.',
+        'error.openCanFailed': 'Dose konnte nicht geöffnet werden.',
+        'favorite.removeTitle': 'Favorit entfernen?',
+        'favorite.removePrefix': 'Möchtest du',
+        'favorite.removeSuffix': 'wirklich aus deinen Favoriten entfernen?',
+        'favorite.cancel': 'Abbrechen',
+        'favorite.remove': 'Entfernen',
 
         // Navigation
         'nav.home': 'Home',
@@ -284,10 +440,25 @@ const TRANSLATIONS = {
         'home.showAll': 'Alle zeigen',
         'home.noScans': 'Noch keine Scans vorhanden.',
         'home.canEmpty': 'Dose leeren',
+        'home.collection': 'Sammlung',
+        'home.totalCans': 'Dosen gesamt (Dex)',
+        'home.lifetimeTracked': 'Gesamter Verbrauch',
+        'home.totalNicotine': 'Nikotin gesamt',
+        'home.usage': 'Verbrauch',
+        'home.avgPouchesDay': 'Ø Pouches / Tag',
+        'home.intake': 'Aufnahme',
+        'home.avgDailyMg': 'Ø Tägliches MG',
+        'home.exploreBrands': 'Marken entdecken',
+        'home.activeCan': 'Aktive Dose',
+        'home.currentlyUsing': 'Derzeit in Verwendung',
+        'home.allClosedCans': 'Alle geschlossenen Dosen',
 
         // Active cans
         'activeCan.noActive': 'Keine aktiven Dosen.',
         'activeCan.openNext': 'Nächste öffnen',
+        'activeCan.openSince': 'Offen seit',
+        'activeCan.empty': 'Leeren',
+        'activeCan.pouchesTaken': 'Genommene Pouches',
 
         // Modal – snus detail (info view)
         'modal.scanCan': 'Dose scannen',
@@ -301,6 +472,8 @@ const TRANSLATIONS = {
         'modal.openNewCan': 'Neue Dose öffnen',
 
         // Rating wizard
+        'rating.stepTitle': 'Bewertung',
+        'rating.scale': 'Bewertung (1-10)',
         'rating.notes': 'Notizen (optional)',
         'rating.next': 'Weiter',
         'rating.save': 'Speichern',
@@ -311,16 +484,46 @@ const TRANSLATIONS = {
         'rating.drip.placeholder': 'Wie ist der Drip?',
         'rating.strength.placeholder': 'Wie stark ist der Nikotinkick?',
 
+        // Rating category labels
+        'rating.visuals': 'Optik',
+        'rating.smell': 'Geruch',
+        'rating.taste': 'Geschmack',
+        'rating.bite': 'Biss',
+        'rating.drip': 'Drip',
+        'rating.strength': 'Stärke',
+        'rating.vis': 'Opt.',
+        'rating.str': 'Stä.',
+
         // Dex
         'dex.searchPlaceholder': 'Snus suchen...',
 
         // Social
+        'social.badges': 'Badges',
         'social.mostScanned7d': 'Am meisten gescannt (7 Tage)',
         'social.mostScannedToday': 'Am meisten gescannt (Heute)',
         'social.topRated': 'Top Bewertet (Alle Zeit)',
         'social.switchMode': 'MODUS WECHSELN',
         'social.noData': 'Noch keine Daten.',
         'social.rank': 'Platz {n}',
+        'social.topRatedCard': 'Top Bewertung 🏆',
+        'social.mostPopularCard': 'Beliebteste heute 🔍',
+        'social.ratingsLabel': 'Bewertungen',
+        'social.scansLabel': 'Scans',
+        'social.scoreLabel': 'Score',
+        'social.overallSuffix': '/ 10 Gesamt',
+        'social.errorLoad': 'Soziale Statistiken konnten nicht geladen werden.',
+
+        // Rarities
+        'rarity.common': 'Gewöhnlich',
+        'rarity.uncommon': 'Ungewöhnlich',
+        'rarity.rare': 'Selten',
+        'rarity.epic': 'Episch',
+        'rarity.mythic': 'Mythisch',
+        'rarity.legendary': 'Legendär',
+
+        // Units
+        'unit.mg': 'MG',
+        'unit.mgPerG': 'MG/G',
 
         // Badges
         'badges.title': 'Deine Badges',
@@ -403,13 +606,20 @@ const TRANSLATIONS = {
         'editProfile.changesPerMonth': '3 Änderungen pro Monat',
         'editProfile.email': 'E-Mail',
         'editProfile.saveChanges': 'Änderungen speichern',
+        'editProfile.saving': 'Speichern...',
+        'editProfile.saved': 'Gespeichert',
+        'editProfile.errorFormat': 'Nur Buchstaben, Zahlen und _ erlaubt (2–30 Zeichen).',
+        'editProfile.errorLimitReached': 'Limit erreicht (3/3). Noch {days} Tag(e) bis zur Freischaltung.',
 
         // Settings – Stats
         'stats.subtitle': 'Verfolge deinen Sammler-Fortschritt sortiert nach Snus-Marken.',
+        'stats.collected': 'Gesammelt',
 
         // Settings – Tracking
         'tracking.title': 'Einzelner Pouch-Tracking',
         'tracking.desc': 'Tracke jeden einzelnen Pouch anstatt nur die ganze Dose am Ende.',
+        'tracking.modeIndividual': 'Einzeln',
+        'tracking.modeFull': 'Vollständiges Tracking',
 
         // Settings – Appearance
         'appearance.defaultSort': 'Standard-Sortierung: Marke',
@@ -450,6 +660,18 @@ const TRANSLATIONS = {
         'notifications.pushNotifications': 'Push-Benachrichtigungen',
         'notifications.newFollower': 'Neuer Follower',
         'notifications.friendActivity': 'Freundesaktivität',
+        'notifications.newSnusDrops': 'Neue Snus Drops (Dex)',
+        'notifications.emailSummaries': 'E-Mail Zusammenfassungen',
+
+        // System Info
+        'system.latestUpdate': 'Letztes Update',
+        'system.fetching': 'Lädt...',
+        'system.unavailable': 'Nicht verfügbar',
+        'system.justNow': 'Gerade eben',
+        'system.minutesAgo': 'vor {n} Min',
+        'system.hoursAgo': 'vor {n} Std',
+        'system.daysAgo': 'vor {n} Tag',
+        'system.daysAgoPlural': 'vor {n} Tagen',
 
         // Not found modal
         'notFound.title': 'Nicht gefunden',
@@ -479,6 +701,22 @@ const TRANSLATIONS = {
         'scanHelp.brandPlaceholder': 'Marke (z.B. Lyft)',
         'scanHelp.flavorPlaceholder': 'Geschmack / Name (z.B. Ice Cool)',
         'scanHelp.submitRequest': 'Anfrage senden',
+        'scanHelp.title': 'Help Center',
+        'scanHelp.subtitle': 'Lass uns dir beim Scannen helfen.',
+        'scanHelp.quickFixes': 'Schnelle Lösungen',
+        'scanHelp.restartApp': 'App neu starten',
+        'scanHelp.toggleFlashlight': 'Taschenlampe umschalten',
+        'scanHelp.switchCamera': 'Kamera wechseln',
+        'scanHelp.catalogCheck': 'Ist es in unserem Sortiment?',
+        'scanHelp.searchPlaceholder': 'Marke oder Geschmack suchen...',
+        'scanHelp.typeToSearch': 'Tippen um das Sortiment zu durchsuchen',
+        'scanHelp.stillNeedHelp': 'Noch Hilfe nötig?',
+        'scanHelp.contactSupport': 'Support kontaktieren',
+        'scanHelp.havingTrouble': 'Probleme beim Scannen?',
+        'scanHelp.scanningDesc': 'Du scannst schon eine Weile — wir helfen dir gerne.',
+        'scanHelp.noThanks': 'Nein danke',
+        'scanHelp.getHelp': 'Hilfe holen',
+        'common.on': 'An',
     },
 
     ru: {
@@ -510,6 +748,43 @@ const TRANSLATIONS = {
         'auth.verifyEmail': 'Подтвердите email',
         'auth.checkInbox': 'Проверьте почту',
         'auth.emailSent': 'Мы отправили ссылку для подтверждения на:',
+        'auth.continue': 'Продолжить',
+        'auth.signingOut': 'Выход...',
+        'auth.or': 'или',
+        'auth.emailPlaceholder': 'Эл. почта',
+        'auth.passwordPlaceholder': 'Пароль',
+        'auth.confirmPasswordPlaceholder': 'Подтвердите пароль',
+        'auth.usernamePlaceholder': 'Имя пользователя',
+        'auth.passwordsNoMatchInline': 'Пароли не совпадают',
+        'auth.reqLength': 'Минимум 6 символов',
+        'auth.reqUpper': 'Минимум 1 заглавная буква',
+        'auth.reqNumber': 'Минимум 1 цифра',
+        'auth.confirmCode': 'Подтвердить код',
+        'auth.resendCode': 'Отправить код снова',
+        'auth.backToSignIn': 'Назад ко входу',
+        'auth.verifyDesc': 'Мы отправили вам 6-значный код подтверждения. Введите его ниже.',
+        'auth.chooseUsernameDesc': 'Выберите имя пользователя Dex.',
+        'auth.openingGoogle': 'Открытие Google...',
+        'auth.enterUsername': 'Пожалуйста, введите имя пользователя.',
+        'auth.checkEmail': 'Проверьте вашу почту',
+        'auth.emailSentDesc': 'Мы отправили ссылку подтверждения на {email}. Откройте письмо и нажмите ссылку, чтобы активировать аккаунт.',
+        'auth.openMailApp': 'Открыть почту',
+        'auth.goToSignIn': 'Перейти ко входу',
+        'auth.noEmailReceived': 'Не получили письмо? Проверьте папку со спамом или повторите попытку.',
+
+        // Common
+        'common.loading': 'Загрузка...',
+        'common.unknownSnus': 'Неизвестный снюс',
+        'home.collectorId': 'ID коллекционера',
+        'error.saveFailed': 'Ошибка сохранения: {msg}',
+        'error.acceptFailed': 'Не удалось принять запрос.',
+        'error.declineFailed': 'Не удалось отклонить запрос.',
+        'error.openCanFailed': 'Не удалось открыть банку.',
+        'favorite.removeTitle': 'Удалить из избранного?',
+        'favorite.removePrefix': 'Вы действительно хотите удалить',
+        'favorite.removeSuffix': 'из избранного?',
+        'favorite.cancel': 'Отмена',
+        'favorite.remove': 'Удалить',
 
         // Navigation
         'nav.home': 'Главная',
@@ -523,10 +798,25 @@ const TRANSLATIONS = {
         'home.showAll': 'Показать все',
         'home.noScans': 'Сканирований ещё нет.',
         'home.canEmpty': 'Банка пуста',
+        'home.collection': 'Коллекция',
+        'home.totalCans': 'Всего банок (Dex)',
+        'home.lifetimeTracked': 'Всего отслежено',
+        'home.totalNicotine': 'Никотин всего',
+        'home.usage': 'Потребление',
+        'home.avgPouchesDay': 'Ср. пакетиков / день',
+        'home.intake': 'Приём',
+        'home.avgDailyMg': 'Ср. дневное мг',
+        'home.exploreBrands': 'Изучить бренды',
+        'home.activeCan': 'Активная банка',
+        'home.currentlyUsing': 'Сейчас используется',
+        'home.allClosedCans': 'Все закрытые банки',
 
         // Active cans
         'activeCan.noActive': 'Нет активных банок.',
         'activeCan.openNext': 'Открыть следующую',
+        'activeCan.openSince': 'Открыто',
+        'activeCan.empty': 'Пусто',
+        'activeCan.pouchesTaken': 'Пакетиков взято',
 
         // Modal – snus detail (info view)
         'modal.scanCan': 'Сканировать банку',
@@ -540,6 +830,8 @@ const TRANSLATIONS = {
         'modal.openNewCan': 'Открыть новую банку',
 
         // Rating wizard
+        'rating.stepTitle': 'Оценка',
+        'rating.scale': 'Оценка (1-10)',
         'rating.notes': 'Заметки (необязательно)',
         'rating.next': 'Далее',
         'rating.save': 'Сохранить',
@@ -550,16 +842,46 @@ const TRANSLATIONS = {
         'rating.drip.placeholder': 'Как с дрипом?',
         'rating.strength.placeholder': 'Насколько сильный никотиновый удар?',
 
+        // Rating category labels
+        'rating.visuals': 'Внешний вид',
+        'rating.smell': 'Запах',
+        'rating.taste': 'Вкус',
+        'rating.bite': 'Жжение',
+        'rating.drip': 'Дрип',
+        'rating.strength': 'Крепость',
+        'rating.vis': 'Вид',
+        'rating.str': 'Кр.',
+
         // Dex
         'dex.searchPlaceholder': 'Поиск снюса...',
 
         // Social
+        'social.badges': 'Значки',
         'social.mostScanned7d': 'Чаще всего сканируют (7 дней)',
         'social.mostScannedToday': 'Чаще всего сканируют (Сегодня)',
         'social.topRated': 'Топ оценок (За всё время)',
         'social.switchMode': 'СМЕНИТЬ РЕЖИМ',
         'social.noData': 'Данных пока нет.',
         'social.rank': 'Место {n}',
+        'social.topRatedCard': 'Лучший снюс 🏆',
+        'social.mostPopularCard': 'Популярное сегодня 🔍',
+        'social.ratingsLabel': 'Оценок',
+        'social.scansLabel': 'Сканов',
+        'social.scoreLabel': 'Счёт',
+        'social.overallSuffix': '/ 10 Итого',
+        'social.errorLoad': 'Не удалось загрузить статистику.',
+
+        // Rarities
+        'rarity.common': 'Обычный',
+        'rarity.uncommon': 'Необычный',
+        'rarity.rare': 'Редкий',
+        'rarity.epic': 'Эпический',
+        'rarity.mythic': 'Мифический',
+        'rarity.legendary': 'Легендарный',
+
+        // Units
+        'unit.mg': 'мг',
+        'unit.mgPerG': 'мг/г',
 
         // Badges
         'badges.title': 'Ваши значки',
@@ -642,13 +964,20 @@ const TRANSLATIONS = {
         'editProfile.changesPerMonth': '3 изменения в месяц',
         'editProfile.email': 'Email',
         'editProfile.saveChanges': 'Сохранить изменения',
+        'editProfile.saving': 'Сохранение...',
+        'editProfile.saved': 'Сохранено',
+        'editProfile.errorFormat': 'Только буквы, цифры и _ (2–30 символов).',
+        'editProfile.errorLimitReached': 'Лимит (3/3). Ещё {days} дн. до сброса.',
 
         // Settings – Stats
         'stats.subtitle': 'Отслеживайте прогресс коллекции, отсортированной по брендам снюса.',
+        'stats.collected': 'Собрано',
 
         // Settings – Tracking
         'tracking.title': 'Отслеживание пакетиков',
         'tracking.desc': 'Отслеживайте каждый отдельный пакетик, а не только всю банку в конце.',
+        'tracking.modeIndividual': 'Поштучно',
+        'tracking.modeFull': 'Полное отслеживание',
 
         // Settings – Appearance
         'appearance.defaultSort': 'Сортировка по умолчанию: Бренд',
@@ -689,8 +1018,20 @@ const TRANSLATIONS = {
         'notifications.pushNotifications': 'Push-уведомления',
         'notifications.newFollower': 'Новый подписчик',
         'notifications.friendActivity': 'Активность друзей',
+        'notifications.newSnusDrops': 'Новые снюсы (Dex)',
+        'notifications.emailSummaries': 'Email-рассылка',
 
         // Not found modal
+        // System Info
+        'system.latestUpdate': 'Последнее обновление',
+        'system.fetching': 'Загрузка...',
+        'system.unavailable': 'Недоступно',
+        'system.justNow': 'Только что',
+        'system.minutesAgo': '{n} мин назад',
+        'system.hoursAgo': '{n} ч назад',
+        'system.daysAgo': '{n} день назад',
+        'system.daysAgoPlural': '{n} дн. назад',
+
         'notFound.title': 'Не найдено',
         'notFound.desc': 'Этого штрихкода ещё нет в Snusdex.',
         'notFound.retryScan': 'Сканировать снова',
@@ -718,6 +1059,22 @@ const TRANSLATIONS = {
         'scanHelp.brandPlaceholder': 'Бренд (например, Lyft)',
         'scanHelp.flavorPlaceholder': 'Вкус / Название (например, Ice Cool)',
         'scanHelp.submitRequest': 'Отправить заявку',
+        'scanHelp.title': 'Справочный центр',
+        'scanHelp.subtitle': 'Давайте поможем вам сканировать.',
+        'scanHelp.quickFixes': 'Быстрые решения',
+        'scanHelp.restartApp': 'Перезапустить приложение',
+        'scanHelp.toggleFlashlight': 'Включить/выключить фонарик',
+        'scanHelp.switchCamera': 'Сменить камеру',
+        'scanHelp.catalogCheck': 'Есть ли это в нашем каталоге?',
+        'scanHelp.searchPlaceholder': 'Поиск бренда или вкуса...',
+        'scanHelp.typeToSearch': 'Введите текст для поиска в каталоге',
+        'scanHelp.stillNeedHelp': 'Нужна ещё помощь?',
+        'scanHelp.contactSupport': 'Связаться с поддержкой',
+        'scanHelp.havingTrouble': 'Проблемы со сканированием?',
+        'scanHelp.scanningDesc': 'Вы сканируете уже давно — давайте поможем вам.',
+        'scanHelp.noThanks': 'Нет, спасибо',
+        'scanHelp.getHelp': 'Получить помощь',
+        'common.on': 'Вкл.',
     }
 };
 
@@ -741,6 +1098,12 @@ function setLang(lang) {
     const badge = document.getElementById('settings-lang-badge');
     if (badge) badge.textContent = { en: 'English', de: 'Deutsch', ru: 'Русский' }[lang] || '';
     if (typeof window.updateGreeting === 'function') window.updateGreeting();
+    if (typeof window.refreshStatUnits === 'function') window.refreshStatUnits();
+    if (typeof window.refreshLevelDisplay === 'function') window.refreshLevelDisplay();
+    const subpage = document.getElementById('settings-subpage');
+    if (subpage && !subpage.classList.contains('hidden') && window._currentSubpageType && typeof window.openSettingsSubpage === 'function') {
+        window.openSettingsSubpage(window._currentSubpageType);
+    }
 }
 
 function applyTranslations() {
