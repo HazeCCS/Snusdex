@@ -55,10 +55,10 @@ function updateGreeting() {
     const hour = new Date().getHours();
     let message = '';
 
-    if (hour >= 5 && hour < 12) message = 'Guten Morgen';
-    else if (hour >= 12 && hour < 18) message = 'Guten Tag';
-    else if (hour >= 18 && hour < 22) message = 'Guten Abend';
-    else message = 'Gute Nacht';
+    if (hour >= 5 && hour < 12) message = t('greeting.morning');
+    else if (hour >= 12 && hour < 18) message = t('greeting.afternoon');
+    else if (hour >= 18 && hour < 22) message = t('greeting.evening');
+    else message = t('greeting.night');
 
     greetingElement.innerHTML = `${message}, <span class="text-white font-semibold">${displayIdent}</span>`;
 }
@@ -1036,7 +1036,7 @@ function renderActiveCansUI() {
     container.innerHTML = '';
 
     if (globalActiveLogs.length === 0) {
-        container.innerHTML = '<div class="flex items-center justify-between px-1 py-2"><p class="text-[13px] text-zinc-500">Keine aktiven Dosen.</p><button onclick="triggerHapticFeedback(); openScanModal()" class="flex items-center gap-1 px-3 py-1.5 bg-white/10 rounded-full text-[13px] font-medium text-white active:bg-white/20 transition-colors tracking-wide">Öffne die nächste<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg></button></div>';
+        container.innerHTML = `<div class="flex items-center justify-between px-1 py-2"><p class="text-[13px] text-zinc-500">${t('activeCan.noActive')}</p><button onclick="triggerHapticFeedback(); openScanModal()" class="flex items-center gap-1 px-3 py-1.5 bg-white/10 rounded-full text-[13px] font-medium text-white active:bg-white/20 transition-colors tracking-wide">${t('activeCan.openNext')}<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg></button></div>`;
         return;
     }
 
@@ -1210,12 +1210,12 @@ function updateRatingStepUI() {
     }
 
     if (currentRatingStepIndex === RATING_STEPS.length - 1) {
-        nextText.innerText = "Speichern";
+        nextText.innerText = t('rating.save');
         nextBtn.classList.remove('bg-white', 'text-black');
         nextBtn.classList.add('bg-[#34C759]', 'text-white', 'shadow-[0_4px_14px_rgba(52,199,89,0.3)]');
         nextIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />`;
     } else {
-        nextText.innerText = "Weiter";
+        nextText.innerText = t('rating.next');
         nextBtn.classList.remove('bg-[#34C759]', 'text-white', 'shadow-[0_4px_14px_rgba(52,199,89,0.3)]');
         nextBtn.classList.add('bg-white', 'text-black');
         nextIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />`;
@@ -1942,15 +1942,15 @@ function renderSocialListUI() {
 
     if (_socialListMode === 0) {
         items = _socialListData.days7;
-        title = 'Most Scanned (7 Tage)';
+        title = t('social.mostScanned7d');
         countLabel = 'Scan';
     } else if (_socialListMode === 1) {
         items = _socialListData.today;
-        title = 'Most Scanned (Heute)';
+        title = t('social.mostScannedToday');
         countLabel = 'Scan';
     } else {
         items = _socialListData.topRated;
-        title = 'Top Rated (All Time)';
+        title = t('social.topRated');
         countLabel = 'Score';
     }
 
@@ -1989,7 +1989,7 @@ function renderSocialListUI() {
             <div class="flex items-center justify-between mb-2.5">
                 <span class="text-[13px] text-[#8E8E93] font-semibold uppercase tracking-wider">${title}</span>
                 <button onclick="cycleSocialListMode()" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 active:bg-white/20 transition-colors rounded-full text-white text-[10px] font-bold tracking-wider">
-                    MODUS WECHSELN
+                    ${t('social.switchMode')}
                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                 </button>
             </div>
@@ -2009,7 +2009,7 @@ function renderSocialListUI() {
 
             let countText = '';
             if (_socialListMode === 2) {
-                countText = `Platz ${rank}`;
+                countText = t('social.rank', { n: rank });
             } else {
                 countText = `${item.count} ${countLabel}${item.count !== 1 ? 's' : ''}`;
             }
@@ -2053,7 +2053,7 @@ function renderSocialListUI() {
                         <span class="text-[13px] font-bold text-[#8E8E93] w-5 text-center flex-shrink-0">${rank}</span>
                         <div class="w-10 h-10 rounded-md bg-[#2C2C2E] flex-shrink-0"></div>
                         <div class="flex-1 min-w-0">
-                            <h4 class="text-[#8E8E93] text-[14px] italic tracking-tight">Noch keine Daten</h4>
+                            <h4 class="text-[#8E8E93] text-[14px] italic tracking-tight">${t('social.noData')}</h4>
                         </div>
                     </div>
                 </div>
@@ -2158,7 +2158,7 @@ function updateBadgesStrip() {
         });
 
         if (stripHtml === '') {
-            stripContainer.innerHTML = '<div class="text-[13px] text-[#8E8E93] py-2 px-1">Noch keine Badges freigeschaltet.</div>';
+            stripContainer.innerHTML = `<div class="text-[13px] text-[#8E8E93] py-2 px-1">${t('badges.noBadges')}</div>`;
         } else {
             stripContainer.innerHTML = stripHtml;
         }
@@ -2242,7 +2242,7 @@ function openBadgesGrid() {
                     <h3 class="text-white text-[15px] font-bold text-center leading-tight mb-1">${badge.name}</h3>
                     <p class="text-[#8E8E93] text-[11px] text-center mb-3 line-clamp-2">${badge.description}</p>
                     <div class="w-full bg-[#34C759]/20 rounded-full py-1 text-center mt-auto border border-[#34C759]/30">
-                        <span class="text-[#34C759] text-[10px] font-bold uppercase tracking-wider">Freigeschaltet</span>
+                        <span class="text-[#34C759] text-[10px] font-bold uppercase tracking-wider">${t('badges.unlocked')}</span>
                     </div>
                 </div>
             `;
@@ -2257,7 +2257,7 @@ function openBadgesGrid() {
                     
                     <div class="w-full mt-auto">
                         <div class="flex justify-between items-end mb-1">
-                            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-semibold">Fortschritt</span>
+                            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-semibold">${t('badges.progress')}</span>
                             <span class="text-[11px] font-bold text-white">${progressPercent}%</span>
                         </div>
                         <div class="h-1.5 w-full bg-black/50 rounded-full overflow-hidden">
@@ -2307,7 +2307,7 @@ function renderBadgeSelectorItems() {
     const unlockedBadges = globalBadges.filter(b => globalUserBadges.has(b.id));
 
     if (unlockedBadges.length === 0) {
-        container.insertAdjacentHTML('beforeend', `<span class="text-[12px] text-[#8E8E93] self-center pl-1">Noch keine Badges freigeschaltet</span>`);
+        container.insertAdjacentHTML('beforeend', `<span class="text-[12px] text-[#8E8E93] self-center pl-1">${t('badges.noBadges')}</span>`);
     }
 
     unlockedBadges.forEach(badge => {
@@ -2482,14 +2482,14 @@ async function searchUsersConnections() {
         clearBtn.classList.remove('hidden');
         mainPanel.classList.add('hidden');
         searchPanel.classList.remove('hidden');
-        resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] mt-8">Bitte mindestens 2 Zeichen eingeben...</div>';
+        resultsContainer.innerHTML = `<div class="text-center text-[#8E8E93] text-[14px] mt-8">${t('connections.typeMore')}</div>`;
         return;
     }
 
     clearBtn.classList.remove('hidden');
     mainPanel.classList.add('hidden');
     searchPanel.classList.remove('hidden');
-    resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] mt-8">Suche...</div>';
+    resultsContainer.innerHTML = `<div class="text-center text-[#8E8E93] text-[14px] mt-8">${t('connections.searching')}</div>`;
 
     userSearchTimeout = setTimeout(async () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
@@ -2504,7 +2504,7 @@ async function searchUsersConnections() {
             .limit(20);
 
         if (pError || !profiles || profiles.length === 0) {
-            resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] mt-8">Keine Collector gefunden.</div>';
+            resultsContainer.innerHTML = `<div class="text-center text-[#8E8E93] text-[14px] mt-8">${t('connections.noCollectorFound')}</div>`;
             return;
         }
 
@@ -2522,10 +2522,10 @@ async function searchUsersConnections() {
 
         resultsContainer.innerHTML = profiles.map(profile => {
             const followStatus = followMap[profile.id] || 'none';
-            let btnText = "Folgen";
+            let btnText = t('connections.follow');
             let btnClass = "bg-white text-black active:bg-white/90";
-            if (followStatus === 'accepted') { btnText = "Folge ich"; btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]"; }
-            else if (followStatus === 'pending') { btnText = "Angefragt"; btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]"; }
+            if (followStatus === 'accepted') { btnText = t('connections.following_btn'); btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]"; }
+            else if (followStatus === 'pending') { btnText = t('connections.requested'); btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]"; }
 
             const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
             const xp = profile.xp || 0;
@@ -2538,7 +2538,7 @@ async function searchUsersConnections() {
                         <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0">
                         <div class="min-w-0 flex-1">
                             <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
-                            <p class="text-[13px] text-[#8E8E93] truncate">Lvl ${level} • ${cans} Dosen</p>
+                            <p class="text-[13px] text-[#8E8E93] truncate">${t('profile.level')} ${level} • ${cans} ${t('profile.cans')}</p>
                         </div>
                     </div>
                     <button onclick="triggerHapticFeedback(); toggleFollow('${profile.id}', this)"
@@ -2575,7 +2575,7 @@ async function toggleFollow(targetId, btnElement) {
         if (!error) {
             btnElement.setAttribute('data-status', 'none');
             btnElement.className = "ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold transition-all flex-shrink-0 bg-white text-black active:bg-white/90";
-            btnElement.innerText = "Folgen";
+            btnElement.innerText = t('connections.follow');
         } else {
             btnElement.className = originalClass;
             btnElement.innerText = originalText;
@@ -2593,7 +2593,7 @@ async function toggleFollow(targetId, btnElement) {
         if (!error) {
             btnElement.setAttribute('data-status', 'pending');
             btnElement.className = "ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold transition-all flex-shrink-0 bg-[#2C2C2E] text-white active:bg-[#3A3A3C]";
-            btnElement.innerText = "Angefragt";
+            btnElement.innerText = t('connections.requested');
         } else {
             btnElement.className = originalClass;
             btnElement.innerText = originalText;
@@ -2724,7 +2724,9 @@ async function loadConnectionsData() {
     if (pendingRequests.length > 0) {
         banner.classList.remove('hidden');
         badge.classList.remove('hidden');
-        countText.innerText = `${pendingRequests.length} offene Anfrage${pendingRequests.length > 1 ? 'n' : ''}`;
+        countText.innerText = pendingRequests.length === 1
+            ? t('connections.followerRequests', { n: pendingRequests.length })
+            : t('connections.followerRequestsPlural', { n: pendingRequests.length });
 
         const reqParts = pendingRequests.map(req => {
             const profile = req.follower;
@@ -2736,12 +2738,12 @@ async function loadConnectionsData() {
                         <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0">
                         <div class="min-w-0 flex-1">
                             <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
-                            <p class="text-[13px] text-[#8E8E93] truncate">Möchte dir folgen</p>
+                            <p class="text-[13px] text-[#8E8E93] truncate">${t('connections.wantsToFollow')}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0 pl-2">
                         <button onclick="acceptFollowRequest('${req.id}', '${profile.id}')" class="px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-white text-black active:bg-white/90 transition-colors">
-                            Bestätigen
+                            ${t('connections.confirm')}
                         </button>
                         <button onclick="declineFollowRequest('${req.id}')" class="w-8 h-8 rounded-[10px] bg-[#2C2C2E] text-[#8E8E93] flex items-center justify-center active:bg-[#3A3A3C] transition-colors">
                             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -2754,13 +2756,13 @@ async function loadConnectionsData() {
     } else {
         banner.classList.add('hidden');
         badge.classList.add('hidden');
-        requestsList.innerHTML = '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Keine offenen Anfragen.</div>';
+        requestsList.innerHTML = `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noRequests')}</div>`;
     }
 
     // --- RENDER FRIENDS ---
     friendsList.innerHTML = friends.length > 0
         ? friends.map(f => renderConnectionItem(f.following, 'accepted', f.following_id)).join('')
-        : '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Füge Freunde hinzu, um sie hier zu sehen.</div>';
+        : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFriends')}</div>`;
 
     // Erstelle ein Map mit Status der Leute, denen ich folge
     const myOutgoingFollows = new Map();
@@ -2769,12 +2771,12 @@ async function loadConnectionsData() {
     // --- RENDER FOLLOWERS ---
     followersList.innerHTML = myFollowers.length > 0
         ? myFollowers.map(f => renderConnectionItem(f.follower, myOutgoingFollows.get(f.follower.id) || 'none', f.follower.id)).join('')
-        : '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Du hast noch keine Follower.</div>';
+        : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFollowers')}</div>`;
 
     // --- RENDER FOLLOWING ---
     followingList.innerHTML = iAmFollowing.length > 0
         ? iAmFollowing.map(f => renderConnectionItem(f.following, 'accepted', f.following_id)).join('')
-        : '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Du folgst noch niemandem.</div>';
+        : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFollowing')}</div>`;
 }
 
 // Helper zum Rendern von Profil-Reihen in den Listen
@@ -2789,17 +2791,17 @@ function renderConnectionItem(profile, followStatus, profileId) {
     if (followStatus === 'accepted') {
         actionBtn = `
             <button onclick="triggerHapticFeedback(); toggleFollow('${profileId}', this)" data-status="accepted" class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-[#2C2C2E] text-white active:bg-[#3A3A3C] transition-all flex-shrink-0">
-                Folge ich
+                ${t('connections.following_btn')}
             </button>`;
     } else if (followStatus === 'pending') {
         actionBtn = `
             <button onclick="triggerHapticFeedback(); toggleFollow('${profileId}', this)" data-status="pending" class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-[#2C2C2E] text-white active:bg-[#3A3A3C] transition-all flex-shrink-0">
-                Angefragt
+                ${t('connections.requested')}
             </button>`;
     } else {
         actionBtn = `
             <button onclick="triggerHapticFeedback(); toggleFollow('${profileId}', this)" data-status="none" class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-white text-black active:bg-white/90 transition-all flex-shrink-0">
-                Folgen
+                ${t('connections.follow')}
             </button>`;
     }
 
@@ -2809,7 +2811,7 @@ function renderConnectionItem(profile, followStatus, profileId) {
                 <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff'">
                 <div class="min-w-0 flex-1">
                     <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
-                    <p class="text-[13px] text-[#8E8E93] truncate">Lvl ${level} • ${cans} Dosen</p>
+                    <p class="text-[13px] text-[#8E8E93] truncate">${t('profile.level')} ${level} • ${cans} ${t('profile.cans')}</p>
                 </div>
             </div>
             ${actionBtn}
@@ -3063,7 +3065,7 @@ async function startNewCanFromModal() {
     }
 
     if (btn) {
-        btn.innerHTML = "Neue Dose öffnen";
+        btn.innerHTML = t('modal.openNewCan');
         btn.classList.remove('opacity-80');
         btn.disabled = false;
     }
@@ -3129,7 +3131,7 @@ function renderActiveCansUI() {
     container.innerHTML = '';
 
     if (globalActiveLogs.length === 0) {
-        container.innerHTML = '<div class="flex items-center justify-between px-1 py-2"><p class="text-[13px] text-zinc-500">Keine aktiven Dosen.</p><button onclick="triggerHapticFeedback(); openScanModal()" class="flex items-center gap-1 px-3 py-1.5 bg-white/10 rounded-full text-[13px] font-medium text-white active:bg-white/20 transition-colors tracking-wide">Öffne die nächste<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg></button></div>';
+        container.innerHTML = `<div class="flex items-center justify-between px-1 py-2"><p class="text-[13px] text-zinc-500">${t('activeCan.noActive')}</p><button onclick="triggerHapticFeedback(); openScanModal()" class="flex items-center gap-1 px-3 py-1.5 bg-white/10 rounded-full text-[13px] font-medium text-white active:bg-white/20 transition-colors tracking-wide">${t('activeCan.openNext')}<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg></button></div>`;
         return;
     }
 
@@ -3458,9 +3460,9 @@ let scanFlashlightOn = false;
 let scanCurrentTrack = null; // MediaStreamTrack for torch control
 let scanCameraIndex = 0;     // 0=normal, 1=wide, 2=tele
 const SCAN_CAMERA_MODES = [
-    { label: 'Normal', zoom: null, facingMode: 'environment' },
-    { label: 'Weitwinkel', zoom: 0.5, facingMode: 'environment' },
-    { label: 'Telelinse', zoom: 2.0, facingMode: 'environment' },
+    { labelKey: 'scan.normal', zoom: null, facingMode: 'environment' },
+    { labelKey: 'scan.wide', zoom: 0.5, facingMode: 'environment' },
+    { labelKey: 'scan.tele', zoom: 2.0, facingMode: 'environment' },
 ];
 
 const scanModal = document.getElementById('scan-modal');
@@ -3495,8 +3497,8 @@ async function openScanModal() {
         flashlightBtn.classList.remove('bg-white/20', 'border-white/40');
         flashlightBtn.classList.add('bg-[#1C1C1E]', 'border-white/10');
     }
-    if (flashlightLabel) flashlightLabel.textContent = 'Licht';
-    if (cameraLabel) cameraLabel.textContent = SCAN_CAMERA_MODES[0].label;
+    if (flashlightLabel) flashlightLabel.textContent = t('scan.flashlight');
+    if (cameraLabel) cameraLabel.textContent = t(SCAN_CAMERA_MODES[0].labelKey);
 
     scanModal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
@@ -3848,16 +3850,16 @@ function onScanHelpSearch(query) {
     if (!matches.length) {
         container.innerHTML = `
             <div class="px-4 pt-4 pb-5">
-                <p class="text-[#8E8E93] text-[14px] text-center mb-4 leading-snug">Nicht in unserem Sortiment gefunden.<br>Sollen wir es hinzufügen?</p>
+                <p class="text-[#8E8E93] text-[14px] text-center mb-4 leading-snug">${t('scanHelp.notFound')}</p>
                 <div class="space-y-2 mb-3">
-                    <input id="req-brand" type="text" placeholder="Marke (z.B. Lyft)"
+                    <input id="req-brand" type="text" placeholder="${t('scanHelp.brandPlaceholder')}"
                         class="w-full bg-[#3A3A3C] text-white text-[15px] px-4 py-3 rounded-[12px] focus:outline-none placeholder-white/25" autocomplete="off">
-                    <input id="req-flavor" type="text" placeholder="Geschmack / Name (z.B. Ice Cool)"
+                    <input id="req-flavor" type="text" placeholder="${t('scanHelp.flavorPlaceholder')}"
                         class="w-full bg-[#3A3A3C] text-white text-[15px] px-4 py-3 rounded-[12px] focus:outline-none placeholder-white/25" autocomplete="off">
                 </div>
                 <button onclick="submitProductRequest()"
                     class="w-full py-3 bg-white text-black text-[15px] font-semibold rounded-[12px] active:scale-95 transition-transform">
-                    Anfrage senden
+                    ${t('scanHelp.submitRequest')}
                 </button>
             </div>`;
         return;
@@ -3946,7 +3948,7 @@ async function toggleScanFlashlight() {
                 btn.classList.remove('bg-white/20', 'border-white/40');
             }
         }
-        if (label) label.textContent = scanFlashlightOn ? 'An' : 'Licht';
+        if (label) label.textContent = scanFlashlightOn ? t('scan.flashlightOn') : t('scan.flashlight');
     } catch (e) {
         console.error('Torch not supported:', e);
     }
@@ -3956,7 +3958,7 @@ async function cycleScanCamera() {
     scanCameraIndex = (scanCameraIndex + 1) % SCAN_CAMERA_MODES.length;
     const mode = SCAN_CAMERA_MODES[scanCameraIndex];
     const label = document.getElementById('scan-camera-label');
-    if (label) label.textContent = mode.label;
+    if (label) label.textContent = t(mode.labelKey);
 
     // If zoom is supported by the current track, use applyConstraints
     if (scanCurrentTrack && typeof scanCurrentTrack.getCapabilities === 'function') {
@@ -3972,7 +3974,7 @@ async function cycleScanCamera() {
         }
     }
     // Fallback: restart scanner with a zoom hint (no-op on unsupported devices)
-    console.log(`Camera mode set to: ${mode.label} (hardware zoom not available on this device)`);
+    console.log(`Camera mode set to: ${mode.labelKey} (hardware zoom not available on this device)`);
 }
 
 let scanStartY = 0;
@@ -4126,7 +4128,7 @@ function openSettingsSubpage(type) {
             </div>
 
             <div class="w-full mb-4">
-                <p class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium mb-3 px-1">Featured Badge</p>
+                <p class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium mb-3 px-1">${t('editProfile.featuredBadge')}</p>
                 <div id="badge-selector-scroll" class="flex gap-3 overflow-x-auto pb-1 px-1" style="scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;">
                     <div onclick="triggerHapticFeedback();selectFeaturedBadge(null,this)" data-badge-id="none"
                         class="badge-sel-item flex-shrink-0 flex flex-col items-center gap-2">
@@ -4135,7 +4137,7 @@ function openSettingsSubpage(type) {
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
                         </div>
-                        <span class="text-[11px] text-[#8E8E93]">Keins</span>
+                        <span class="text-[11px] text-[#8E8E93]">${t('editProfile.none')}</span>
                     </div>
                 </div>
             </div>
@@ -4152,7 +4154,7 @@ function openSettingsSubpage(type) {
                         placeholder="${cachedUsername || 'Username'}"
                         oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'')">
                     <p id="edit-username-error" class="hidden text-[#FF3B30] text-[13px] mt-2"></p>
-                    <p class="text-[11px] text-[#8E8E93] mt-2">3 changes per month</p>
+                    <p class="text-[11px] text-[#8E8E93] mt-2">${t('editProfile.changesPerMonth')}</p>
                 </div>
 
                 <!-- Email -->
@@ -4275,7 +4277,7 @@ function openSettingsSubpage(type) {
 
         html = `
             <p class="text-[#8E8E93] text-[15px] mb-6 leading-relaxed">
-                Verfolge deinen Sammler-Fortschritt sortiert nach Snus-Marken.
+                ${t('stats.subtitle')}
             </p>
             ${gridHTML}
         `;
@@ -4326,27 +4328,33 @@ function openSettingsSubpage(type) {
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex items-center justify-between p-5">
                     <div class="flex flex-col pr-4">
-                        <span class="text-white text-[17px]">Individual Pouch Tracking</span>
-                        <span class="text-[#8E8E93] text-[13px] mt-0.5">Tracke jeden einzelnen Pouch anstatt nur die ganze Dose am Ende.</span>
+                        <span class="text-white text-[17px]">${t('tracking.title')}</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('tracking.desc')}</span>
                     </div>
                     <div onclick="triggerHapticFeedback(); toggleTrackingMode(this)" class="w-12 h-7 ${trackToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${trackHandleBg} rounded-full transition-transform duration-300 ${trackHandleTransform} shadow-sm"></div></div>
                 </div>
             </div>
         `;
     } else if (type === 'Language') {
+        const lang = localStorage.getItem('appLang') || 'en';
+        const check = (l) => lang === l
+            ? `<svg class="lang-check-icon w-5 h-5 text-white flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`
+            : `<svg class="lang-check-icon w-5 h-5 text-white flex-shrink-0 invisible" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
-                <div onclick="triggerHapticFeedback()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <div onclick="triggerHapticFeedback(); setLang('en'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
                     <span class="text-white text-[17px]">English</span>
-                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    ${check('en')}
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
-                <div onclick="triggerHapticFeedback()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <div onclick="triggerHapticFeedback(); setLang('de'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
                     <span class="text-white text-[17px]">Deutsch</span>
+                    ${check('de')}
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
-                <div onclick="triggerHapticFeedback()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
-                    <span class="text-white text-[17px]">Svenska</span>
+                <div onclick="triggerHapticFeedback(); setLang('ru'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                    <span class="text-white text-[17px]">Русский</span>
+                    ${check('ru')}
                 </div>
             </div>
         `;
@@ -4375,27 +4383,27 @@ function openSettingsSubpage(type) {
                 <div class="flex flex-col p-5">
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex flex-col pr-4">
-                            <span class="text-white text-[17px]">Standard-Sortierung: Marke</span>
-                            <span class="text-[#8E8E93] text-[13px] mt-0.5">Startet den Dex nach Marke statt ID sortiert.</span>
+                            <span class="text-white text-[17px]">${t('appearance.defaultSort')}</span>
+                            <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('appearance.defaultSortDesc')}</span>
                         </div>
                         <div onclick="triggerHapticFeedback(); toggleDefaultSort(this)" class="w-12 h-7 ${sortToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${sortHandleBg} rounded-full transition-transform duration-300 ${sortHandleTransform} shadow-sm"></div></div>
                     </div>
-                    <p class="text-[12px] text-[#FF3B30] font-semibold leading-tight">⚠️ Vorsicht beim Aktivieren: Dieses Feature verursacht Lags und könnte zu Abstürzen führen. Bitte nur auf eigenes Risiko verwenden.</p>
+                    <p class="text-[12px] text-[#FF3B30] font-semibold leading-tight">${t('appearance.warning')}</p>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
 
                 <div class="flex items-center justify-between p-5">
                     <div class="flex flex-col pr-4">
-                        <span class="text-white text-[17px]">Große Kacheln</span>
-                        <span class="text-[#8E8E93] text-[13px] mt-0.5">Zeigt 2 statt 3 Spalten im Dex an</span>
+                        <span class="text-white text-[17px]">${t('appearance.largeTiles')}</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('appearance.largeTilesDesc')}</span>
                     </div>
                     <div onclick="triggerHapticFeedback(); toggleGridColumns(this)" class="w-12 h-7 ${toggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${handleBg} rounded-full transition-transform duration-300 ${handleTransform} shadow-sm"></div></div>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
                 <div class="flex items-center justify-between p-5">
                     <div class="flex flex-col pr-4">
-                        <span class="text-white text-[17px]">Kachel Glow</span>
-                        <span class="text-[#8E8E93] text-[13px] mt-0.5">Farbiger Hintergrund-Glow der Seltenheit</span>
+                        <span class="text-white text-[17px]">${t('appearance.tileGlow')}</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('appearance.tileGlowDesc')}</span>
                     </div>
                     <div onclick="triggerHapticFeedback(); toggleGridGlow(this)" class="w-12 h-7 ${glowToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${glowHandleBg} rounded-full transition-transform duration-300 ${glowHandleTransform} shadow-sm"></div></div>
                 </div>
@@ -4460,6 +4468,35 @@ function openSettingsSubpage(type) {
         subpage.classList.remove('translate-x-full');
         subpage.classList.add('translate-x-0');
     }, 10);
+}
+
+function refreshLangPage() {
+    const contentObj = document.getElementById('subpage-content');
+    const titleObj = document.getElementById('subpage-title');
+    if (!contentObj || !titleObj) return;
+    titleObj.innerText = t('settings.language');
+    const lang = localStorage.getItem('appLang') || 'en';
+    const check = (l) => lang === l
+        ? `<svg class="lang-check-icon w-5 h-5 text-white flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`
+        : `<svg class="lang-check-icon w-5 h-5 text-white flex-shrink-0 invisible" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
+    contentObj.innerHTML = `
+        <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
+            <div onclick="triggerHapticFeedback(); setLang('en'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <span class="text-white text-[17px]">English</span>
+                ${check('en')}
+            </div>
+            <div class="h-[1px] bg-white/5 mx-5"></div>
+            <div onclick="triggerHapticFeedback(); setLang('de'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <span class="text-white text-[17px]">Deutsch</span>
+                ${check('de')}
+            </div>
+            <div class="h-[1px] bg-white/5 mx-5"></div>
+            <div onclick="triggerHapticFeedback(); setLang('ru'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <span class="text-white text-[17px]">Русский</span>
+                ${check('ru')}
+            </div>
+        </div>
+    `;
 }
 
 function closeSettingsSubpage() {
@@ -5095,7 +5132,7 @@ function updateLivePerformance() {
     if (!listEl) return;
 
     if (globalInactiveLogs.length === 0) {
-        listEl.innerHTML = '<div class="p-6 text-center text-[#8E8E93] text-[15px]">Noch keine Dosen geschlossen.</div>';
+        listEl.innerHTML = `<div class="p-6 text-center text-[#8E8E93] text-[15px]">${t('home.noClosedCans')}</div>`;
         if (showMoreBtn) showMoreBtn.classList.add('hidden');
         return;
     }
