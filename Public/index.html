@@ -126,6 +126,11 @@
         .tab-content {
             animation: tabFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
+        .pre-auth {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            animation: none !important;
+        }
 
         @keyframes tabFadeIn {
             from {
@@ -864,7 +869,7 @@
 
     </div>
 
-    <main id="tab-home" class="tab-content pt-12 pb-10">
+    <main id="tab-home" class="tab-content pre-auth pt-12 pb-10">
         <header class="px-5 pt-4 flex justify-between items-end">
             <h1 class="text-[34px] font-bold tracking-tight">Home</h1>
         </header>

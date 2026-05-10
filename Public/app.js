@@ -150,6 +150,8 @@ async function checkUser() {
                 overlay.classList.add('hidden');
                 const nav = document.getElementById('main-nav');
                 if (nav) { nav.style.opacity = '1'; nav.style.pointerEvents = ''; }
+                const tabHome = document.getElementById('tab-home');
+                if (tabHome) tabHome.classList.remove('pre-auth');
             }, 500);
 
             // Scroll home to top after login
