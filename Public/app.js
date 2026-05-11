@@ -6141,27 +6141,6 @@ window.refreshLevelDisplay = function () {
 //░░██░░░░░░░▄▄█░░░░░▀▀▀▀░▐▄▄█▀░░░░░░░░░░░
 //░░░▀▀▀▀▀▀▀▀░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 
-(function () {
-    if (!window.visualViewport) return;
-    const SHEET_IDS = ['snus-modal', 'scan-modal', 'scan-help-modal'];
-    function onViewportChange() {
-        const keyboardHeight = Math.max(0, window.innerHeight - window.visualViewport.height);
-        SHEET_IDS.forEach(function (id) {
-            var el = document.getElementById(id);
-            if (!el) return;
-            el.style.paddingBottom = keyboardHeight > 0 ? keyboardHeight + 'px' : '';
-        });
-        var authCard = document.getElementById('auth-card');
-        if (authCard) {
-            authCard.style.transform = keyboardHeight > 0
-                ? 'translateY(-' + Math.round(keyboardHeight * 0.45) + 'px)'
-                : '';
-        }
-    }
-    window.visualViewport.addEventListener('resize', onViewportChange);
-    window.visualViewport.addEventListener('scroll', onViewportChange);
-}());
-
 window.addEventListener('sdx-open-camera', function () {
     if (typeof openScanModal === 'function') openScanModal();
 });
