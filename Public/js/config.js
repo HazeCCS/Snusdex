@@ -19,23 +19,34 @@ window._dexCache = {};
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    const video = document.getElementById('splash-video');
+    const video  = document.getElementById('splash-video');
     const splash = document.getElementById('splash-screen');
 
-    // Nur das Video starten – Sound wird vom zweiten Handler mit Musik-Check übernommen
-    if (video) {
-        video.play().catch(err => console.log("Video-Autoplay blocked:", err));
-
-        // Wenn das Video zu Ende ist → Splash ausblenden
-        video.addEventListener('ended', () => {
-            splash.style.opacity = '0';
-            setTimeout(() => {
-                splash.style.display = 'none';
-            }, 600);
-        });
+    function dismissSplash() {
+        if (!splash || splash.dataset.dismissed) return;
+        splash.dataset.dismissed = '1';
+        splash.style.opacity = '0';
+        setTimeout(() => { splash.style.display = 'none'; }, 600);
     }
+
+    if (video) {
+        video.play().catch(err => {
+            console.log("Video-Autoplay blocked:", err);
+            // Autoplay blockiert → sofort dimmen (kurze Pause für UX)
+            setTimeout(dismissSplash, 400);
+        });
+
+        video.addEventListener('ended', dismissSplash, { once: true });
+
+        // Sicherheitsnetz: Splash spätestens nach 5s schließen
+        setTimeout(dismissSplash, 5000);
+    } else {
+        dismissSplash();
+    }
+
     loadLatestGitHubCommit();
     checkUser();
     initDexScrollAnimation();
     loadBadgesFromCache();
 });
+

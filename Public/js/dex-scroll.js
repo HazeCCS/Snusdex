@@ -79,8 +79,9 @@ function initDexScrollAnimation() {
 
     window.addEventListener('scroll', () => {
         const dexTab = document.getElementById('tab-dex');
-        // Dex is active when it does NOT have the tab-dex-hidden class
-        const dexIsActive = dexTab && !dexTab.classList.contains('tab-dex-hidden');
+        // Dex ist aktiv wenn data-tabState === 'visible' (gesetzt vom Navigation-Rewrite)
+        // Fallback auf Klasse für Kompatibilität
+        const dexIsActive = dexTab && (dexTab.dataset.tabState === 'visible' || !dexTab.classList.contains('tab-dex-hidden'));
 
         if (dexIsActive) {
             // 1. Visual scale animation (60fps)
@@ -341,9 +342,17 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
 // Tracked scroll listener refs so we can remove them on re-render
 let _brandScrollListeners = [];
 
+// ─── Render-Generation-Guard ─────────────────────────────────────────────────
+// Wird bei jedem renderDexGrouped()-Aufruf inkrementiert.
+// Damit wissen asynchrone Callbacks ob sie noch aktuell sind.
+let _dexRenderGen = 0;
+
 function renderDexGrouped(groupedData) {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
+
+    // Neue Generation: veraltete Callbacks (z.B. aus vorherigem render) ignorieren sich selbst
+    const myGen = ++_dexRenderGen;
 
     // Bestehende Carousel-Scroll-Listener aufräumen
     _brandScrollListeners.forEach(({ el, fn }) => el.removeEventListener('scroll', fn));
@@ -353,87 +362,80 @@ function renderDexGrouped(groupedData) {
 
     if (!imageLazyObserver) initImageLazyLoadObserver();
 
-    // Preload all images in background after first paint
+    // Preload all images in background
     const allAlphaItems = groupedData.flatMap(b => b.items);
     requestAnimationFrame(() => preloadAllDexImages(allAlphaItems));
 
-    // Clear skeleton, show grid immediately
+    // ── SINGLE FRAGMENT FLUSH ────────────────────────────────────────────────
+    // Alle Brand-Sections auf einmal in einen DocumentFragment rendern und
+    // dann EINMAL an das Grid hängen. Das vermeidet den iPhone-Stotter durch
+    // 60+ separate DOM-Mutations (setTimeout-Spam).
+    //
+    // Staggered Pulse-Effekt läuft via CSS animation-delay auf jedem Element.
+    // Das ist nativ-flüssig, weil der Browser alle Delays intern verwaltet.
+    const PULSE_DELAY_MS = 55; // ms zwischen Brand-Sections
+
+    const fragment = document.createDocumentFragment();
+
+    groupedData.forEach((brandData, globalIndex) => {
+        const section = document.createElement('div');
+        section.className = 'brand-section mb-4';
+        section.style.cssText = [
+            'margin-left: -20px',
+            'margin-right: -20px',
+            'width: calc(100% + 40px)',
+            'content-visibility: auto',
+            'contain-intrinsic-size: 0 220px',
+            // Startzustand für Fade-Animation
+            'opacity: 0',
+            'transform: translateY(8px)',
+            `animation: brandSectionIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) ${globalIndex * PULSE_DELAY_MS}ms both`,
+        ].join(';');
+
+        const header    = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
+        let cardsHTML   = '';
+        brandData.items.forEach(snus => {
+            const isUnlocked = !!globalUserCollection[snus.id];
+            cardsHTML += createHorizontalCardHTML(snus, isUnlocked, glowActive);
+        });
+
+        section.innerHTML = `
+            ${header}
+            <div class="brand-carousel flex gap-[3vw] overflow-x-auto pb-4 pt-3 snap-x snap-mandatory scroll-smooth px-5">
+                ${cardsHTML}
+            </div>
+        `;
+
+        fragment.appendChild(section);
+    });
+
+    // Einmaliger DOM-Write: kein Layout-Thrashing
     grid.innerHTML = '';
+    grid.appendChild(fragment);
     grid.style.opacity = '1';
     grid.style.transition = '';
 
-    // Pulse animation: render each brand individually with staggered setTimeout
-    // This creates a smooth wave/pulse effect on iPhone – each brand pops in after the previous
-    const PULSE_DELAY_MS = 60; // ms between each brand appearing
+    // Alle lazy-imgs + carousels auf einmal initialisieren
+    requestAnimationFrame(() => {
+        // Guard: nur wenn wir noch die aktuelle Render-Generation sind
+        if (_dexRenderGen !== myGen) return;
 
-    groupedData.forEach((brandData, globalIndex) => {
-        const delay = globalIndex * PULSE_DELAY_MS;
+        grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
+            img.classList.add('observed');
+            imageLazyObserver.observe(img);
+        });
 
-        setTimeout(() => {
-            if (!document.contains(grid)) return; // Guard: grid might be replaced
+        grid.querySelectorAll('.brand-carousel:not(.anim-init)').forEach(carousel => {
+            carousel.classList.add('anim-init');
+            initBrandScrollAnimation(carousel);
+        });
 
-            const section = document.createElement('div');
-            section.className = 'brand-section mb-4';
-            section.style.marginLeft = '-20px';
-            section.style.marginRight = '-20px';
-            section.style.width = 'calc(100% + 40px)';
-            section.style.contentVisibility = 'auto';
-            section.style.containIntrinsicSize = '0 200px';
-
-            // Each brand fades+slides in individually – no cumulative delay offset,
-            // because setTimeout already handles the stagger.
-            section.style.opacity = '0';
-            section.style.transform = 'translateY(10px)';
-            section.style.transition = 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-
-            const header = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
-            let cardsHTML = '';
-            brandData.items.forEach(snus => {
-                const isUnlocked = !!globalUserCollection[snus.id];
-                cardsHTML += createHorizontalCardHTML(snus, isUnlocked, glowActive);
-            });
-
-            section.innerHTML = `
-                ${header}
-                <div class="brand-carousel flex gap-[3vw] overflow-x-auto pb-4 pt-3 snap-x snap-mandatory scroll-smooth px-5">
-                    ${cardsHTML}
-                </div>
-            `;
-
-            grid.appendChild(section);
-
-            // Trigger transition on next frame (needs to be in DOM first)
-            requestAnimationFrame(() => {
-                section.style.opacity = '1';
-                section.style.transform = 'translateY(0)';
-                // Clean up transition after it completes
-                setTimeout(() => {
-                    section.style.transition = '';
-                }, 350);
-            });
-
-            // Register lazy loading for newly appended images
-            section.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
-                img.classList.add('observed');
-                imageLazyObserver.observe(img);
-            });
-
-            // Register scroll animation for this carousel
-            const carousel = section.querySelector('.brand-carousel:not(.anim-init)');
-            if (carousel) {
-                carousel.classList.add('anim-init');
-                initBrandScrollAnimation(carousel);
-            }
-
-            // Save cache after last brand is appended
-            if (globalIndex === groupedData.length - 1) {
-                const term = document.getElementById('dex-search')?.value.trim();
-                if (!term) {
-                    if (typeof _dexCache === 'undefined') window._dexCache = {};
-                    window._dexCache['alpha' + (dexFilterUnlocked ? '_unlocked' : '')] = grid.innerHTML;
-                }
-            }
-        }, delay);
+        // Cache nur bei ungefilterter Ansicht
+        const term = document.getElementById('dex-search')?.value.trim();
+        if (!term) {
+            if (typeof _dexCache === 'undefined') window._dexCache = {};
+            window._dexCache['alpha' + (dexFilterUnlocked ? '_unlocked' : '')] = grid.innerHTML;
+        }
     });
 }
 

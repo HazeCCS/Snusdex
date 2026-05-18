@@ -99,9 +99,12 @@
             transform-origin: top center;
         }
 
-        /* MARK: - Layout-erhaltende Versteckung */
+        /* MARK: - Layout-erhaltende Versteckung für Dex
+           WICHTIG: kein opacity !important – JS steuert opacity für Fade-Animation.
+           Wir nutzen visibility+pointer-events, damit der Dex-Grid im Hintergrund
+           korrekt gemessen werden kann (kein Reflow beim Einblenden). */
         .tab-dex-hidden {
-            opacity: 0 !important;
+            visibility: hidden;
             pointer-events: none !important;
             position: absolute !important;
             height: 0 !important;
@@ -110,7 +113,6 @@
             left: 0;
             right: 0;
             z-index: -1;
-            will-change: opacity;
         }
 
         * {
@@ -123,8 +125,10 @@
             display: none;
         }
 
-        .tab-content {
-            animation: tabFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        /* Tab-Fade nur für normale (nicht-Dex) Tabs.
+           Dex-Tab wird ausschließlich via JS-Transition animiert. */
+        .tab-content:not(#tab-dex) {
+            animation: tabFadeIn 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
         }
 
         @keyframes tabFadeIn {
@@ -140,15 +144,14 @@
         }
 
         @keyframes fadeViewIn {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0);   }
+        }
 
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        /* Brand-Section Pulse (Brand-Sortierung): CSS-gesteuert, kein JS-Timer */
+        @keyframes brandSectionIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0);   }
         }
 
         /* ── Nav Bar ── */
