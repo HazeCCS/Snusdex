@@ -48,5 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
     checkUser();
     initDexScrollAnimation();
     loadBadgesFromCache();
+    
+    // Initialize metal card glow color
+    const savedGlowColor = localStorage.getItem('metalCardColorHex') || '#ffffff';
+    document.documentElement.style.setProperty('--card-glow-color', savedGlowColor);
+    const savedGlowIntensity = localStorage.getItem('metalCardIntensity') || '1';
+    document.documentElement.style.setProperty('--card-glow-intensity', savedGlowIntensity);
 });
 

@@ -460,6 +460,22 @@
             }
         }
 
+        @keyframes pulseGlow {
+            0% { transform: scale(1) translate(0, 0); opacity: calc(var(--card-glow-intensity, 1) * 0.1); }
+            50% { transform: scale(1.1) translate(2%, 2%); opacity: calc(var(--card-glow-intensity, 1) * 0.25); }
+            100% { transform: scale(1) translate(-2%, -2%); opacity: calc(var(--card-glow-intensity, 1) * 0.15); }
+        }
+
+        .metal-card-glow {
+            position: absolute;
+            inset: -50%;
+            background: radial-gradient(circle at 50% 50%, var(--card-glow-color, #ffffff) 0%, transparent 60%);
+            animation: pulseGlow 6s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 1;
+            mix-blend-mode: screen;
+        }
+
         @keyframes badgeTextFade {
             0% {
                 opacity: 0;
@@ -879,12 +895,13 @@
 
         <div class="metal-card-container">
             <div class="metal-collector-card">
-                <div class="flex justify-between items-start">
+                <div class="metal-card-glow" id="metal-card-glow"></div>
+                <div class="flex justify-between items-start relative z-10">
                     <span class="engraved-text font-medium uppercase tracking-widest" style="font-size: 13px;">Collector
                         ID</span>
                     <span id="home-level" class="engraved-text font-semibold" style="font-size: 14px;">LVL --</span>
                 </div>
-                <div>
+                <div class="relative z-10">
                     <p id="greeting" class="engraved-text uppercase tracking-wide"
                         style="font-size: 13px; margin-bottom: 2px;">Loading...</p>
                     <p id="score" class="engraved-text font-semibold tracking-tight leading-none"

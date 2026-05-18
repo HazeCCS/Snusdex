@@ -55,6 +55,27 @@ function toggleTrackingMode(element) {
     renderActiveCansUI();
 }
 
+function setMetalCardColor(colorId, colorHex) {
+    localStorage.setItem('metalCardColorId', colorId);
+    localStorage.setItem('metalCardColorHex', colorHex);
+    document.documentElement.style.setProperty('--card-glow-color', colorHex);
+    
+    const subpage = document.getElementById('settings-subpage');
+    if (subpage && !subpage.classList.contains('hidden')) {
+        const titleObj = document.getElementById('subpage-title');
+        if (titleObj && titleObj.innerText === 'Darstellung') {
+            openSettingsSubpage('Darstellung'); 
+        }
+    }
+}
+
+function setMetalCardIntensity(val) {
+    localStorage.setItem('metalCardIntensity', val);
+    document.documentElement.style.setProperty('--card-glow-intensity', val);
+    const valEl = document.getElementById('glow-intensity-val');
+    if (valEl) valEl.innerText = parseFloat(val).toFixed(1) + 'x';
+}
+
 function openSettingsSubpage(type) {
     const subpage = document.getElementById('settings-subpage');
     const titleObj = document.getElementById('subpage-title');
@@ -348,7 +369,71 @@ function openSettingsSubpage(type) {
         const sortHandleTransform = isAlphaDefault ? 'translate-x-5' : '';
         const sortHandleBg = isAlphaDefault ? 'bg-black' : 'bg-white';
 
+        // --- NEW ---
+        const metalColors = [
+            { id: 'white', name: 'White', color: '#ffffff', reqRarity: null },
+            { id: 'gray', name: 'Gray', color: '#8e8e93', reqRarity: null },
+            { id: 'green', name: 'Green', color: 'var(--uncommon, #34c759)', reqRarity: 'uncommon' },
+            { id: 'blue', name: 'Blue', color: 'var(--rare, #0a84ff)', reqRarity: 'rare' },
+            { id: 'purple', name: 'Purple', color: 'var(--epic, #bf5af2)', reqRarity: 'epic' },
+            { id: 'red', name: 'Red', color: 'var(--exotic, #ff375f)', reqRarity: 'exotic' },
+            { id: 'gold', name: 'Gold', color: 'var(--legendary, #ff9f0a)', reqRarity: 'legendary' }
+        ];
+
+        const activeColorId = localStorage.getItem('metalCardColorId') || 'white';
+        
+        const colorOptionsHTML = metalColors.map(c => {
+            let isUnlocked = true;
+            if (c.reqRarity) {
+                isUnlocked = typeof globalSnusData !== 'undefined' && typeof globalUserCollection !== 'undefined' && globalSnusData.some(s => 
+                    globalUserCollection[s.id] && 
+                    (s.rarity || 'common').toLowerCase().trim() === c.reqRarity
+                );
+            }
+            
+            const isActive = activeColorId === c.id;
+            const ringClass = isActive ? 'border-white' : 'border-transparent';
+            
+            if (isUnlocked) {
+                return `
+                    <div onclick="triggerHapticFeedback(); setMetalCardColor('${c.id}', '${c.color}')" class="flex flex-col items-center gap-1 cursor-pointer flex-shrink-0">
+                        <div class="w-12 h-12 rounded-full flex items-center justify-center border-2 ${ringClass} transition-colors">
+                            <div class="w-10 h-10 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.1)]" style="background-color: ${c.color}; box-shadow: 0 0 10px ${c.color}"></div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="flex flex-col items-center gap-1 opacity-40 grayscale cursor-not-allowed flex-shrink-0">
+                        <div class="w-12 h-12 rounded-full flex items-center justify-center border-2 border-transparent">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: ${c.color}">
+                                <svg class="w-5 h-5 text-black/50" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17a2 2 0 100-4 2 2 0 000 4zm6-9V7a6 6 0 10-12 0v1H5v14h14V8h-1zm-4 0H10V7a2 2 0 114 0v1z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }).join('');
+
+        const activeIntensity = localStorage.getItem('metalCardIntensity') || '1';
+
         html = `
+            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">Card Glow</h3>
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 p-5 mb-6">
+                <div class="flex flex-wrap gap-4 pb-2">
+                    ${colorOptionsHTML}
+                </div>
+                <div class="mt-4 border-t border-white/5 pt-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-white text-[15px]">Intensität</span>
+                        <span id="glow-intensity-val" class="text-[#8E8E93] text-[13px] font-medium">${parseFloat(activeIntensity).toFixed(1)}x</span>
+                    </div>
+                    <input type="range" min="1" max="4" step="0.1" id="glow-intensity" value="${activeIntensity}" oninput="setMetalCardIntensity(this.value)" class="w-full h-1.5 bg-[#3A3A3C] rounded-full appearance-none outline-none accent-white">
+                </div>
+                <p class="text-[12px] text-[#8E8E93] mt-4">Passe den animierten Hintergrund deiner Collector Card an. Neue Farben schaltest du durch das Entdecken neuer Raritäten frei.</p>
+            </div>
+
+            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">Dex Settings</h3>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex flex-col p-5">
                     <div class="flex items-center justify-between mb-3">
