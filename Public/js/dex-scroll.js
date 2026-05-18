@@ -342,99 +342,219 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
 // Tracked scroll listener refs so we can remove them on re-render
 let _brandScrollListeners = [];
 
+// ─── Brand Observer für lazy Brand-Sections ──────────────────────────────────
+// Ersetzt Placeholder-Sentinels mit echtem Brand-Inhalt wenn sie in den View kommen.
+let _brandLazyObserver = null;
+
+function _initBrandLazyObserver(myGen) {
+    if (_brandLazyObserver) {
+        _brandLazyObserver.disconnect();
+    }
+
+    _brandLazyObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+
+            // Guard: veraltete Render-Generation → ignorieren
+            if (_dexRenderGen !== myGen) {
+                _brandLazyObserver.unobserve(entry.target);
+                return;
+            }
+
+            const sentinel = entry.target;
+            _brandLazyObserver.unobserve(sentinel);
+            _inflatesBrandSentinel(sentinel, myGen);
+        });
+    }, {
+        // 600px rootMargin: Brand-Sections ~1-2 Scrollbewegungen im Voraus laden
+        rootMargin: '0px 0px 600px 0px'
+    });
+}
+
+// Baut einen leichten Placeholder für eine noch nicht gerenderte Brand-Section
+function _createBrandSentinel(brandData, globalIndex, myGen) {
+    const sentinel = document.createElement('div');
+    sentinel.className = 'brand-section-sentinel mb-4';
+    sentinel.style.marginLeft  = '-20px';
+    sentinel.style.marginRight = '-20px';
+    sentinel.style.width       = 'calc(100% + 40px)';
+    // Minimale Höhe damit der Observer einen sinnvollen rootMargin Trigger hat
+    sentinel.style.minHeight   = '200px';
+
+    // Daten für späteren inflate
+    sentinel._brandData   = brandData;
+    sentinel._brandIndex  = globalIndex;
+    sentinel._myGen       = myGen;
+
+    // Leichter Skeleton als visueller Platzhalter
+    sentinel.innerHTML = `
+        <div class="flex justify-between items-end mb-3 mt-6 px-5 opacity-40">
+            <div class="sk h-6 w-32 rounded-md"></div>
+            <div class="sk h-5 w-12 rounded-full"></div>
+        </div>
+        <div class="flex gap-[3vw] overflow-hidden pb-4 pt-3 px-5">
+            ${[1,2,3,4].map(() => `
+                <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-[#2A2A2E] rounded-[20px] border border-white/5 overflow-hidden">
+                    <div class="flex justify-between p-2.5"><div class="sk h-2.5 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div>
+                    <div class="flex-1 flex items-center justify-center p-4"><div class="sk w-full h-full rounded-xl"></div></div>
+                    <div class="p-2 flex justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    return sentinel;
+}
+
+// Tauscht einen Sentinel gegen die echte Brand-Section aus
+function _inflatesBrandSentinel(sentinel, myGen) {
+    if (_dexRenderGen !== myGen) return;
+    if (!sentinel.parentNode) return;
+
+    const brandData    = sentinel._brandData;
+    const globalIndex  = sentinel._brandIndex;
+    const glowActive   = localStorage.getItem('dexGlow') === 'true';
+
+    const section = document.createElement('div');
+    section.className = 'brand-section mb-4';
+    section.style.marginLeft  = '-20px';
+    section.style.marginRight = '-20px';
+    section.style.width       = 'calc(100% + 40px)';
+    // Kurze Fade-Animation beim Einblenden – kein inline opacity (würde Animation überschreiben)
+    section.style.animation   = `brandSectionIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) both`;
+
+    const header   = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
+    let cardsHTML  = '';
+    brandData.items.forEach(snus => {
+        const isUnlocked = !!globalUserCollection[snus.id];
+        cardsHTML += createHorizontalCardHTML(snus, isUnlocked, glowActive);
+    });
+
+    section.innerHTML = `
+        ${header}
+        <div class="brand-carousel flex gap-[3vw] overflow-x-auto pb-4 pt-3 snap-x snap-mandatory scroll-smooth px-5">
+            ${cardsHTML}
+        </div>
+    `;
+
+    // Sentinel 1:1 ersetzen
+    sentinel.parentNode.replaceChild(section, sentinel);
+
+    // Lazy-imgs + Scroll-Animation für diese Section initialisieren
+    if (!imageLazyObserver) initImageLazyLoadObserver();
+
+    section.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
+        img.classList.add('observed');
+        imageLazyObserver.observe(img);
+    });
+
+    const carousel = section.querySelector('.brand-carousel:not(.anim-init)');
+    if (carousel) {
+        carousel.classList.add('anim-init');
+        initBrandScrollAnimation(carousel);
+    }
+}
+
 // ─── Render-Generation-Guard ─────────────────────────────────────────────────
-// Wird bei jedem renderDexGrouped()-Aufruf inkrementiert.
-// Damit wissen asynchrone Callbacks ob sie noch aktuell sind.
 let _dexRenderGen = 0;
+
+// Wie viele Brands sofort (sync) gerendert werden – Rest kommt via Observer
+const BRAND_FIRST_CHUNK = 4;
 
 function renderDexGrouped(groupedData) {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
 
-    // Neue Generation: veraltete Callbacks (z.B. aus vorherigem render) ignorieren sich selbst
+    // Neue Generation – veraltete Observer-Callbacks ignorieren sich selbst
     const myGen = ++_dexRenderGen;
 
     // Bestehende Carousel-Scroll-Listener aufräumen
     _brandScrollListeners.forEach(({ el, fn }) => el.removeEventListener('scroll', fn));
     _brandScrollListeners = [];
 
-    const glowActive = localStorage.getItem('dexGlow') === 'true';
+    // Brand-Lazy-Observer für diese Render-Runde initialisieren
+    _initBrandLazyObserver(myGen);
 
+    const glowActive = localStorage.getItem('dexGlow') === 'true';
     if (!imageLazyObserver) initImageLazyLoadObserver();
 
-    // Preload all images in background
-    const allAlphaItems = groupedData.flatMap(b => b.items);
-    requestAnimationFrame(() => preloadAllDexImages(allAlphaItems));
+    // Preload-Queue für Bilder starten (nur sichtbare Brands zuerst)
+    const firstItems = groupedData.slice(0, BRAND_FIRST_CHUNK).flatMap(b => b.items);
+    requestAnimationFrame(() => preloadAllDexImages(firstItems));
 
-    // ── SINGLE FRAGMENT FLUSH ────────────────────────────────────────────────
-    // Alle Brand-Sections auf einmal in einen DocumentFragment rendern und
-    // dann EINMAL an das Grid hängen. Das vermeidet den iPhone-Stotter durch
-    // 60+ separate DOM-Mutations (setTimeout-Spam).
-    //
-    // Staggered Pulse-Effekt läuft via CSS animation-delay auf jedem Element.
-    // Das ist nativ-flüssig, weil der Browser alle Delays intern verwaltet.
-    const PULSE_DELAY_MS = 55; // ms zwischen Brand-Sections
-
+    // ── Fragment bauen ────────────────────────────────────────────────────────
+    // Erste BRAND_FIRST_CHUNK Brands: sofort vollständig rendern (0 Latenz)
+    // Restliche Brands: leichter Sentinel-Placeholder → Observer rendert nach Bedarf
     const fragment = document.createDocumentFragment();
 
     groupedData.forEach((brandData, globalIndex) => {
-        const section = document.createElement('div');
-        section.className = 'brand-section mb-4';
+        const isFirstChunk = globalIndex < BRAND_FIRST_CHUNK;
 
-        // KEIN inline opacity/transform – das würde die CSS-Animation überschreiben!
-        // fill-mode: both hält den from-Zustand (opacity:0, translateY(8px))
-        // während des animation-delay und räumt danach automatisch auf.
-        section.style.marginLeft  = '-20px';
-        section.style.marginRight = '-20px';
-        section.style.width       = 'calc(100% + 40px)';
-        section.style.animation   = `brandSectionIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) ${globalIndex * PULSE_DELAY_MS}ms both`;
+        if (isFirstChunk) {
+            // Sofort-Render: vollständige Section
+            const section = document.createElement('div');
+            section.className = 'brand-section mb-4';
+            section.style.marginLeft  = '-20px';
+            section.style.marginRight = '-20px';
+            section.style.width       = 'calc(100% + 40px)';
+            // Staggered Fade – kein inline opacity (überschreibt Keyframes)
+            section.style.animation   = `brandSectionIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) ${globalIndex * 55}ms both`;
 
-        const header    = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
-        let cardsHTML   = '';
-        brandData.items.forEach(snus => {
-            const isUnlocked = !!globalUserCollection[snus.id];
-            cardsHTML += createHorizontalCardHTML(snus, isUnlocked, glowActive);
-        });
+            const header   = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
+            let cardsHTML  = '';
+            brandData.items.forEach(snus => {
+                const isUnlocked = !!globalUserCollection[snus.id];
+                cardsHTML += createHorizontalCardHTML(snus, isUnlocked, glowActive);
+            });
 
-        section.innerHTML = `
-            ${header}
-            <div class="brand-carousel flex gap-[3vw] overflow-x-auto pb-4 pt-3 snap-x snap-mandatory scroll-smooth px-5">
-                ${cardsHTML}
-            </div>
-        `;
+            section.innerHTML = `
+                ${header}
+                <div class="brand-carousel flex gap-[3vw] overflow-x-auto pb-4 pt-3 snap-x snap-mandatory scroll-smooth px-5">
+                    ${cardsHTML}
+                </div>
+            `;
 
-        fragment.appendChild(section);
+            fragment.appendChild(section);
+        } else {
+            // Lazy-Render: Sentinel-Placeholder
+            const sentinel = _createBrandSentinel(brandData, globalIndex, myGen);
+            fragment.appendChild(sentinel);
+        }
     });
 
-    // Einmaliger DOM-Write: kein Layout-Thrashing
+    // ── Einmaliger DOM-Write ──────────────────────────────────────────────────
     grid.innerHTML = '';
     grid.appendChild(fragment);
-    grid.style.opacity = '1';
+    grid.style.opacity   = '1';
     grid.style.transition = '';
 
-    // Alle lazy-imgs + carousels auf einmal initialisieren
+    // ── Post-render: Observer + Lazy-imgs anmelden ────────────────────────────
     requestAnimationFrame(() => {
-        // Guard: nur wenn wir noch die aktuelle Render-Generation sind
         if (_dexRenderGen !== myGen) return;
 
-        grid.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
+        // Lazy-imgs der ersten Chunk direkt beobachten
+        grid.querySelectorAll('.brand-section .dex-lazy-img:not(.observed)').forEach(img => {
             img.classList.add('observed');
             imageLazyObserver.observe(img);
         });
 
-        grid.querySelectorAll('.brand-carousel:not(.anim-init)').forEach(carousel => {
+        // Carousels der ersten Chunk initialisieren
+        grid.querySelectorAll('.brand-section .brand-carousel:not(.anim-init)').forEach(carousel => {
             carousel.classList.add('anim-init');
             initBrandScrollAnimation(carousel);
         });
 
-        // Cache nur bei ungefilterter Ansicht
-        const term = document.getElementById('dex-search')?.value.trim();
-        if (!term) {
-            if (typeof _dexCache === 'undefined') window._dexCache = {};
-            window._dexCache['alpha' + (dexFilterUnlocked ? '_unlocked' : '')] = grid.innerHTML;
-        }
+        // Alle Sentinels beim Brand-Observer anmelden
+        grid.querySelectorAll('.brand-section-sentinel').forEach(sentinel => {
+            _brandLazyObserver.observe(sentinel);
+        });
+
+        // Restliche Bilder im Hintergrund preloaden
+        const restItems = groupedData.slice(BRAND_FIRST_CHUNK).flatMap(b => b.items);
+        preloadAllDexImages(restItems);
     });
 }
+
 
 // Horizontale Scroll-Animation für Brand-Carousels
 // Throttled mit RAF – ein Listener pro Carousel, kein Thrashing
