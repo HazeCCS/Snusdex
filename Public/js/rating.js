@@ -505,6 +505,9 @@ async function collectCurrentSnus() {
             await loadUserStats(user.id);
             updateLivePerformance();
             evaluateBadges();
+            if (typeof incrementStreak === 'function') {
+                incrementStreak();
+            }
         }
         renderDexGrid(globalSnusData);
         closeSnusDetail();

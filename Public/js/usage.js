@@ -5,6 +5,117 @@ let globalAllLogs = []; // Array für alle Logs (Caching für Stats/Modals)
 let globalActiveLogs = []; // Array für alle aktuell offenen Dosen
 let globalInactiveLogs = []; // Array für alle geschlossenen Dosen
 
+// --- STREAK LOGIC ---
+let currentStreakCount = 0;
+
+function renderStreakUI() {
+    const text = document.getElementById('streak-counter-text');
+    const container = document.getElementById('streak-tiles');
+    if (!text || !container) return;
+
+    text.innerText = currentStreakCount + " 🔥";
+
+    let startDay = Math.floor((currentStreakCount > 0 ? currentStreakCount - 1 : 0) / 5) * 5 + 1;
+    if (currentStreakCount === 0) startDay = 1;
+
+    let html = '';
+    for (let i = 0; i < 5; i++) {
+        let dayNum = startDay + i;
+        let isBurned = dayNum <= currentStreakCount;
+
+        if (isBurned) {
+            html += `
+                <div class="flex-1 flex flex-col items-center gap-0.5 opacity-100 transition-all duration-300">
+                    <svg class="w-4 h-4 text-[#FF9500] drop-shadow-[0_0_6px_rgba(255,149,0,0.5)]" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
+                    </svg>
+                    <span class="text-[10px] font-bold text-[#FF9500]">${dayNum}</span>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="flex-1 flex flex-col items-center gap-0.5 opacity-30 transition-all duration-300">
+                    <div class="w-4 h-4 flex items-center justify-center">
+                        <div class="w-1.5 h-1.5 rounded-full bg-[#8E8E93]"></div>
+                    </div>
+                    <span class="text-[10px] font-medium text-[#8E8E93]">${dayNum}</span>
+                </div>
+            `;
+        }
+    }
+    container.innerHTML = html;
+}
+
+async function validateAndRenderStreak() {
+    const storedDate = localStorage.getItem('lastTrackedDate');
+    const storedStreak = parseInt(localStorage.getItem('streakCount')) || 0;
+    
+    let activeStreak = storedStreak;
+
+    if (storedDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const lastDate = new Date(storedDate);
+        lastDate.setHours(0, 0, 0, 0);
+        
+        const diffTime = today - lastDate;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        
+        if (diffDays > 1) {
+            activeStreak = 0;
+            localStorage.setItem('streakCount', 0);
+        }
+    }
+
+    currentStreakCount = activeStreak;
+    renderStreakUI();
+}
+
+async function incrementStreak() {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const storedDate = localStorage.getItem('lastTrackedDate');
+    
+    if (storedDate !== todayStr) {
+        let activeStreak = parseInt(localStorage.getItem('streakCount')) || 0;
+        
+        if (storedDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const lastDate = new Date(storedDate);
+            lastDate.setHours(0, 0, 0, 0);
+            
+            const diffTime = today - lastDate;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            
+            if (diffDays === 1) {
+                activeStreak += 1;
+            } else if (diffDays > 1) {
+                activeStreak = 1;
+            }
+        } else {
+            activeStreak = 1;
+        }
+
+        localStorage.setItem('streakCount', activeStreak);
+        localStorage.setItem('lastTrackedDate', todayStr);
+        currentStreakCount = activeStreak;
+        renderStreakUI();
+        
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+            supabaseClient.from('profiles').update({
+                streak_count: activeStreak,
+                last_tracked_date: todayStr
+            }).eq('id', user.id).then(({error}) => {
+                if (error) console.log("SQL Columns streak_count/last_tracked_date may not exist yet.");
+            });
+        }
+    }
+}
+// ----------------------
+
 async function startNewCan(snusId) {
     const {
         data: {
@@ -98,6 +209,7 @@ async function loadUsageData() {
         renderActiveCansUI();
         calculateUsageStats(logs);
         updateLivePerformance();
+        validateAndRenderStreak();
     }
 }
 
@@ -370,6 +482,7 @@ async function executeAddPouch(logId, maxPouches, newCount) {
     if (error) {
         console.error("Error updating pouch count:", error);
     } else {
+        incrementStreak();
         loadUsageData();
     }
 }
