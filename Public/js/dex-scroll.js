@@ -273,8 +273,7 @@ window.confirmRemoveFavorite = function () {
         filterDex();
 
         const subpage = document.getElementById('settings-subpage');
-        const titleEl = document.getElementById('subpage-title');
-        if (titleEl && titleEl.innerText === 'Stats' && subpage && !subpage.classList.contains('translate-x-full')) {
+        if (window._currentSubpageType === 'Stats' && subpage && !subpage.classList.contains('translate-x-full')) {
             openSettingsSubpage('Stats');
         }
     }

@@ -29,13 +29,13 @@ async function loadLatestGitHubCommit() {
 
             let timeString = "";
             if (diffDays > 0) {
-                timeString = `vor ${diffDays} Tag${diffDays > 1 ? 'en' : ''}`;
+                timeString = diffDays > 1 ? t('system.daysAgoPlural', { n: diffDays }) : t('system.daysAgo', { n: diffDays });
             } else if (diffHours > 0) {
-                timeString = `vor ${diffHours} Std`;
+                timeString = t('system.hoursAgo', { n: diffHours });
             } else if (diffMins > 0) {
-                timeString = `vor ${diffMins} Min`;
+                timeString = t('system.minutesAgo', { n: diffMins });
             } else {
-                timeString = `Gerade eben`;
+                timeString = t('system.justNow');
             }
 
             // --- HIER IST DIE WICHTIGE ÄNDERUNG ---
@@ -55,7 +55,7 @@ async function loadLatestGitHubCommit() {
         const timeElement = document.getElementById('latest-commit-time');
 
         if (msgElement) {
-            msgElement.innerText = 'Unavailable';
+            msgElement.innerText = t('system.unavailable');
         }
         if (timeElement) {
             timeElement.innerText = '';

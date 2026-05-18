@@ -48,11 +48,25 @@ document.addEventListener('DOMContentLoaded', () => {
     checkUser();
     initDexScrollAnimation();
     loadBadgesFromCache();
-    
+
     // Initialize metal card glow color
     const savedGlowColor = localStorage.getItem('metalCardColorHex') || '#ffffff';
     document.documentElement.style.setProperty('--card-glow-color', savedGlowColor);
     const savedGlowIntensity = localStorage.getItem('metalCardIntensity') || '1';
     document.documentElement.style.setProperty('--card-glow-intensity', savedGlowIntensity);
+
+    // Initialize tracking mode preview label
+    const trackingModeEl = document.getElementById('tracking-mode-preview');
+    if (trackingModeEl) {
+        const storedMode = localStorage.getItem('snusTrackingMode') || 'full';
+        const key = storedMode === 'individual' ? 'tracking.modeIndividual' : 'tracking.modeFull';
+        trackingModeEl.setAttribute('data-i18n', key);
+        trackingModeEl.innerText = t(key);
+    }
+});
+
+// Open camera from native bridge (sdx-open-camera custom event)
+window.addEventListener('sdx-open-camera', function () {
+    if (typeof openScanModal === 'function') openScanModal();
 });
 

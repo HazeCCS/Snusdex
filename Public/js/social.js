@@ -35,7 +35,7 @@ async function loadTopSnusOfWeek() {
 
     if (error) {
         console.error("Error fetching social stats:", error);
-        container.innerHTML = '<div class="p-6 text-center text-[#FF3B30] text-[15px]">Could not load social stats.</div>';
+        container.innerHTML = `<div class="p-6 text-center text-[#FF3B30] text-[15px]">${t('social.errorLoad')}</div>`;
         return;
     }
 
@@ -64,7 +64,7 @@ async function loadTopSnusOfWeek() {
                 };
                 const overall = (top_rated.avg_score || 0).toFixed(1);
                 const count = top_rated.rating_count || 0;
-                container.innerHTML += renderSocialCard("Top Rated Snus 🏆", snusInfo, ratings, overall, count, 'Ratings');
+                container.innerHTML += renderSocialCard(t('social.topRatedCard'), snusInfo, ratings, overall, count, t('social.ratingsLabel'));
             }
         }
 
@@ -95,7 +95,7 @@ async function loadTopSnusOfWeek() {
                     popOverall = (most_popular_today.avg_score || 0).toFixed(1);
                 }
 
-                container.innerHTML += renderSocialCard("Most Popular Today 🔍", snusInfo, popAvgRatings, popOverall, most_popular_today.scan_count, 'Scans');
+                container.innerHTML += renderSocialCard(t('social.mostPopularCard'), snusInfo, popAvgRatings, popOverall, most_popular_today.scan_count, t('social.scansLabel'));
             }
         }
     }
@@ -222,16 +222,16 @@ function renderSocialListUI() {
 
     if (_socialListMode === 0) {
         items = _socialListData.days7;
-        title = 'Most Scanned (7 Tage)';
-        countLabel = 'Scan';
+        title = t('social.mostScanned7d');
+        countLabel = t('social.scansLabel');
     } else if (_socialListMode === 1) {
         items = _socialListData.today;
-        title = 'Most Scanned (Heute)';
-        countLabel = 'Scan';
+        title = t('social.mostScannedToday');
+        countLabel = t('social.scansLabel');
     } else {
         items = _socialListData.topRated;
-        title = 'Top Rated (All Time)';
-        countLabel = 'Score';
+        title = t('social.topRated');
+        countLabel = t('social.scoreLabel');
     }
 
     const scoreColor = (v) => {
@@ -269,7 +269,7 @@ function renderSocialListUI() {
             <div class="flex items-center justify-between mb-2.5">
                 <span class="text-[13px] text-[#8E8E93] font-semibold uppercase tracking-wider">${title}</span>
                 <button onclick="cycleSocialListMode()" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 active:bg-white/20 transition-colors rounded-full text-white text-[10px] font-bold tracking-wider">
-                    MODUS WECHSELN
+                    ${t('social.switchMode')}
                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                 </button>
             </div>
@@ -289,9 +289,9 @@ function renderSocialListUI() {
 
             let countText = '';
             if (_socialListMode === 2) {
-                countText = `Platz ${rank}`;
+                countText = t('social.rank', { n: rank });
             } else {
-                countText = `${item.count} ${countLabel}${item.count !== 1 ? 's' : ''}`;
+                countText = `${item.count} ${countLabel}`;
             }
 
             listHTML += `
@@ -310,18 +310,18 @@ function renderSocialListUI() {
                         </div>
                         <button onclick="event.stopPropagation(); toggleListScore(this, '${snus.id}_${i}')" class="flex-shrink-0 flex flex-col items-center justify-center min-w-[48px] px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 active:bg-white/10 active:scale-95 transition-all">
                             <span class="text-[17px] font-bold ${colorClass} leading-none">${scoreDisplay}</span>
-                            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-medium mt-1 flex items-center gap-0.5">Score <svg class="w-2.5 h-2.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg></span>
+                            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-medium mt-1 flex items-center gap-0.5">${t('social.scoreLabel')} <svg class="w-2.5 h-2.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" /></svg></span>
                         </button>
                     </div>
                     <!-- Details Dropdown -->
                     <div id="score-details-${snus.id}_${i}" class="hidden bg-black/20 border-t border-white/5 p-3">
                         <div class="grid grid-cols-6 gap-1 pt-1 pb-1">
-                            ${createCircle('Vis.', item.ratings?.visuals)}
-                            ${createCircle('Smell', item.ratings?.smell)}
-                            ${createCircle('Taste', item.ratings?.taste)}
-                            ${createCircle('Bite', item.ratings?.bite)}
-                            ${createCircle('Drip', item.ratings?.drip)}
-                            ${createCircle('Str.', item.ratings?.strength)}
+                            ${createCircle(t('rating.vis'), item.ratings?.visuals)}
+                            ${createCircle(t('rating.smell'), item.ratings?.smell)}
+                            ${createCircle(t('rating.taste'), item.ratings?.taste)}
+                            ${createCircle(t('rating.bite'), item.ratings?.bite)}
+                            ${createCircle(t('rating.drip'), item.ratings?.drip)}
+                            ${createCircle(t('rating.str'), item.ratings?.strength)}
                         </div>
                     </div>
                 </div>
@@ -333,7 +333,7 @@ function renderSocialListUI() {
                         <span class="text-[13px] font-bold text-[#8E8E93] w-5 text-center flex-shrink-0">${rank}</span>
                         <div class="w-10 h-10 rounded-md bg-[#2C2C2E] flex-shrink-0"></div>
                         <div class="flex-1 min-w-0">
-                            <h4 class="text-[#8E8E93] text-[14px] italic tracking-tight">Noch keine Daten</h4>
+                            <h4 class="text-[#8E8E93] text-[14px] italic tracking-tight">${t('social.noData')}</h4>
                         </div>
                     </div>
                 </div>
@@ -395,22 +395,22 @@ function renderSocialCard(title, snus, ratings, overall, count, countLabel = 'Sc
 
                 <div class="flex-1 flex flex-col justify-center">
                     <h3 class="text-[18px] font-bold text-white tracking-tight leading-tight line-clamp-2 mb-1">${snus.name}</h3>
-                    <p class="text-[12px] text-[#8E8E93] font-medium mb-2">${snus.nicotine} MG/G • <span style="color: var(--${rarity}, var(--common)); text-shadow: 0 0 8px var(--${rarity}, var(--common));" class="uppercase">${snus.rarity || 'Common'}</span></p>
+                    <p class="text-[12px] text-[#8E8E93] font-medium mb-2">${snus.nicotine} ${t('unit.mgPerG')} • <span style="color: var(--${rarity}, var(--common)); text-shadow: 0 0 8px var(--${rarity}, var(--common));" class="uppercase">${tRarity(snus.rarity)}</span></p>
 
                     <div class="flex items-end gap-1.5">
                         <span class="text-[26px] font-bold ${getScoreColor(overall)} leading-none">${overall}</span>
-                        <span class="text-[12px] text-[#8E8E93] font-medium pb-0.5">/ 10 Overall</span>
+                        <span class="text-[12px] text-[#8E8E93] font-medium pb-0.5">${t('social.overallSuffix')}</span>
                     </div>
                 </div>
             </div>
 
             <div class="pt-4 border-t border-white/5 grid grid-cols-6 gap-1">
-                ${createCircle('Vis.', ratings.visuals)}
-                ${createCircle('Smell', ratings.smell)}
-                ${createCircle('Taste', ratings.taste)}
-                ${createCircle('Bite', ratings.bite)}
-                ${createCircle('Drip', ratings.drip)}
-                ${createCircle('Str.', ratings.strength)}
+                ${createCircle(t('rating.vis'), ratings.visuals)}
+                ${createCircle(t('rating.smell'), ratings.smell)}
+                ${createCircle(t('rating.taste'), ratings.taste)}
+                ${createCircle(t('rating.bite'), ratings.bite)}
+                ${createCircle(t('rating.drip'), ratings.drip)}
+                ${createCircle(t('rating.str'), ratings.strength)}
             </div>
         </div>
     `;
@@ -438,7 +438,7 @@ function updateBadgesStrip() {
         });
 
         if (stripHtml === '') {
-            stripContainer.innerHTML = '<div class="text-[13px] text-[#8E8E93] py-2 px-1">Noch keine Badges freigeschaltet.</div>';
+            stripContainer.innerHTML = `<div class="text-[13px] text-[#8E8E93] py-2 px-1">${t('badges.noBadges')}</div>`;
         } else {
             stripContainer.innerHTML = stripHtml;
         }
@@ -522,7 +522,7 @@ function openBadgesGrid() {
                     <h3 class="text-white text-[15px] font-bold text-center leading-tight mb-1">${badge.name}</h3>
                     <p class="text-[#8E8E93] text-[11px] text-center mb-3 line-clamp-2">${badge.description}</p>
                     <div class="w-full bg-[#34C759]/20 rounded-full py-1 text-center mt-auto border border-[#34C759]/30">
-                        <span class="text-[#34C759] text-[10px] font-bold uppercase tracking-wider">Freigeschaltet</span>
+                        <span class="text-[#34C759] text-[10px] font-bold uppercase tracking-wider">${t('badges.unlocked')}</span>
                     </div>
                 </div>
             `;
@@ -537,7 +537,7 @@ function openBadgesGrid() {
 
                     <div class="w-full mt-auto">
                         <div class="flex justify-between items-end mb-1">
-                            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-semibold">Fortschritt</span>
+                            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-semibold">${t('badges.progress')}</span>
                             <span class="text-[11px] font-bold text-white">${progressPercent}%</span>
                         </div>
                         <div class="h-1.5 w-full bg-black/50 rounded-full overflow-hidden">
@@ -587,7 +587,7 @@ function renderBadgeSelectorItems() {
     const unlockedBadges = globalBadges.filter(b => globalUserBadges.has(b.id));
 
     if (unlockedBadges.length === 0) {
-        container.insertAdjacentHTML('beforeend', `<span class="text-[12px] text-[#8E8E93] self-center pl-1">Noch keine Badges freigeschaltet</span>`);
+        container.insertAdjacentHTML('beforeend', `<span class="text-[12px] text-[#8E8E93] self-center pl-1">${t('badges.noBadges')}</span>`);
     }
 
     unlockedBadges.forEach(badge => {
@@ -762,14 +762,14 @@ async function searchUsersConnections() {
         clearBtn.classList.remove('hidden');
         mainPanel.classList.add('hidden');
         searchPanel.classList.remove('hidden');
-        resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] mt-8">Bitte mindestens 2 Zeichen eingeben...</div>';
+        resultsContainer.innerHTML = `<div class="text-center text-[#8E8E93] text-[14px] mt-8">${t('connections.typeMore')}</div>`;
         return;
     }
 
     clearBtn.classList.remove('hidden');
     mainPanel.classList.add('hidden');
     searchPanel.classList.remove('hidden');
-    resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] mt-8">Suche...</div>';
+    resultsContainer.innerHTML = `<div class="text-center text-[#8E8E93] text-[14px] mt-8">${t('connections.searching')}</div>`;
 
     userSearchTimeout = setTimeout(async () => {
         const { data: { user } } = await supabaseClient.auth.getUser();
@@ -784,7 +784,7 @@ async function searchUsersConnections() {
             .limit(20);
 
         if (pError || !profiles || profiles.length === 0) {
-            resultsContainer.innerHTML = '<div class="text-center text-[#8E8E93] text-[14px] mt-8">Keine Collector gefunden.</div>';
+            resultsContainer.innerHTML = `<div class="text-center text-[#8E8E93] text-[14px] mt-8">${t('connections.noCollectorFound')}</div>`;
             return;
         }
 
@@ -802,10 +802,10 @@ async function searchUsersConnections() {
 
         resultsContainer.innerHTML = profiles.map(profile => {
             const followStatus = followMap[profile.id] || 'none';
-            let btnText = "Folgen";
+            let btnText = t('connections.follow');
             let btnClass = "bg-white text-black active:bg-white/90";
-            if (followStatus === 'accepted') { btnText = "Folge ich"; btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]"; }
-            else if (followStatus === 'pending') { btnText = "Angefragt"; btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]"; }
+            if (followStatus === 'accepted') { btnText = t('connections.following_btn'); btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]"; }
+            else if (followStatus === 'pending') { btnText = t('connections.requested'); btnClass = "bg-[#2C2C2E] text-white active:bg-[#3A3A3C]"; }
 
             const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
             const xp = profile.xp || 0;
@@ -818,7 +818,7 @@ async function searchUsersConnections() {
                         <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0">
                         <div class="min-w-0 flex-1">
                             <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
-                            <p class="text-[13px] text-[#8E8E93] truncate">Lvl ${level} • ${cans} Dosen</p>
+                            <p class="text-[13px] text-[#8E8E93] truncate">${t('profile.level')} ${level} • ${cans} ${t('profile.cans')}</p>
                         </div>
                     </div>
                     <button onclick="triggerHapticFeedback(); toggleFollow('${profile.id}', this)"
@@ -855,7 +855,7 @@ async function toggleFollow(targetId, btnElement) {
         if (!error) {
             btnElement.setAttribute('data-status', 'none');
             btnElement.className = "ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold transition-all flex-shrink-0 bg-white text-black active:bg-white/90";
-            btnElement.innerText = "Folgen";
+            btnElement.innerText = t('connections.follow');
         } else {
             btnElement.className = originalClass;
             btnElement.innerText = originalText;
@@ -873,7 +873,7 @@ async function toggleFollow(targetId, btnElement) {
         if (!error) {
             btnElement.setAttribute('data-status', 'pending');
             btnElement.className = "ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold transition-all flex-shrink-0 bg-[#2C2C2E] text-white active:bg-[#3A3A3C]";
-            btnElement.innerText = "Angefragt";
+            btnElement.innerText = t('connections.requested');
         } else {
             btnElement.className = originalClass;
             btnElement.innerText = originalText;
@@ -934,7 +934,7 @@ async function acceptFollowRequest(requestId, targetId) {
         loadConnectionsData(); // Refresh all lists
     } else {
         if (parentDiv) parentDiv.style.opacity = '1';
-        alert("Fehler beim Akzeptieren der Anfrage.");
+        alert(t('error.acceptFailed'));
     }
 }
 
@@ -956,7 +956,7 @@ async function declineFollowRequest(requestId) {
         loadConnectionsData(); // Refresh counts
     } else {
         if (parentDiv) parentDiv.style.opacity = '1';
-        alert("Fehler beim Ablehnen der Anfrage.");
+        alert(t('error.declineFailed'));
     }
 }
 
@@ -1004,7 +1004,9 @@ async function loadConnectionsData() {
     if (pendingRequests.length > 0) {
         banner.classList.remove('hidden');
         badge.classList.remove('hidden');
-        countText.innerText = `${pendingRequests.length} offene Anfrage${pendingRequests.length > 1 ? 'n' : ''}`;
+        countText.innerText = pendingRequests.length === 1
+            ? t('connections.followerRequests', { n: pendingRequests.length })
+            : t('connections.followerRequestsPlural', { n: pendingRequests.length });
 
         const reqParts = pendingRequests.map(req => {
             const profile = req.follower;
@@ -1016,12 +1018,12 @@ async function loadConnectionsData() {
                         <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0">
                         <div class="min-w-0 flex-1">
                             <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
-                            <p class="text-[13px] text-[#8E8E93] truncate">Möchte dir folgen</p>
+                            <p class="text-[13px] text-[#8E8E93] truncate">${t('connections.wantsToFollow')}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0 pl-2">
                         <button onclick="acceptFollowRequest('${req.id}', '${profile.id}')" class="px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-white text-black active:bg-white/90 transition-colors">
-                            Bestätigen
+                            ${t('connections.confirm')}
                         </button>
                         <button onclick="declineFollowRequest('${req.id}')" class="w-8 h-8 rounded-[10px] bg-[#2C2C2E] text-[#8E8E93] flex items-center justify-center active:bg-[#3A3A3C] transition-colors">
                             <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -1034,13 +1036,13 @@ async function loadConnectionsData() {
     } else {
         banner.classList.add('hidden');
         badge.classList.add('hidden');
-        requestsList.innerHTML = '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Keine offenen Anfragen.</div>';
+        requestsList.innerHTML = `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noRequests')}</div>`;
     }
 
     // --- RENDER FRIENDS ---
     friendsList.innerHTML = friends.length > 0
         ? friends.map(f => renderConnectionItem(f.following, 'accepted', f.following_id)).join('')
-        : '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Füge Freunde hinzu, um sie hier zu sehen.</div>';
+        : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFriends')}</div>`;
 
     // Erstelle ein Map mit Status der Leute, denen ich folge
     const myOutgoingFollows = new Map();
@@ -1049,12 +1051,12 @@ async function loadConnectionsData() {
     // --- RENDER FOLLOWERS ---
     followersList.innerHTML = myFollowers.length > 0
         ? myFollowers.map(f => renderConnectionItem(f.follower, myOutgoingFollows.get(f.follower.id) || 'none', f.follower.id)).join('')
-        : '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Du hast noch keine Follower.</div>';
+        : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFollowers')}</div>`;
 
     // --- RENDER FOLLOWING ---
     followingList.innerHTML = iAmFollowing.length > 0
         ? iAmFollowing.map(f => renderConnectionItem(f.following, 'accepted', f.following_id)).join('')
-        : '<div class="py-10 text-center text-[#8E8E93] text-[14px]">Du folgst noch niemandem.</div>';
+        : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFollowing')}</div>`;
 }
 
 // Helper zum Rendern von Profil-Reihen in den Listen
@@ -1069,17 +1071,17 @@ function renderConnectionItem(profile, followStatus, profileId) {
     if (followStatus === 'accepted') {
         actionBtn = `
             <button onclick="triggerHapticFeedback(); toggleFollow('${profileId}', this)" data-status="accepted" class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-[#2C2C2E] text-white active:bg-[#3A3A3C] transition-all flex-shrink-0">
-                Folge ich
+                ${t('connections.following_btn')}
             </button>`;
     } else if (followStatus === 'pending') {
         actionBtn = `
             <button onclick="triggerHapticFeedback(); toggleFollow('${profileId}', this)" data-status="pending" class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-[#2C2C2E] text-white active:bg-[#3A3A3C] transition-all flex-shrink-0">
-                Angefragt
+                ${t('connections.requested')}
             </button>`;
     } else {
         actionBtn = `
             <button onclick="triggerHapticFeedback(); toggleFollow('${profileId}', this)" data-status="none" class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-white text-black active:bg-white/90 transition-all flex-shrink-0">
-                Folgen
+                ${t('connections.follow')}
             </button>`;
     }
 
@@ -1089,7 +1091,7 @@ function renderConnectionItem(profile, followStatus, profileId) {
                 <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff'">
                 <div class="min-w-0 flex-1">
                     <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
-                    <p class="text-[13px] text-[#8E8E93] truncate">Lvl ${level} • ${cans} Dosen</p>
+                    <p class="text-[13px] text-[#8E8E93] truncate">${t('profile.level')} ${level} • ${cans} ${t('profile.cans')}</p>
                 </div>
             </div>
             ${actionBtn}

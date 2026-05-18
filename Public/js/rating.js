@@ -125,7 +125,7 @@ function updateRatingStepUI() {
 
     if (!title) return;
 
-    title.innerText = RATING_STEPS[currentRatingStepIndex];
+    title.innerText = t('rating.' + RATING_STEPS[currentRatingStepIndex]);
     indicator.innerText = `${currentRatingStepIndex + 1}/${RATING_STEPS.length}`;
 
     if (currentRatingStepIndex === 0) {
@@ -145,12 +145,12 @@ function updateRatingStepUI() {
     }
 
     if (currentRatingStepIndex === RATING_STEPS.length - 1) {
-        nextText.innerText = "Speichern";
+        nextText.innerText = t('rating.save');
         nextBtn.classList.remove('bg-white', 'text-black');
         nextBtn.classList.add('bg-[#34C759]', 'text-white', 'shadow-[0_4px_14px_rgba(52,199,89,0.3)]');
         nextIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />`;
     } else {
-        nextText.innerText = "Weiter";
+        nextText.innerText = t('rating.next');
         nextBtn.classList.remove('bg-[#34C759]', 'text-white', 'shadow-[0_4px_14px_rgba(52,199,89,0.3)]');
         nextBtn.classList.add('bg-white', 'text-black');
         nextIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />`;
@@ -239,12 +239,18 @@ function showSavedRating() {
     };
 
     document.getElementById('saved-rating-bars').innerHTML =
-        createBar("Visuals", ratings.visuals, ratings.visuals_text) +
-        createBar("Smell", ratings.smell, ratings.smell_text) +
-        createBar("Taste", ratings.taste, ratings.taste_text) +
-        createBar("Bite", ratings.bite, ratings.bite_text) +
-        createBar("Drip", ratings.drip, ratings.drip_text) +
-        createBar("Strength", ratings.strength, ratings.strength_text);
+        createBar(t('rating.visuals'), ratings.visuals, ratings.visuals_text) +
+        createBar(t('rating.smell'), ratings.smell, ratings.smell_text) +
+        createBar(t('rating.taste'), ratings.taste, ratings.taste_text) +
+        createBar(t('rating.bite'), ratings.bite, ratings.bite_text) +
+        createBar(t('rating.drip'), ratings.drip, ratings.drip_text) +
+        createBar(t('rating.strength'), ratings.strength, ratings.strength_text);
+}
+
+function tRarity(rarity) {
+    const key = 'rarity.' + (rarity || 'common').toLowerCase().trim();
+    const tr = t(key);
+    return tr !== key ? tr : rarity;
 }
 
 function hideAllViews() {
@@ -281,7 +287,7 @@ function openSnusDetail(id, isFromScan = false) {
 
     // ID Formatieren (z.B. #001)
     setText('modal-id', '#' + String(snus.id).padStart(3, '0'));
-    setText('modal-name', snus.name || 'Unbekannter Snus');
+    setText('modal-name', snus.name || t('common.unknownSnus'));
 
     // Rarity & Nicotine
     const rarity = (snus.rarity || 'Common').trim();
@@ -289,8 +295,8 @@ function openSnusDetail(id, isFromScan = false) {
     const nicotine = snus.nicotine || '??';
 
     setHTML('modal-nicotine', `
-        <span class="px-3 py-1.5 bg-white/10 border border-white/5 rounded-full text-[13px] font-semibold text-white tracking-wide shadow-sm">${nicotine} MG/G</span>
-        <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${rarity}</span>
+        <span class="px-3 py-1.5 bg-white/10 border border-white/5 rounded-full text-[13px] font-semibold text-white tracking-wide shadow-sm">${nicotine} ${t('unit.mgPerG')}</span>
+        <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${tRarity(rarity)}</span>
     `);
 
     // Bild laden + Skeleton-Overlay steuern
@@ -515,7 +521,7 @@ async function collectCurrentSnus() {
         _socialCacheData = null;
         _socialCacheTime = 0;
     } else {
-        alert("Fehler beim Speichern: " + error.message);
+        alert(t('error.saveFailed', { msg: error.message }));
     }
 
     setTimeout(() => {

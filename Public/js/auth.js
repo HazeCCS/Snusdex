@@ -9,14 +9,14 @@ function updateGreeting() {
     const greetingElement = document.getElementById('greeting');
     if (!greetingElement) return;
 
-    const displayIdent = currentUsername || 'Collector';
+    const displayIdent = currentUsername || t('home.collectorId');
     const hour = new Date().getHours();
     let message = '';
 
-    if (hour >= 5 && hour < 12) message = 'Guten Morgen';
-    else if (hour >= 12 && hour < 18) message = 'Guten Tag';
-    else if (hour >= 18 && hour < 22) message = 'Guten Abend';
-    else message = 'Gute Nacht';
+    if (hour >= 5 && hour < 12) message = t('greeting.morning');
+    else if (hour >= 12 && hour < 18) message = t('greeting.afternoon');
+    else if (hour >= 18 && hour < 22) message = t('greeting.evening');
+    else message = t('greeting.night');
 
     greetingElement.innerHTML = `${message}, <span class="text-white font-semibold">${displayIdent}</span>`;
 }
@@ -37,7 +37,7 @@ async function signInWithGoogle() {
 
     try {
         // UI Feedback
-        btnText.innerText = "Opening Google...";
+        btnText.innerText = t('auth.openingGoogle');
         btn.disabled = true;
         btn.style.opacity = "0.7";
         const redirectUrl = window.location.origin + window.location.pathname;
@@ -64,7 +64,7 @@ async function signInWithGoogle() {
         alert("Login error: " + error.message);
 
         // Reset label depending on current mode
-        btnText.innerText = isLoginMode ? "Sign in with Google" : "Register with Google";
+        btnText.innerText = isLoginMode ? t('auth.signInWithGoogle') : t('auth.registerWithGoogle');
         btn.disabled = false;
         btn.style.opacity = "1";
     }
@@ -99,12 +99,18 @@ async function checkUser() {
                 document.getElementById('auth-main-view')?.classList.add('hidden');
                 document.getElementById('auth-verify-view')?.classList.add('hidden');
                 usernameView.classList.remove('hidden');
-                if (document.getElementById('auth-subtitle')) document.getElementById('auth-subtitle').innerText = "Almost there";
+                if (document.getElementById('auth-subtitle')) document.getElementById('auth-subtitle').innerText = t('auth.almostThere');
                 return;
             }
 
             overlay.classList.add('opacity-0');
-            setTimeout(() => overlay.classList.add('hidden'), 500);
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                const nav = document.getElementById('main-nav');
+                if (nav) { nav.style.opacity = '1'; nav.style.pointerEvents = ''; }
+                const tabHome = document.getElementById('tab-home');
+                if (tabHome) tabHome.classList.remove('pre-auth');
+            }, 500);
 
             // Scroll home to top after login
             window.scrollTo(0, 0);
@@ -336,18 +342,18 @@ async function saveSetupUsername() {
     const btn = document.getElementById('setup-username-btn');
 
     if (!usernameInput) {
-        showAuthFieldError('setup-username-error', 'setup-username-error-msg', 'Please enter a username.');
+        showAuthFieldError('setup-username-error', 'setup-username-error-msg', t('auth.enterUsername'));
         return;
     }
 
     const usernameRegex = /^[a-zA-Z0-9_]{2,30}$/;
     if (!usernameRegex.test(usernameInput)) {
-        showAuthFieldError('setup-username-error', 'setup-username-error-msg', 'Only letters, numbers and _ allowed (2–30 chars).');
+        showAuthFieldError('setup-username-error', 'setup-username-error-msg', t('auth.usernameFormat'));
         return;
     }
 
     btn.disabled = true;
-    btn.innerText = "Saving...";
+    btn.innerText = t('editProfile.saving');
 
     try {
         const { error: updateError } = await supabaseClient.auth.updateUser({
@@ -365,13 +371,13 @@ async function saveSetupUsername() {
     } catch (error) {
         showAuthFieldError('setup-username-error', 'setup-username-error-msg', error.message);
         btn.disabled = false;
-        btn.innerText = "Continue";
+        btn.innerText = t('auth.continue');
     }
 }
 
 async function handleLogout(btn) {
     if (btn) {
-        btn.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-[#FF3B30]/10 flex items-center justify-center"><svg class="animate-spin h-4 w-4 text-[#FF3B30]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div><span class="text-[#FF3B30] text-[17px] font-medium">Signing Out</span></div>`;
+        btn.innerHTML = `<div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-[#FF3B30]/10 flex items-center justify-center"><svg class="animate-spin h-4 w-4 text-[#FF3B30]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div><span class="text-[#FF3B30] text-[17px] font-medium">${t('auth.signingOut')}</span></div>`;
         btn.disabled = true;
     }
     const {
@@ -408,21 +414,23 @@ function toggleAuthMode() {
     if (isLoginMode) {
         registerFields.classList.add('hidden');
         registerConfirmWrap?.classList.add('hidden');
-        subtitle.innerText = "Welcome back";
-        mainBtn.innerText = "Sign In";
-        toggleText.innerText = "Don't have an account? ";
-        if (toggleBtnText) toggleBtnText.innerText = "Register";
-        if (googleBtnText) googleBtnText.innerText = "Sign in with Google";
-        if (appleBtnText) appleBtnText.innerText = "Sign in with Apple";
+        subtitle.setAttribute('data-i18n', 'auth.welcomeBack');
+        subtitle.innerText = t('auth.welcomeBack');
+        mainBtn.innerText = t('auth.signIn');
+        toggleText.innerText = t('auth.dontHaveAccount');
+        if (toggleBtnText) toggleBtnText.innerText = t('auth.register');
+        if (googleBtnText) googleBtnText.innerText = t('auth.signInWithGoogle');
+        if (appleBtnText) appleBtnText.innerText = t('auth.signInWithApple');
     } else {
         registerFields.classList.remove('hidden');
         registerConfirmWrap?.classList.remove('hidden');
-        subtitle.innerText = "Create your account";
-        mainBtn.innerText = "Register";
-        toggleText.innerText = "Already have an account? ";
-        if (toggleBtnText) toggleBtnText.innerText = "Sign In";
-        if (googleBtnText) googleBtnText.innerText = "Register with Google";
-        if (appleBtnText) appleBtnText.innerText = "Register with Apple";
+        subtitle.setAttribute('data-i18n', 'auth.createAccount');
+        subtitle.innerText = t('auth.createAccount');
+        mainBtn.innerText = t('auth.register');
+        toggleText.innerText = t('auth.alreadyHaveAccount');
+        if (toggleBtnText) toggleBtnText.innerText = t('auth.signIn');
+        if (googleBtnText) googleBtnText.innerText = t('auth.registerWithGoogle');
+        if (appleBtnText) appleBtnText.innerText = t('auth.registerWithApple');
     }
 }
 
@@ -436,7 +444,7 @@ async function handleLoginWrapper() {
     const mainBtn = document.getElementById('auth-main-btn');
 
     if (!email || !password) {
-        showAuthFieldError('auth-error', 'auth-error-msg', 'Please fill in all fields.');
+        showAuthFieldError('auth-error', 'auth-error-msg', t('auth.fillAllFields'));
         triggerHapticFeedback();
         return;
     }
@@ -449,10 +457,10 @@ async function handleLoginWrapper() {
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
         if (error) {
-            showAuthFieldError('auth-error', 'auth-error-msg', 'Incorrect email or password.');
+            showAuthFieldError('auth-error', 'auth-error-msg', t('auth.incorrectCredentials'));
             triggerHapticFeedback();
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Sign In';
+            mainBtn.innerText = t('auth.signIn');
         } else {
             hideAuthFieldError('auth-error');
             checkUser();
@@ -464,15 +472,15 @@ async function handleLoginWrapper() {
 
         // 1. Username must be present
         if (!username) {
-            showAuthFieldError('auth-error', 'auth-error-msg', 'Please fill in all fields.');
+            showAuthFieldError('auth-error', 'auth-error-msg', t('auth.fillAllFields'));
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Register';
+            mainBtn.innerText = t('auth.register');
             return;
         }
         if (!/^[a-zA-Z0-9_]{2,30}$/.test(username)) {
-            showUsernameError('2–30 chars: letters, numbers and _');
+            showUsernameError(t('auth.usernameFormat'));
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Register';
+            mainBtn.innerText = t('auth.register');
             return;
         }
 
@@ -485,7 +493,7 @@ async function handleLoginWrapper() {
             }));
             triggerHapticFeedback();
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Register';
+            mainBtn.innerText = t('auth.register');
             return;
         }
 
@@ -497,7 +505,7 @@ async function handleLoginWrapper() {
             hideAuthFieldError('auth-error');
             triggerHapticFeedback();
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Register';
+            mainBtn.innerText = t('auth.register');
             return;
         }
 
@@ -513,16 +521,16 @@ async function handleLoginWrapper() {
         if (error) {
             showAuthFieldError('auth-error', 'auth-error-msg',
                 error.message.includes('already registered')
-                    ? 'This email is already in use.'
+                    ? t('auth.emailInUse')
                     : error.message
             );
             triggerHapticFeedback();
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Register';
+            mainBtn.innerText = t('auth.register');
         } else {
             showEmailCheckScreen(email);
             mainBtn.disabled = false;
-            mainBtn.innerText = 'Register';
+            mainBtn.innerText = t('auth.register');
         }
     }
 }
@@ -556,3 +564,18 @@ function goToSignInFromEmailCheck() {
     if (emailCheckScreen) emailCheckScreen.classList.add('hidden');
     if (authCard) authCard.classList.remove('hidden');
 }
+
+// Legacy OTP-view stubs — the auth-verify-view HTML is kept for compatibility
+// but Email Link is the active flow; these prevent JS errors if the view is shown.
+function handleCodeVerification() {
+    const code = document.getElementById('auth-verify-code')?.value?.trim();
+    if (!code || code.length < 6) return;
+}
+window.handleCodeVerification = handleCodeVerification;
+
+function hideVerificationScreen() {
+    document.getElementById('auth-verify-view')?.classList.add('hidden');
+    document.getElementById('auth-main-view')?.classList.remove('hidden');
+}
+window.hideVerificationScreen = hideVerificationScreen;
+

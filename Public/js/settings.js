@@ -51,7 +51,11 @@ function toggleTrackingMode(element) {
     const isActive = element.classList.contains('bg-white');
     localStorage.setItem('snusTrackingMode', isActive ? 'individual' : 'full');
     const preview = document.getElementById('tracking-mode-preview');
-    if (preview) preview.innerText = isActive ? 'Individual' : 'Full Tracking';
+    if (preview) {
+        const key = isActive ? 'tracking.modeIndividual' : 'tracking.modeFull';
+        preview.setAttribute('data-i18n', key);
+        preview.innerText = t(key);
+    }
     renderActiveCansUI();
 }
 
@@ -81,7 +85,15 @@ function openSettingsSubpage(type) {
     const titleObj = document.getElementById('subpage-title');
     const contentObj = document.getElementById('subpage-content');
 
-    titleObj.innerText = type;
+    const _subpageTitleMap = {
+        'Edit Profile': 'settings.editProfile', 'Stats': 'settings.stats',
+        'Notifications': 'settings.notifications', 'Privacy & Security': 'settings.privacy',
+        'Language': 'settings.language', 'Darstellung': 'settings.appearance',
+        'Tracking': 'settings.tracking', 'Help Center & FAQ': 'settings.helpCenter',
+        'Delete Account': 'settings.deleteAccount'
+    };
+    titleObj.innerText = t(_subpageTitleMap[type] || type);
+    window._currentSubpageType = type;
     let html = '';
 
     if (type === 'Edit Profile') {
@@ -333,19 +345,25 @@ function openSettingsSubpage(type) {
             </div>
         `;
     } else if (type === 'Language') {
+        const lang = localStorage.getItem('appLang') || 'en';
+        const check = (l) => lang === l
+            ? `<svg class="lang-check-icon w-5 h-5 text-white flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`
+            : `<svg class="lang-check-icon w-5 h-5 text-white flex-shrink-0 invisible" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
-                <div onclick="triggerHapticFeedback()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <div onclick="triggerHapticFeedback(); setLang('en'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
                     <span class="text-white text-[17px]">English</span>
-                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    ${check('en')}
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
-                <div onclick="triggerHapticFeedback()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <div onclick="triggerHapticFeedback(); setLang('de'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
                     <span class="text-white text-[17px]">Deutsch</span>
+                    ${check('de')}
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
-                <div onclick="triggerHapticFeedback()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
-                    <span class="text-white text-[17px]">Svenska</span>
+                <div onclick="triggerHapticFeedback(); setLang('ru'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                    <span class="text-white text-[17px]">Русский</span>
+                    ${check('ru')}
                 </div>
             </div>
         `;
@@ -524,6 +542,36 @@ function openSettingsSubpage(type) {
         subpage.classList.add('translate-x-0');
     }, 10);
 }
+
+function refreshLangPage() {
+    const contentObj = document.getElementById('subpage-content');
+    const titleObj = document.getElementById('subpage-title');
+    if (!contentObj || !titleObj) return;
+    titleObj.innerText = t('settings.language');
+    const lang = localStorage.getItem('appLang') || 'en';
+    const check = (l) => lang === l
+        ? `<svg class="lang-check-icon w-5 h-5 text-white flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`
+        : `<svg class="lang-check-icon w-5 h-5 text-white flex-shrink-0 invisible" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
+    contentObj.innerHTML = `
+        <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
+            <div onclick="triggerHapticFeedback(); setLang('en'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <span class="text-white text-[17px]">English</span>
+                ${check('en')}
+            </div>
+            <div class="h-[1px] bg-white/5 mx-5"></div>
+            <div onclick="triggerHapticFeedback(); setLang('de'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <span class="text-white text-[17px]">Deutsch</span>
+                ${check('de')}
+            </div>
+            <div class="h-[1px] bg-white/5 mx-5"></div>
+            <div onclick="triggerHapticFeedback(); setLang('ru'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <span class="text-white text-[17px]">Русский</span>
+                ${check('ru')}
+            </div>
+        </div>
+    `;
+}
+window.refreshLangPage = refreshLangPage;
 
 function closeSettingsSubpage() {
     const subpage = document.getElementById('settings-subpage');

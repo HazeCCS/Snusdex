@@ -2,121 +2,6 @@
 // 8. HELPER & INITIALISIERUNG
 // ==========================================
 
-function filterDex() {
-    const searchEl = document.getElementById('dex-search');
-    if (!searchEl) return;
-
-    const term = searchEl.value.toLowerCase().trim();
-    const searchWords = term ? term.split(/\s+/) : [];
-
-    let filtered = globalSnusData.filter(s => {
-        // Filter für freigeschaltete
-        if (dexFilterUnlocked && !globalUserCollection[s.id]) {
-            return false;
-        }
-
-        // Text Filter (Suchleiste)
-        if (searchWords.length > 0) {
-            const searchableText = [
-                s.name,
-                s.brand,
-                Array.isArray(s.flavor) ? s.flavor.join(' ') : s.flavor
-            ].filter(Boolean).join(' ').toLowerCase();
-
-            if (!searchWords.every(word => searchableText.includes(word))) {
-                return false;
-            }
-        }
-
-        return true;
-    });
-
-    const grid = document.getElementById('dex-grid');
-    if (!grid) return;
-
-    const isSearch = searchWords.length > 0;
-    const searchKey = searchWords.join(' ');
-
-    // Cancel any in-flight fade timer
-    if (grid._fadeTimer) clearTimeout(grid._fadeTimer);
-
-    // Smooth fade-out of grid only (search bar is outside grid, stays intact)
-    grid.style.transition = 'opacity 0.2s ease-out';
-    grid.style.opacity = '0';
-    grid.style.pointerEvents = 'none';
-
-    grid._fadeTimer = setTimeout(() => {
-        grid.style.transition = 'none';
-        grid.style.pointerEvents = '';
-
-        // Klassen sauber zurücksetzen
-        if (dexSortMode === 'alpha') {
-            grid.className = 'flex flex-col w-full';
-            if (dexObserver) dexObserver.disconnect();
-        } else {
-            const cols = localStorage.getItem('dexColumns') || '3';
-            const is2Cols = cols === '2';
-            grid.className = `grid ${is2Cols ? 'grid-cols-2' : 'grid-cols-3'} gap-3`;
-        }
-
-        const hasItems = grid.querySelectorAll('.dex-anim-card, .brand-section').length > 0;
-        const showSkeletons = !hasItems || (isSearch && grid.dataset.lastSearch !== searchKey);
-        grid.dataset.lastSearch = searchKey;
-
-        if (dexSortMode === 'alpha') {
-            if (showSkeletons) {
-                grid.innerHTML = `
-                ${[1, 2, 3].map(() => `
-                <div class="brand-section mb-4 w-[calc(100%+40px)] -mx-[20px] px-5 opacity-50" style="contain-intrinsic-size: 0 200px;">
-                    <div class="flex justify-between items-end mb-3 mt-6 px-1">
-                        <div class="sk h-6 w-32 rounded-md"></div>
-                        <div class="sk h-5 w-12 rounded-full"></div>
-                    </div>
-                    <div class="flex gap-[3vw] overflow-hidden pb-4 pt-3">
-                        ${[1, 2, 3, 4].map(() => `
-                            <div class="flex-shrink-0 w-[28vw] max-w-[120px] aspect-[1/1.2] bg-[#2A2A2E] rounded-[20px] border border-white/5 overflow-hidden">
-                                <div class="flex justify-between p-2.5"><div class="sk h-2.5 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div>
-                                <div class="flex-1 flex items-center justify-center"><div class="sk w-[60%] h-[60%] rounded-xl"></div></div>
-                                <div class="p-2 flex justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>`).join('')}
-                `;
-            }
-            // Always make grid visible before rendering (skeleton or existing content)
-            grid.style.opacity = '1';
-
-            // Single RAF – avoid double RAF jank on iPhone
-            requestAnimationFrame(() => {
-                const groupedData = groupAndSortByBrand(filtered);
-                renderDexGrouped(groupedData);
-            });
-
-        } else {
-            if (showSkeletons) {
-                grid.innerHTML = `
-                    ${[...Array(12)].map(() => `
-                        <div class="aspect-[1/1.2] bg-[#2A2A2E] rounded-[20px] border border-white/5 overflow-hidden flex flex-col">
-                            <div class="flex justify-between p-2.5"><div class="sk h-2.5 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div>
-                            <div class="flex-1 flex items-center justify-center"><div class="sk w-[60%] h-[60%] rounded-xl"></div></div>
-                            <div class="p-2 flex justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div>
-                        </div>
-                    `).join('')}
-                `;
-            }
-            // Always make grid visible before rendering
-            grid.style.opacity = '1';
-
-            // Single RAF – avoid double RAF jank on iPhone
-            requestAnimationFrame(() => {
-                filtered.sort((a, b) => parseInt(a.id) - parseInt(b.id));
-                renderDexGrid(filtered);
-            });
-        }
-    }, 200);
-}
-
 async function setupProfile(user) {
     // Sofort mit user_metadata rendern (kein DB-Wait nötig)
     const emailEl = document.getElementById('profile-email');
@@ -283,15 +168,17 @@ async function loadUserStats(userId) {
 
     const profileXpEl = document.getElementById('profile-xp');
     const profileLevelEl = document.getElementById('profile-level');
+    window._currentUserLevel = level;
+
     if (profileXpEl) profileXpEl.innerText = `${xp} XP`;
-    if (profileLevelEl) profileLevelEl.innerText = `Lvl ${level}`;
+    if (profileLevelEl) profileLevelEl.innerText = `${t('profile.level')} ${level}`;
 
     if (displayedXp === null) {
         displayedXp = xp;
         const scoreEl = document.getElementById('score');
         const homeLevelEl = document.getElementById('home-level');
         if (scoreEl) scoreEl.innerHTML = `${xp} <span class="font-medium text-[20px] text-white/50">XP</span>`;
-        if (homeLevelEl) homeLevelEl.innerText = `LVL ${level}`;
+        if (homeLevelEl) homeLevelEl.innerText = `${t('profile.level').toUpperCase()} ${level}`;
     } else if (displayedXp !== actualXp) {
         const homeTab = document.getElementById('tab-home');
         if (!homeTab.classList.contains('hidden')) {
@@ -323,7 +210,7 @@ function animateXp(startValue, endValue, newLevel) {
             requestAnimationFrame(updateCounter);
         } else {
             displayedXp = endValue;
-            if (homeLevelEl) homeLevelEl.innerText = `LVL ${newLevel}`;
+            if (homeLevelEl) homeLevelEl.innerText = `${t('profile.level').toUpperCase()} ${newLevel}`;
 
             if (typeof triggerHapticFeedback === 'function') {
                 triggerHapticFeedback();
@@ -373,6 +260,29 @@ function animateNumber(elementId, startValue, endValue, duration = 1500, suffix 
     }
     requestAnimationFrame(update);
 }
+
+// ==========================================
+// I18N REFRESH HELPERS
+// ==========================================
+
+window.refreshStatUnits = function () {
+    const unit = ' ' + t('unit.mg');
+    ['stat-flow', 'stat-avg-mg'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const raw = el.innerText.replace(/[^0-9.,]/g, '').trim();
+        if (raw) el.innerText = raw + unit;
+    });
+};
+
+window.refreshLevelDisplay = function () {
+    const level = window._currentUserLevel;
+    if (!level) return;
+    const homeLevelEl = document.getElementById('home-level');
+    const profileLevelEl = document.getElementById('profile-level');
+    if (homeLevelEl) homeLevelEl.innerText = `${t('profile.level').toUpperCase()} ${level}`;
+    if (profileLevelEl) profileLevelEl.innerText = `${t('profile.level')} ${level}`;
+};
 
 // ==========================================
 // 11. DEBUGGING & DEV COMMANDS
