@@ -82,6 +82,7 @@ const TRANSLATIONS = {
         'home.showAll': 'Show all',
         'home.noScans': 'No scans yet.',
         'home.canEmpty': 'Can Empty',
+        'home.dailyStreak': 'Daily Streak',
         'home.collection': 'Collection',
         'home.totalCans': 'Total Cans (Dex)',
         'home.lifetimeTracked': 'Lifetime Tracked',
@@ -112,6 +113,8 @@ const TRANSLATIONS = {
         'modal.viewRating': 'View Rating',
         'modal.changeRating': 'Change Rating',
         'modal.openNewCan': 'Open New Can',
+        'modal.yourRating': 'Your Rating',
+        'modal.backToInfo': 'Back to Info',
 
         // Rating wizard
         'rating.stepTitle': 'Rating',
@@ -440,6 +443,7 @@ const TRANSLATIONS = {
         'home.showAll': 'Alle zeigen',
         'home.noScans': 'Noch keine Scans vorhanden.',
         'home.canEmpty': 'Dose leeren',
+        'home.dailyStreak': 'Daily Streak',
         'home.collection': 'Sammlung',
         'home.totalCans': 'Dosen gesamt (Dex)',
         'home.lifetimeTracked': 'Gesamter Verbrauch',
@@ -470,6 +474,8 @@ const TRANSLATIONS = {
         'modal.viewRating': 'Rating ansehen',
         'modal.changeRating': 'Rating ändern',
         'modal.openNewCan': 'Neue Dose öffnen',
+        'modal.yourRating': 'Deine Bewertung',
+        'modal.backToInfo': 'Zurück zu Info',
 
         // Rating wizard
         'rating.stepTitle': 'Bewertung',
@@ -798,6 +804,7 @@ const TRANSLATIONS = {
         'home.showAll': 'Показать все',
         'home.noScans': 'Сканирований ещё нет.',
         'home.canEmpty': 'Банка пуста',
+        'home.dailyStreak': 'Ежедневная серия',
         'home.collection': 'Коллекция',
         'home.totalCans': 'Всего банок (Dex)',
         'home.lifetimeTracked': 'Всего отслежено',
@@ -828,6 +835,8 @@ const TRANSLATIONS = {
         'modal.viewRating': 'Посмотреть оценку',
         'modal.changeRating': 'Изменить оценку',
         'modal.openNewCan': 'Открыть новую банку',
+        'modal.yourRating': 'Ваша оценка',
+        'modal.backToInfo': 'Назад к инфо',
 
         // Rating wizard
         'rating.stepTitle': 'Оценка',

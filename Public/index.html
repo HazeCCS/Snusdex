@@ -94,14 +94,14 @@
             display: none !important;
         }
 
-        /* Skalierung ankert oben → kein sichtbares Hochrutschen bei tabFadeIn */
-        #tab-dex {
-            transform-origin: top center;
-        }
 
-        /* MARK: - Layout-erhaltende Versteckung */
+
+        /* MARK: - Layout-erhaltende Versteckung für Dex
+           WICHTIG: kein opacity !important – JS steuert opacity für Fade-Animation.
+           Wir nutzen visibility+pointer-events, damit der Dex-Grid im Hintergrund
+           korrekt gemessen werden kann (kein Reflow beim Einblenden). */
         .tab-dex-hidden {
-            opacity: 0 !important;
+            visibility: hidden;
             pointer-events: none !important;
             position: absolute !important;
             height: 0 !important;
@@ -110,7 +110,6 @@
             left: 0;
             right: 0;
             z-index: -1;
-            will-change: opacity;
         }
 
         * {
@@ -123,13 +122,15 @@
             display: none;
         }
 
-        .tab-content {
-            animation: tabFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        /* Tab-Fade für alle normalen Tabs (nicht Dex – der hat eigene Klasse) */
+        .tab-content:not(#tab-dex) {
+            animation: tabFadeIn 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
         }
-        .pre-auth {
-            opacity: 0 !important;
-            pointer-events: none !important;
-            animation: none !important;
+
+        /* Dex Tab: exakt dieselbe Animation via JS-gesteuerter Klasse.
+           Klasse wird von _showDexTab() nach einem forced reflow gesetzt. */
+        .tab-dex-entering {
+            animation: tabFadeIn 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
         }
 
         @keyframes tabFadeIn {
@@ -145,15 +146,17 @@
         }
 
         @keyframes fadeViewIn {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0);   }
+        }
 
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        /* Brand-Section Pulse (Brand-Sortierung): CSS-gesteuert.
+           WICHTIG: Kein inline opacity/transform auf dem Element setzen –
+           Inline-Styles überschreiben die Animations-Keyframes. fill-mode: both
+           übernimmt den from-Zustand während des animation-delay. */
+        @keyframes brandSectionIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0);   }
         }
 
         /* ── Nav Bar ── */
@@ -455,6 +458,22 @@
                 opacity: 1;
                 transform: scale(1.0);
             }
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: scale(1) translate(0, 0); opacity: calc(var(--card-glow-intensity, 1) * 0.1); }
+            50% { transform: scale(1.1) translate(2%, 2%); opacity: calc(var(--card-glow-intensity, 1) * 0.25); }
+            100% { transform: scale(1) translate(-2%, -2%); opacity: calc(var(--card-glow-intensity, 1) * 0.15); }
+        }
+
+        .metal-card-glow {
+            position: absolute;
+            inset: -50%;
+            background: radial-gradient(circle at 50% 50%, var(--card-glow-color, #ffffff) 0%, transparent 60%);
+            animation: pulseGlow 6s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 1;
+            mix-blend-mode: screen;
         }
 
         @keyframes badgeTextFade {
@@ -841,7 +860,8 @@
                     <h2 class="text-[22px] font-bold text-white text-center mb-2 tracking-tight" data-i18n="auth.checkEmail">Check your email</h2>
                     <p class="text-white/50 text-[14px] text-center leading-relaxed mb-6">
                         <span id="auth-email-sent-desc" data-i18n="auth.emailSent">We sent a verification link to:</span>
-                        <span id="email-check-address" class="text-white font-semibold block mt-1"></span>
+                        <span id="email-check-address" class="text-white font-semibold"></span>.
+                        Open the email and tap the link to activate your account.
                     </p>
 
                     <!-- Open Mail app -->
@@ -875,17 +895,29 @@
 
         <div class="metal-card-container">
             <div class="metal-collector-card">
-                <div class="flex justify-between items-start">
+                <div class="metal-card-glow" id="metal-card-glow"></div>
+                <div class="flex justify-between items-start relative z-10">
                     <span class="engraved-text font-medium uppercase tracking-widest" style="font-size: 13px;" data-i18n="home.collectorId">Collector ID</span>
                     <span id="home-level" class="engraved-text font-semibold" style="font-size: 14px;">LVL --</span>
                 </div>
-                <div>
+                <div class="relative z-10">
                     <p id="greeting" class="engraved-text uppercase tracking-wide"
-                        style="font-size: 13px; margin-bottom: 2px;"></p>
+                        style="font-size: 13px; margin-bottom: 2px;">Loading...</p>
                     <p id="score" class="engraved-text font-semibold tracking-tight leading-none"
                         style="font-size: 38px; margin: 0;">0
                         <span class="font-medium" style="font-size: 20px;">XP</span>
                     </p>
+                </div>
+            </div>
+        </div>
+        <div class="px-5 mb-4 mt-2" id="streak-module">
+            <div class="bg-[#1C1C1E] rounded-[16px] p-3 border border-white/5 shadow-sm">
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <span class="text-[12px] text-[#8E8E93] font-medium tracking-wider uppercase" data-i18n="home.dailyStreak">Daily Streak</span>
+                    <span id="streak-counter-text" class="text-[14px] font-bold text-white tracking-tight">0 🔥</span>
+                </div>
+                <div id="streak-tiles" class="flex justify-between items-center px-1">
+                    <!-- Javascript generates this -->
                 </div>
             </div>
         </div>
@@ -924,23 +956,15 @@
             <div id="suggestions-container"
                 class="flex gap-[2vw] overflow-x-auto px-[6vw] pb-6 pt-3 snap-x snap-mandatory scroll-smooth"
                 style="touch-action: pan-x; -webkit-overflow-scrolling: touch;">
-            </div>
-        </div>
-
-        <div id="can-empty-container" class="px-5 mb-8 hidden transition-all duration-300">
-            <h2 class="text-[20px] font-semibold text-white mb-3" data-i18n="home.activeCan">Active Can</h2>
-            <div
-                class="bg-[#1C1C1E] rounded-[24px] p-5 flex flex-col items-center justify-center border border-white/10 relative overflow-hidden">
-                <p class="text-[13px] text-[#8E8E93] font-medium mb-1 uppercase tracking-wide" data-i18n="home.currentlyUsing">Currently Using</p>
-                <h3 id="active-can-name" class="text-[22px] font-bold text-white mb-5 tracking-tight"></h3>
-                <button onclick="triggerHapticFeedback(); finishCurrentCan(true)"
-                    class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[16px] shadow-[0_8px_16px_rgba(255,255,255,0.15)] active:scale-95 transition-transform flex justify-center items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    <span data-i18n="home.canEmpty">Can Empty</span>
-                </button>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
+                <div class="flex-shrink-0 w-[28vw] snap-center"><div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden shadow-md" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-6 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div></div>
             </div>
         </div>
 
@@ -1265,7 +1289,8 @@
                 </button>
             </div>
 
-            <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-semibold pl-1 mb-3 mt-4" data-i18n="settings.sectionSystem">System Info</h2>
+            <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-semibold pl-1 mb-3 mt-4" data-i18n="settings.sectionSystem">System Info
+            </h2>
             <div id="github-commit-info"
                 class="bg-[#1C1C1E] rounded-[24px] border border-white/10 mb-6 w-full max-w-full overflow-hidden shadow-lg">
                 <div class="p-4 sm:p-5 flex items-center gap-4 w-full">
@@ -1397,8 +1422,7 @@
                             <div
                                 class="bg-black/30 border border-white/5 rounded-[16px] p-3 flex flex-col justify-center">
                                 <span
-                                    class="text-[#8E8E93] text-[10px] uppercase tracking-wider font-semibold block mb-0.5">Unlocked
-                                    at</span>
+                                    class="text-[#8E8E93] text-[10px] uppercase tracking-wider font-semibold block mb-0.5" data-i18n="modal.unlockedAt">Unlocked at</span>
                                 <span id="modal-unlocked-date" class="text-white text-[13px] font-bold">—</span>
                             </div>
                             <div
@@ -1473,8 +1497,8 @@
                             </div>
                             <div><label
                                     class="text-[13px] text-[#8E8E93] mb-2 px-1 block uppercase tracking-wider font-medium" data-i18n="rating.notes">Notes (optional)</label><textarea id="text-visuals" rows="3"
-                                    data-i18n-placeholder="rating.visuals.placeholder"
                                     placeholder="How do the pouches look?"
+                                    data-i18n-placeholder="rating.visuals.placeholder"
                                     class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[15px] focus:border-white outline-none transition-all resize-none"></textarea>
                             </div>
                         </div>
@@ -1486,8 +1510,8 @@
                             </div>
                             <div><label
                                     class="text-[13px] text-[#8E8E93] mb-2 px-1 block uppercase tracking-wider font-medium" data-i18n="rating.notes">Notes (optional)</label><textarea id="text-smell" rows="3"
-                                    data-i18n-placeholder="rating.smell.placeholder"
                                     placeholder="How does it smell?"
+                                    data-i18n-placeholder="rating.smell.placeholder"
                                     class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[15px] focus:border-white outline-none transition-all resize-none"></textarea>
                             </div>
                         </div>
@@ -1498,9 +1522,8 @@
                                 <div class="rating-row" id="row-taste"></div>
                             </div>
                             <div><label
-                                    class="text-[13px] text-[#8E8E93] mb-2 px-1 block uppercase tracking-wider font-medium" data-i18n="rating.notes">Notes (optional)</label><textarea id="text-taste" rows="3"
+                                    class="text-[13px] text-[#8E8E93] mb-2 px-1 block uppercase tracking-wider font-medium" data-i18n="rating.notes">Notes (optional)</label><textarea id="text-taste" rows="3" placeholder="How does it taste?"
                                     data-i18n-placeholder="rating.taste.placeholder"
-                                    placeholder="How does it taste?"
                                     class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[15px] focus:border-white outline-none transition-all resize-none"></textarea>
                             </div>
                         </div>
@@ -1512,8 +1535,8 @@
                             </div>
                             <div><label
                                     class="text-[13px] text-[#8E8E93] mb-2 px-1 block uppercase tracking-wider font-medium" data-i18n="rating.notes">Notes (optional)</label><textarea id="text-bite" rows="3"
-                                    data-i18n-placeholder="rating.bite.placeholder"
                                     placeholder="How strong is the bite?"
+                                    data-i18n-placeholder="rating.bite.placeholder"
                                     class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[15px] focus:border-white outline-none transition-all resize-none"></textarea>
                             </div>
                         </div>
@@ -1524,9 +1547,8 @@
                                 <div class="rating-row" id="row-drip"></div>
                             </div>
                             <div><label
-                                    class="text-[13px] text-[#8E8E93] mb-2 px-1 block uppercase tracking-wider font-medium" data-i18n="rating.notes">Notes (optional)</label><textarea id="text-drip" rows="3"
+                                    class="text-[13px] text-[#8E8E93] mb-2 px-1 block uppercase tracking-wider font-medium" data-i18n="rating.notes">Notes (optional)</label><textarea id="text-drip" rows="3" placeholder="How is the drip?"
                                     data-i18n-placeholder="rating.drip.placeholder"
-                                    placeholder="How is the drip?"
                                     class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[15px] focus:border-white outline-none transition-all resize-none"></textarea>
                             </div>
                         </div>
@@ -1538,8 +1560,8 @@
                             </div>
                             <div><label
                                     class="text-[13px] text-[#8E8E93] mb-2 px-1 block uppercase tracking-wider font-medium" data-i18n="rating.notes">Notes (optional)</label><textarea id="text-strength" rows="3"
+                                    placeholder="What is the effect?"
                                     data-i18n-placeholder="rating.strength.placeholder"
-                                    placeholder="How strong is the nicotine hit?"
                                     class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[15px] focus:border-white outline-none transition-all resize-none"></textarea>
                             </div>
                         </div>
@@ -1556,11 +1578,11 @@
                 </div>
 
                 <div id="modal-view-saved-rating" class="hidden fade-view flex-col w-full">
-                    <h2 class="text-center text-[20px] font-semibold text-white mb-6">Your Rating</h2>
+                    <h2 class="text-center text-[20px] font-semibold text-white mb-6" data-i18n="modal.yourRating">Your Rating</h2>
                     <div id="saved-rating-bars" class="space-y-4 mb-8"></div>
                     <button onclick="triggerHapticFeedback(); showInfoView()"
                         class="w-full bg-[#2C2C2E] text-white font-medium text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform">
-                        Back to Info
+                        <span data-i18n="modal.backToInfo">Back to Info</span>
                     </button>
                 </div>
             </div>
@@ -1981,7 +2003,7 @@
                         </div>
                         <div class="text-left">
                             <p class="text-[14px] font-semibold text-white leading-tight" data-i18n="connections.newRequests">New Requests</p>
-                            <p id="conn-pending-count-text" class="text-[12px] text-[#8E8E93]">0 follower requests</p>
+                            <p id="conn-pending-count-text" class="text-[12px] text-[#8E8E93]">0 Follower-Anfragen</p>
                         </div>
                     </div>
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;color:#636366;">
@@ -2109,8 +2131,6 @@
 
         </div>
     </nav>
-    <script src="i18n.js"></script>
-    <script src="app.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script>
         function triggerNavAnim(svgId) {
@@ -2123,7 +2143,22 @@
             setTimeout(() => svg.classList.remove(animClass), 700);
         }
     </script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="i18n.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/dex.js"></script>
+    <script src="js/rating.js"></script>
+    <script src="js/admin.js"></script>
+    <script src="js/social.js"></script>
+    <script src="js/usage.js"></script>
+    <script src="js/scanner.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/scans.js"></script>
+    <script src="js/suggestions.js"></script>
+    <script src="js/version.js"></script>
+    <script src="js/dex-scroll.js"></script>
 </body>
 
 </html>
