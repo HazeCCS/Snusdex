@@ -94,10 +94,7 @@
             display: none !important;
         }
 
-        /* Skalierung ankert oben → kein sichtbares Hochrutschen bei tabFadeIn */
-        #tab-dex {
-            transform-origin: top center;
-        }
+
 
         /* MARK: - Layout-erhaltende Versteckung für Dex
            WICHTIG: kein opacity !important – JS steuert opacity für Fade-Animation.
@@ -125,9 +122,14 @@
             display: none;
         }
 
-        /* Tab-Fade nur für normale (nicht-Dex) Tabs.
-           Dex-Tab wird ausschließlich via JS-Transition animiert. */
+        /* Tab-Fade für alle normalen Tabs (nicht Dex – der hat eigene Klasse) */
         .tab-content:not(#tab-dex) {
+            animation: tabFadeIn 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
+        }
+
+        /* Dex Tab: exakt dieselbe Animation via JS-gesteuerter Klasse.
+           Klasse wird von _showDexTab() nach einem forced reflow gesetzt. */
+        .tab-dex-entering {
             animation: tabFadeIn 0.28s cubic-bezier(0.4, 0, 0.2, 1) both;
         }
 
@@ -148,7 +150,10 @@
             to   { opacity: 1; transform: translateY(0);   }
         }
 
-        /* Brand-Section Pulse (Brand-Sortierung): CSS-gesteuert, kein JS-Timer */
+        /* Brand-Section Pulse (Brand-Sortierung): CSS-gesteuert.
+           WICHTIG: Kein inline opacity/transform auf dem Element setzen –
+           Inline-Styles überschreiben die Animations-Keyframes. fill-mode: both
+           übernimmt den from-Zustand während des animation-delay. */
         @keyframes brandSectionIn {
             from { opacity: 0; transform: translateY(8px); }
             to   { opacity: 1; transform: translateY(0);   }

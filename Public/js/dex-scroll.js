@@ -380,17 +380,14 @@ function renderDexGrouped(groupedData) {
     groupedData.forEach((brandData, globalIndex) => {
         const section = document.createElement('div');
         section.className = 'brand-section mb-4';
-        section.style.cssText = [
-            'margin-left: -20px',
-            'margin-right: -20px',
-            'width: calc(100% + 40px)',
-            'content-visibility: auto',
-            'contain-intrinsic-size: 0 220px',
-            // Startzustand für Fade-Animation
-            'opacity: 0',
-            'transform: translateY(8px)',
-            `animation: brandSectionIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) ${globalIndex * PULSE_DELAY_MS}ms both`,
-        ].join(';');
+
+        // KEIN inline opacity/transform – das würde die CSS-Animation überschreiben!
+        // fill-mode: both hält den from-Zustand (opacity:0, translateY(8px))
+        // während des animation-delay und räumt danach automatisch auf.
+        section.style.marginLeft  = '-20px';
+        section.style.marginRight = '-20px';
+        section.style.width       = 'calc(100% + 40px)';
+        section.style.animation   = `brandSectionIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) ${globalIndex * PULSE_DELAY_MS}ms both`;
 
         const header    = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
         let cardsHTML   = '';

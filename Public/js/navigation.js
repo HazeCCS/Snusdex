@@ -119,47 +119,37 @@ function switchTab(tabId) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERN: Dex Tab einblenden
+// Verwendet dieselbe CSS-Animation wie alle anderen Tabs (tabFadeIn),
+// damit sich der Öffnungs-Feel identisch anfühlt. Kein extra RAF-Delay.
 // ─────────────────────────────────────────────────────────────────────────────
 function _showDexTab() {
     const dexTab = document.getElementById('tab-dex');
     if (!dexTab) return;
 
-    // Sofort aus dem "hidden" Zustand nehmen – aber noch transparent
+    // 1. Inline-Styles cleanen (könnten von altem Lauf übrig sein)
+    dexTab.style.transition = '';
+    dexTab.style.opacity    = '';
+    dexTab.style.transform  = '';
+
+    // 2. Animation-Klasse vorab entfernen (damit sie frisch startet)
+    dexTab.classList.remove('tab-dex-entering');
+
+    // 3. Aus dem hidden-Zustand holen
     dexTab.classList.remove('tab-dex-hidden');
     dexTab.dataset.tabState = 'visible';
 
-    // Transition-Startpunkt erzwingen (synchron, vor RAF)
-    dexTab.style.opacity    = '0';
-    dexTab.style.transform  = 'scale(0.98)';
-    dexTab.style.transition = 'none';   // Keine Transition beim Setzen von 0
+    // 4. Forced Reflow: Browser muss den alten Zustand commiten
+    //    bevor die Animation-Klasse gesetzt wird → Animation spielt sauber ab
+    void dexTab.offsetWidth;
 
-    // Scroll sofort zurück (kein Ruckeln durch scroll nach transition)
+    // 5. Animation-Klasse → identische tabFadeIn wie andere Tabs
+    dexTab.classList.add('tab-dex-entering');
+
+    // 6. Scroll + Scale (ohne zusätzlichen RAF)
     window.scrollTo(0, 0);
-
-    // Einen Frame warten damit der Browser den Startzustand rendert,
-    // dann Transition starten
-    _navAnimRaf = requestAnimationFrame(() => {
-        _navAnimRaf = null;
-
-        dexTab.style.transition = 'opacity 0.26s cubic-bezier(0.4, 0, 0.2, 1), transform 0.26s cubic-bezier(0.4, 0, 0.2, 1)';
-        dexTab.style.opacity    = '1';
-        dexTab.style.transform  = 'scale(1)';
-
-        // Scale-Animation für Dex-Karten aktualisieren
-        updateDexScale();
-
-        // Inline-Styles nach Abschluss der Transition aufräumen
-        _navAnimTimer = setTimeout(() => {
-            _navAnimTimer = null;
-            // Nur aufräumen wenn wir noch Dex aktiv sind
-            if (dexTab.dataset.tabState === 'visible') {
-                dexTab.style.transition = '';
-                dexTab.style.opacity    = '';
-                dexTab.style.transform  = '';
-            }
-        }, 300);
-    });
+    updateDexScale();
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERN: Dex Tab layout-erhaltend verstecken
@@ -168,10 +158,11 @@ function _hideDexTab() {
     const dexTab = document.getElementById('tab-dex');
     if (!dexTab) return;
 
-    // Alle inline-Styles resetten, dann class setzen
+    // Alle inline-Styles + Animation-Klasse resetten, dann hidden-Class setzen
     dexTab.style.transition = '';
     dexTab.style.opacity    = '';
     dexTab.style.transform  = '';
+    dexTab.classList.remove('tab-dex-entering');
 
     dexTab.classList.add('tab-dex-hidden');
     dexTab.dataset.tabState = 'hidden';
