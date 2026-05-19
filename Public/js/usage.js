@@ -231,6 +231,18 @@ async function finishSpecificCan(logId) {
         .eq('id', logId);
 
     if (!error) {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+            const addedPouches = maxPouches - (logItem ? (logItem.pouches_taken || 0) : 0);
+            if (addedPouches > 0) {
+                const todayStr = new Date().toISOString().split('T')[0];
+                await supabaseClient.rpc('increment_daily_consumption', { 
+                    uid: user.id, 
+                    target_date: todayStr, 
+                    amount: addedPouches 
+                });
+            }
+        }
         await loadUsageData();
     }
 }
@@ -482,6 +494,15 @@ async function executeAddPouch(logId, maxPouches, newCount) {
     if (error) {
         console.error("Error updating pouch count:", error);
     } else {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+            const todayStr = new Date().toISOString().split('T')[0];
+            await supabaseClient.rpc('increment_daily_consumption', { 
+                uid: user.id, 
+                target_date: todayStr, 
+                amount: 1 
+            });
+        }
         incrementStreak();
         loadUsageData();
     }

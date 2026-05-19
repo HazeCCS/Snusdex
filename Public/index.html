@@ -476,6 +476,15 @@
             mix-blend-mode: screen;
         }
 
+        @keyframes heatmapPulse {
+            0%, 100% { background-color: #2C2C2E; }
+            50% { background-color: #4a4a4c; box-shadow: 0 0 4px rgba(255,255,255,0.05); }
+        }
+
+        .heatmap-hole {
+            animation: heatmapPulse 3s ease-in-out infinite;
+        }
+
         @keyframes badgeTextFade {
             0% {
                 opacity: 0;
@@ -1073,6 +1082,26 @@
             </div>
 
             <div id="top-snus-container"></div>
+            
+            <!-- Heatmap -->
+            <div class="mt-8 mb-4">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[13px] text-[#8E8E93] font-semibold uppercase tracking-wider">Usage Heatmap</span>
+                </div>
+                <div id="heatmap-container" class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory" style="-ms-overflow-style:none;scrollbar-width:none;">
+                    <!-- Month blocks will be generated here -->
+                </div>
+                <div class="flex items-center justify-end gap-1.5 mt-1 mr-2 text-[10px] text-[#8E8E93] font-medium">
+                    <span>Less</span>
+                    <div class="w-3 h-3 rounded-[3px] heatmap-hole"></div>
+                    <div class="w-3 h-3 rounded-[3px] bg-[#4a1c1c]"></div>
+                    <div class="w-3 h-3 rounded-[3px] bg-[#7d2020]"></div>
+                    <div class="w-3 h-3 rounded-[3px] bg-[#b82323]"></div>
+                    <div class="w-3 h-3 rounded-[3px] bg-[#e62e2e]"></div>
+                    <div class="w-3 h-3 rounded-[3px] bg-[#FF3B30]"></div>
+                    <span>More</span>
+                </div>
+            </div>
         </div>
     </main>
 

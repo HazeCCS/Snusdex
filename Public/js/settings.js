@@ -66,8 +66,7 @@ function setMetalCardColor(colorId, colorHex) {
     
     const subpage = document.getElementById('settings-subpage');
     if (subpage && !subpage.classList.contains('hidden')) {
-        const titleObj = document.getElementById('subpage-title');
-        if (titleObj && titleObj.innerText === 'Darstellung') {
+        if (window._currentSubpageType === 'Darstellung') {
             openSettingsSubpage('Darstellung'); 
         }
     }
