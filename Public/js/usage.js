@@ -47,21 +47,41 @@ function renderStreakUI() {
 }
 
 async function validateAndRenderStreak() {
-    const storedDate = localStorage.getItem('lastTrackedDate');
-    const storedStreak = parseInt(localStorage.getItem('streakCount')) || 0;
-    
-    let activeStreak = storedStreak;
+    let storedDate = localStorage.getItem('lastTrackedDate');
+    let storedStreak = parseInt(localStorage.getItem('streakCount'));
+
+    // kein lokaler stand → neues gerät oder cache weg, aus supabase wiederherstellen
+    if (!storedDate || isNaN(storedStreak)) {
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) {
+                const { data } = await supabaseClient
+                    .from('profiles')
+                    .select('streak_count, last_tracked_date')
+                    .eq('id', user.id)
+                    .single();
+                if (data?.last_tracked_date) {
+                    storedDate = data.last_tracked_date;
+                    storedStreak = data.streak_count || 0;
+                    localStorage.setItem('lastTrackedDate', storedDate);
+                    localStorage.setItem('streakCount', storedStreak);
+                }
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    let activeStreak = storedStreak || 0;
 
     if (storedDate) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         const lastDate = new Date(storedDate);
         lastDate.setHours(0, 0, 0, 0);
-        
+
         const diffTime = today - lastDate;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-        
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
         if (diffDays > 1) {
             activeStreak = 0;
             localStorage.setItem('streakCount', 0);
