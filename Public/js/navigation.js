@@ -128,26 +128,38 @@ function _showDexTab() {
     if (!dexTab) return;
 
     // 1. Inline-Styles cleanen (könnten von altem Lauf übrig sein)
-    dexTab.style.transition = '';
-    dexTab.style.opacity    = '';
-    dexTab.style.transform  = '';
+    dexTab.style.transition  = '';
+    dexTab.style.opacity     = '';
+    dexTab.style.transform   = '';
 
     // 2. Animation-Klasse vorab entfernen (damit sie frisch startet)
     dexTab.classList.remove('tab-dex-entering');
 
-    // 3. Aus dem hidden-Zustand holen
+    // 3. Scroll auf 0 setzen BEVOR der Tab sichtbar wird.
+    //    Der Tab ist jetzt noch tab-dex-hidden (position:absolute; height:0),
+    //    also hat der DOM noch keine Höhe. CSS Scroll Anchoring hat dann keinen
+    //    Anker-Kandidaten und verschiebt den Scroll nicht, wenn der lange
+    //    Alpha-Mode-Content gleich in den Flow zurückkehrt.
+    window.scrollTo(0, 0);
+
+    // 4. Aus dem hidden-Zustand holen
     dexTab.classList.remove('tab-dex-hidden');
     dexTab.dataset.tabState = 'visible';
 
-    // 4. Forced Reflow: Browser muss den alten Zustand commiten
-    //    bevor die Animation-Klasse gesetzt wird → Animation spielt sauber ab
+    // 5. Tab als eine Compositor-Layer promoten, BEVOR der Reflow stattfindet.
+    //    scale() der tabFadeIn-Animation läuft so auf dem pre-gerenderten
+    //    Tab-Layer statt auf 30 einzelnen brand-section Sub-Layern → O(1) composite.
+    dexTab.style.willChange = 'opacity, transform';
+
+    // 6. Forced Reflow: Browser committet den Zustand vor der Animation
     void dexTab.offsetWidth;
 
-    // 5. Animation-Klasse → identische tabFadeIn wie andere Tabs
+    // 7. Animation starten
     dexTab.classList.add('tab-dex-entering');
 
-    // 6. Scroll + Scale (ohne zusätzlichen RAF)
-    window.scrollTo(0, 0);
+    // 8. will-change nach Ende der Animation freigeben
+    setTimeout(() => { dexTab.style.willChange = ''; }, 300);
+
     updateDexScale();
 }
 

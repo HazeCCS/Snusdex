@@ -80,6 +80,17 @@ async function loadDex() {
     updateDexSortButtonUI();
     filterDex();
     renderSuggestions();
+
+    // Beide Modi' erste Bilder im Hintergrund cachen, damit ein Moduswechsel
+    // nie Lade-Platzhalter zeigt. Startet erst nach 500ms damit der initiale
+    // Paint und erste Chunk-Render nicht konkurrieren.
+    setTimeout(() => {
+        if (!globalSnusData.length) return;
+        const byId = globalSnusData.slice().sort((a, b) => parseInt(a.id) - parseInt(b.id));
+        preloadAllDexImages(byId.slice(0, 9));
+        const groups = groupAndSortByBrand(globalSnusData);
+        preloadAllDexImages(groups.slice(0, 3).flatMap(g => g.items.slice(0, 3)));
+    }, 500);
 }
 
 let currentDexRenderCount = 0;
@@ -115,6 +126,10 @@ function preloadAllDexImages(items) {
         .filter(url => !dexImageCache.has(url));
 
     if (queue.length === 0) return;
+
+    // Sofort als 'pending' markieren – verhindert doppelte Netzwerk-Requests
+    // wenn preloadAllDexImages mehrfach mit denselben URLs aufgerufen wird.
+    queue.forEach(url => dexImageCache.set(url, 'pending'));
 
     const MAX_CONCURRENT = 6;
     let active = 0;
@@ -157,6 +172,10 @@ function initImageLazyLoadObserver() {
             observer.unobserve(img);
 
             if (dexImageCache.get(src) === 'loaded') {
+                // Bild bereits vorgeladen → sofort anzeigen, keine 300ms Fade-Transition.
+                // transition-opacity duration-300 ist eine CSS-Klasse; style.transition
+                // überschreibt sie inline und macht den Übergang instantan.
+                img.style.transition = 'none';
                 img.src = src;
                 showImage();
                 return;
@@ -353,15 +372,6 @@ function filterDex() {
 
     const hasRealContent = grid.querySelector('.dex-anim-card, .brand-section') !== null;
 
-    // ── Grid-Layout je nach Sortierung setzen ────────────────────────────────
-    if (dexSortMode === 'alpha') {
-        grid.className = 'flex flex-col w-full';
-        if (dexObserver) dexObserver.disconnect();
-    } else {
-        const cols = localStorage.getItem('dexColumns') || '3';
-        grid.className = `grid ${cols === '2' ? 'grid-cols-2' : 'grid-cols-3'} gap-3`;
-    }
-
     // ── Falls kein echter Inhalt: Skeleton sofort zeigen, dann rendern ────────
     if (!hasRealContent) {
         _injectDexSkeleton(grid);
@@ -369,11 +379,39 @@ function filterDex() {
         _filterDexRaf = requestAnimationFrame(() => {
             _filterDexRaf = null;
             _executeDexRender(grid, filtered);
+
+            // Sichtbarste Bilder nachladen – nach dem ersten Render, damit
+            // der initiale Paint nicht verzögert wird.
+            setTimeout(() => {
+                if (dexSortMode === 'alpha') {
+                    const previewGroups = groupAndSortByBrand(filtered);
+                    const previewItems  = previewGroups.slice(0, 3).flatMap(g => g.items.slice(0, 3));
+                    preloadAllDexImages(previewItems);
+                } else {
+                    const sortedPreview = filtered.slice().sort((a, b) => parseInt(a.id) - parseInt(b.id));
+                    preloadAllDexImages(sortedPreview.slice(0, 9));
+                }
+            }, 150);
         });
         return;
     }
 
     // ── Echter Inhalt: kurzes Fade-Out, dann austauschen ─────────────────────
+    // Grid-Klasse NICHT hier setzen – erst in _executeDexRender(), damit das
+    // alte Content während des Fade-Outs noch im korrekten Layout bleibt.
+
+    // Während des Fade-Outs die sichtbarsten Bilder vorladen (3 Marken × 3 Items
+    // bzw. erste 9 IDs), damit sie cache-ready sind wenn der neue Content erscheint.
+    // Nur beim Sort-Toggle – nicht beim initialen Render (hasRealContent = false).
+    if (dexSortMode === 'alpha') {
+        const previewGroups = groupAndSortByBrand(filtered);
+        const previewItems  = previewGroups.slice(0, 3).flatMap(g => g.items.slice(0, 3));
+        preloadAllDexImages(previewItems);
+    } else {
+        const sortedPreview = filtered.slice().sort((a, b) => parseInt(a.id) - parseInt(b.id));
+        preloadAllDexImages(sortedPreview.slice(0, 9));
+    }
+
     grid.style.transition   = 'opacity 0.18s ease-out';
     grid.style.opacity      = '0';
     grid.style.pointerEvents = 'none';
@@ -383,6 +421,7 @@ function filterDex() {
         grid.style.transition    = 'none';
         grid.style.opacity       = '1';
         grid.style.pointerEvents = '';
+        window.scrollTo(0, 0);
 
         _executeDexRender(grid, filtered);
     }, 180);
@@ -417,6 +456,16 @@ function _injectDexSkeleton(grid) {
 }
 
 function _executeDexRender(grid, filtered) {
+    // Grid-Layout hier setzen (nicht in filterDex), damit altes Content
+    // während des Fade-Outs noch im korrekten Layout verbleibt.
+    if (dexSortMode === 'alpha') {
+        grid.className = 'flex flex-col w-full';
+        if (dexObserver) dexObserver.disconnect();
+    } else {
+        const cols = localStorage.getItem('dexColumns') || '3';
+        grid.className = `grid ${cols === '2' ? 'grid-cols-2' : 'grid-cols-3'} gap-3`;
+    }
+
     if (dexSortMode === 'alpha') {
         const groupedData = groupAndSortByBrand(filtered);
         renderDexGrouped(groupedData);

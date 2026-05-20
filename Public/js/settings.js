@@ -831,15 +831,20 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsSubpage.addEventListener('touchmove', (e) => {
         if (!touchStartX || !touchStartY) return;
 
-        let touchCurrentX = e.touches[0].clientX;
-        let touchCurrentY = e.touches[0].clientY;
+        const touchCurrentX = e.touches[0].clientX;
+        const touchCurrentY = e.touches[0].clientY;
+        const diffX = touchCurrentX - touchStartX;
+        const diffY = Math.abs(touchCurrentY - touchStartY);
 
-        let diffX = touchCurrentX - touchStartX;
-        let diffY = Math.abs(touchCurrentY - touchStartY);
-
-        if (diffY > Math.abs(diffX)) {
+        // once horizontal swipe is confirmed, lock ALL scroll for the rest of the gesture
+        if (isSwiping) {
+            if (e.cancelable) e.preventDefault();
+            if (diffX > 0) settingsSubpage.style.transform = `translateX(${diffX}px)`;
             return;
         }
+
+        // first move: decide gesture direction
+        if (diffY > Math.abs(diffX)) return; // vertical → don't interfere
 
         if (diffX > 0) {
             if (e.cancelable) e.preventDefault();

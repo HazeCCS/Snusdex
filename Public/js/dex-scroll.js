@@ -353,6 +353,7 @@ function _initBrandLazyObserver(myGen) {
     }
 
     _brandLazyObserver = new IntersectionObserver((entries) => {
+        const pending = [];
         entries.forEach(entry => {
             if (!entry.isIntersecting) return;
 
@@ -362,10 +363,18 @@ function _initBrandLazyObserver(myGen) {
                 return;
             }
 
-            const sentinel = entry.target;
-            _brandLazyObserver.unobserve(sentinel);
-            _inflatesBrandSentinel(sentinel, myGen);
+            _brandLazyObserver.unobserve(entry.target);
+            pending.push(entry.target);
         });
+
+        // Alle fälligen Sentinels in einem einzigen rAF inflaten –
+        // verhindert aufeinanderfolgende Forced Reflows wenn rootMargin
+        // mehrere Sentinels gleichzeitig sichtbar macht.
+        if (pending.length > 0) {
+            requestAnimationFrame(() => {
+                pending.forEach(sentinel => _inflatesBrandSentinel(sentinel, myGen));
+            });
+        }
     }, {
         // 600px rootMargin: Brand-Sections ~1-2 Scrollbewegungen im Voraus laden
         rootMargin: '0px 0px 600px 0px'
@@ -422,7 +431,7 @@ function _inflatesBrandSentinel(sentinel, myGen) {
     section.style.marginRight = '-20px';
     section.style.width       = 'calc(100% + 40px)';
     // Kurze Fade-Animation beim Einblenden – kein inline opacity (würde Animation überschreiben)
-    section.style.animation   = `brandSectionIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) both`;
+    section.style.animation   = `brandSectionIn 0.12s cubic-bezier(0.4, 0, 0.2, 1) both`;
 
     const header   = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
     let cardsHTML  = '';
@@ -499,7 +508,7 @@ function renderDexGrouped(groupedData) {
             section.style.marginRight = '-20px';
             section.style.width       = 'calc(100% + 40px)';
             // Staggered Fade – kein inline opacity (überschreibt Keyframes)
-            section.style.animation   = `brandSectionIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) ${globalIndex * 55}ms both`;
+            section.style.animation   = `brandSectionIn 0.15s cubic-bezier(0.4, 0, 0.2, 1) ${globalIndex * 40}ms both`;
 
             const header   = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
             let cardsHTML  = '';
@@ -595,7 +604,7 @@ function initBrandScrollAnimation(container) {
         });
     };
 
-    updateScale(); // Initialer Aufruf
+    requestAnimationFrame(updateScale); // Initialer Aufruf – defer verhindert Forced Reflow nach innerHTML-Write
 
     const onScroll = () => {
         if (!rafPending) {
