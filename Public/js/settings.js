@@ -205,17 +205,54 @@ function setMetalCardIntensity(val) {
     if (valEl) valEl.innerText = parseFloat(val).toFixed(1) + 'x';
 }
 
-function openSettingsSubpage(type) {
+// ── GitHub subpage helpers ─────────────────────────────────────────────────
+
+function _ghRelTime(isoStr) {
+    const diff = Date.now() - new Date(isoStr).getTime();
+    const m = Math.floor(diff / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24);
+    return d > 0 ? `${d}d ago` : h > 0 ? `${h}h ago` : m > 0 ? `${m}m ago` : 'just now';
+}
+
+function _ghMarkdown(md) {
+    let h = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    h = h.replace(/```[\w]*\n([\s\S]*?)```/g, (_,c) =>
+        `<pre style="background:#1C1C1E;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;overflow-x:auto;font-family:Menlo,monospace;font-size:12px;color:#e2e2e2;margin:8px 0;white-space:pre-wrap">${c.trim()}</pre>`);
+    h = h.replace(/^### (.+)$/gm, '<h3 style="color:#fff;font-size:15px;font-weight:700;margin:14px 0 4px">$1</h3>');
+    h = h.replace(/^## (.+)$/gm,  '<h2 style="color:#fff;font-size:18px;font-weight:700;margin:18px 0 6px">$1</h2>');
+    h = h.replace(/^# (.+)$/gm,   '<h1 style="color:#fff;font-size:21px;font-weight:800;margin:0 0 8px">$1</h1>');
+    h = h.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em style="color:#ddd">$1</em></strong>');
+    h = h.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#fff">$1</strong>');
+    h = h.replace(/\*(.+?)\*/g,    '<em style="color:#ccc">$1</em>');
+    h = h.replace(/`([^`\n]+)`/g,  '<code style="background:#2a2a35;color:#e2e2e2;padding:1px 6px;border-radius:4px;font-family:Menlo,monospace;font-size:12px">$1</code>');
+    h = h.replace(/^[\-\*\+] (.+)$/gm, '<li style="color:#8E8E93;font-size:15px;line-height:1.5;margin:2px 0;margin-left:16px;list-style-type:disc">$1</li>');
+    h = h.replace(/^\d+\. (.+)$/gm,    '<li style="color:#8E8E93;font-size:15px;line-height:1.5;margin:2px 0;margin-left:16px;list-style-type:decimal">$1</li>');
+    h = h.replace(/^---+$/gm,      '<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:14px 0">');
+    h = h.replace(/!\[[^\]]*\]\([^)]+\)/g, '');
+    h = h.replace(/\[([^\]]+)\]\([^)]+\)/g, '<span style="color:#0A84FF">$1</span>');
+    h = h.replace(/\n\n/g, '</p><p style="color:#8E8E93;font-size:15px;line-height:1.6;margin:8px 0">');
+    h = h.replace(/\n/g, '<br>');
+    return `<p style="color:#8E8E93;font-size:15px;line-height:1.6;margin:0 0 8px">${h}</p>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+function openSettingsSubpage(type, _pushHistory) {
+    if (_pushHistory !== false) {
+        if (!window._subpageHistory) window._subpageHistory = [];
+        if (window._currentSubpageType) window._subpageHistory.push(window._currentSubpageType);
+    }
     const subpage = document.getElementById('settings-subpage');
     const titleObj = document.getElementById('subpage-title');
     const contentObj = document.getElementById('subpage-content');
+    contentObj.className = 'flex-1 overflow-y-auto px-5 py-6 pb-24';
 
     const _subpageTitleMap = {
         'Edit Profile': 'settings.editProfile', 'Stats': 'settings.stats',
         'Notifications': 'settings.notifications', 'Privacy & Security': 'settings.privacy',
         'Language': 'settings.language', 'Darstellung': 'settings.appearance',
         'Tracking': 'settings.tracking', 'Help Center & FAQ': 'settings.helpCenter',
-        'Delete Account': 'settings.deleteAccount'
+        'Delete Account': 'settings.deleteAccount',
+        'GitHub': 'GitHub', 'README': 'README', 'Architecture Map': 'Architecture Map',
     };
     titleObj.innerText = t(_subpageTitleMap[type] || type);
     window._currentSubpageType = type;
@@ -752,9 +789,121 @@ function openSettingsSubpage(type) {
                 ${t('deleteAccount.cancel')}
             </button>
         `;
+
+    } else if (type === 'GitHub') {
+        const _spinnerSvg = `<svg class="animate-spin w-4 h-4 text-[#8E8E93]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
+        const _errRow = `<div class="flex items-center gap-2 px-5 py-5"><svg class="w-4 h-4 text-[#FFD60A] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span class="text-[#8E8E93] text-[14px]">Repository is private or rate limit reached.</span></div>`;
+        html = `
+            <div class="flex gap-3 mb-6">
+                <button onclick="triggerHapticFeedback(); openSettingsSubpage('Architecture Map')"
+                    class="flex-1 bg-[#1C1C1E] rounded-[20px] border border-white/10 py-5 flex flex-col items-center gap-2 active:bg-white/5 transition-colors shadow-sm">
+                    <svg class="w-7 h-7 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"/></svg>
+                    <span class="text-white text-[13px] font-semibold">Architecture Map</span>
+                </button>
+                <button onclick="triggerHapticFeedback(); openSettingsSubpage('README')"
+                    class="flex-1 bg-[#1C1C1E] rounded-[20px] border border-white/10 py-5 flex flex-col items-center gap-2 active:bg-white/5 transition-colors shadow-sm">
+                    <svg class="w-7 h-7 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+                    <span class="text-white text-[13px] font-semibold">README</span>
+                </button>
+            </div>
+            <p class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium mb-3 px-1">Recent Commits</p>
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
+                <div id="gh-commits-container" class="flex items-center justify-center py-8 gap-2">
+                    ${_spinnerSvg}<span class="text-[#8E8E93] text-[14px]">Loading commits…</span>
+                </div>
+            </div>
+        `;
+        setTimeout(async () => {
+            const el = document.getElementById('gh-commits-container');
+            if (!el) return;
+            try {
+                const res = await fetch('https://api.github.com/repos/HazeCCS/Snusdex/commits?per_page=20');
+                if (!res.ok) throw new Error('private');
+                const data = await res.json();
+                el.className = '';
+                el.style.opacity = '0';
+                el.innerHTML = data.map((c, i) => {
+                    const msg = c.commit.message.split('\n')[0];
+                    const sha = c.sha.substring(0, 7);
+                    const author = c.commit.author.name;
+                    const time = _ghRelTime(c.commit.author.date);
+                    const div = i > 0 ? '<div class="h-[1px] bg-white/5 mx-5"></div>' : '';
+                    return `${div}
+                    <div class="px-5 py-4">
+                        <p class="text-white text-[15px] font-medium leading-snug">${msg.length > 72 ? msg.substring(0,72)+'…' : msg}</p>
+                        <p class="text-[#8E8E93] text-[13px] mt-1.5"><span style="font-family:Menlo,monospace;color:rgba(255,255,255,.35)">${sha}</span> · ${author} · ${time}</p>
+                    </div>`;
+                }).join('');
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    el.style.transition = 'opacity 0.55s ease';
+                    el.style.opacity = '1';
+                }));
+            } catch(e) { el.innerHTML = _errRow; }
+        }, 0);
+
+    } else if (type === 'README') {
+        const _spinnerSvg = `<svg class="animate-spin w-4 h-4 text-[#8E8E93]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
+        html = `
+            <div id="gh-readme-container" class="flex items-center justify-center py-8 gap-2">
+                ${_spinnerSvg}<span class="text-[#8E8E93] text-[14px]">Loading README…</span>
+            </div>
+        `;
+        setTimeout(async () => {
+            const el = document.getElementById('gh-readme-container');
+            if (!el) return;
+            try {
+                const res = await fetch('https://raw.githubusercontent.com/HazeCCS/Snusdex/main/README.md');
+                if (!res.ok) throw new Error('not found');
+                const md = await res.text();
+                el.className = 'pb-8';
+                el.style.wordBreak = 'break-word';
+                el.style.opacity = '0';
+                el.innerHTML = _ghMarkdown(md);
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    el.style.transition = 'opacity 0.55s ease';
+                    el.style.opacity = '1';
+                }));
+            } catch(e) {
+                el.innerHTML = `<div class="flex items-center gap-2 px-1 py-4"><svg class="w-4 h-4 text-[#FFD60A] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span class="text-[#8E8E93] text-[14px]">README not found or repository is private.</span></div>`;
+            }
+        }, 0);
+
+    } else if (type === 'Architecture Map') {
+        contentObj.className = 'flex-1 overflow-hidden p-0 relative';
+        html = `
+            <div id="arch-map-loader" style="position:absolute;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;transition:opacity 0.4s ease">
+                <p style="color:rgba(255,255,255,.7);font-size:17px;font-weight:600;letter-spacing:-.3px;margin-bottom:20px">Architecture Map</p>
+                <div style="width:200px;height:3px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden">
+                    <div id="arch-map-bar" style="height:100%;width:0%;background:rgba(255,255,255,.85);border-radius:999px;transition:width 1.6s cubic-bezier(0.4,0,0.2,1)"></div>
+                </div>
+            </div>
+            <iframe id="arch-map-iframe" src="../architecture-map.html"
+                style="width:100%;height:100%;border:none;display:block;position:absolute;inset:0"
+                allow="fullscreen">
+            </iframe>`;
     }
 
     contentObj.innerHTML = html;
+
+    if (type === 'Architecture Map') {
+        let _barDone = false, _iframeLoaded = false;
+        function _tryDismissLoader() {
+            if (!_barDone || !_iframeLoaded) return;
+            const l = document.getElementById('arch-map-loader');
+            if (l) { l.style.opacity = '0'; setTimeout(() => l.remove(), 400); }
+        }
+        requestAnimationFrame(() => {
+            const bar = document.getElementById('arch-map-bar');
+            if (bar) {
+                bar.style.width = '100%';
+                bar.addEventListener('transitionend', () => { _barDone = true; _tryDismissLoader(); }, { once: true });
+            }
+        });
+        const iframe = document.getElementById('arch-map-iframe');
+        if (iframe) {
+            iframe.addEventListener('load', () => { _iframeLoaded = true; _tryDismissLoader(); });
+        }
+    }
 
     if (type === 'Edit Profile') {
         renderBadgeSelectorItems();
@@ -796,6 +945,14 @@ function refreshLangPage() {
 window.refreshLangPage = refreshLangPage;
 
 function closeSettingsSubpage() {
+    if (window._subpageHistory && window._subpageHistory.length > 0) {
+        const prev = window._subpageHistory.pop();
+        openSettingsSubpage(prev, false);
+        return;
+    }
+    window._subpageHistory = [];
+    window._currentSubpageType = null;
+
     const subpage = document.getElementById('settings-subpage');
     if (!subpage) return;
 
@@ -807,7 +964,6 @@ function closeSettingsSubpage() {
 
     setTimeout(() => {
         subpage.classList.add('hidden');
-
         document.body.classList.remove('overflow-hidden');
     }, 300);
 }
