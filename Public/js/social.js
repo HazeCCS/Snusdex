@@ -207,7 +207,7 @@ async function loadMostScannedThisWeek() {
 
     _socialListData.days7 = mapToSnus(data?.most_scanned_7d, 'scan_count');
     _socialListData.today = mapToSnus(data?.most_scanned_today, 'scan_count');
-    _socialListData.topRated = mapToSnus(data?.top_rated_7d, 'rating_count');
+    _socialListData.topRated = mapToSnus(data?.top_rated_all_time, 'rating_count');
 
     renderSocialListUI();
 }
@@ -231,7 +231,7 @@ function renderSocialListUI() {
     } else {
         items = _socialListData.topRated;
         title = t('social.topRated');
-        countLabel = t('social.scoreLabel');
+        countLabel = t('social.ratingsLabel');
     }
 
     const scoreColor = (v) => {
@@ -289,7 +289,7 @@ function renderSocialListUI() {
 
             let countText = '';
             if (_socialListMode === 2) {
-                countText = t('social.rank', { n: rank });
+                countText = `${item.count} ${countLabel}`;
             } else {
                 countText = `${item.count} ${countLabel}`;
             }
@@ -1278,3 +1278,98 @@ document.addEventListener('DOMContentLoaded', () => {
         isSwiping = false;
     });
 });
+
+window.loadActivityHeatmap = async function() {
+    const container = document.getElementById('heatmap-container');
+    if (!container) return;
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        const today = new Date();
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(today.getMonth() - 5);
+        sixMonthsAgo.setDate(1);
+
+        const { data, error } = await supabaseClient
+            .from('daily_consumption')
+            .select('date, pouches_taken')
+            .eq('user_id', user.id)
+            .gte('date', sixMonthsAgo.toISOString().split('T')[0])
+            .order('date', { ascending: true });
+
+        if (error) {
+            console.error("Error fetching heatmap data:", error);
+            return;
+        }
+
+        const consumptionMap = {};
+        if (data) {
+            data.forEach(row => {
+                consumptionMap[row.date] = row.pouches_taken;
+            });
+        }
+
+        let html = '';
+        const monthsStr = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        let globalWeekCount = 0;
+
+        for (let m = 5; m >= 0; m--) {
+            const date = new Date(today.getFullYear(), today.getMonth() - m, 1);
+            const month = date.getMonth();
+            const year = date.getFullYear();
+            
+            html += `<div class="flex flex-col min-w-[max-content] snap-start">`;
+            html += `<span class="text-[10px] text-[#8E8E93] font-semibold mb-2 ml-1">${monthsStr[month]}</span>`;
+            
+            html += `<div class="grid grid-rows-7 gap-[3px] grid-flow-col">`;
+            
+            const firstDayDate = new Date(year, month, 1);
+            let firstDay = firstDayDate.getDay(); 
+            firstDay = firstDay === 0 ? 6 : firstDay - 1;
+            
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            for(let i=0; i<firstDay; i++) {
+                html += `<div class="w-3 h-3 rounded-[3px] bg-transparent"></div>`;
+            }
+            
+            let currentMonthWeeks = Math.ceil((daysInMonth + firstDay) / 7);
+            
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const amount = consumptionMap[dateStr] || 0;
+                
+                // Random delay between 0 and 4 seconds for "game of life" / twinkling effect
+                let delay = (Math.random() * 4).toFixed(2);
+                
+                let colorClass = 'heatmap-hole';
+                let styleStr = `style="animation-delay: -${delay}s"`;
+                
+                if (amount > 0) {
+                    styleStr = '';
+                    if (amount <= 2) colorClass = 'bg-[#4a1c1c]';
+                    else if (amount <= 5) colorClass = 'bg-[#7d2020]';
+                    else if (amount <= 8) colorClass = 'bg-[#b82323]';
+                    else if (amount <= 11) colorClass = 'bg-[#e62e2e]';
+                    else colorClass = 'bg-[#FF3B30]';
+                }
+                
+                html += `<div class="w-3 h-3 rounded-[3px] ${colorClass}" ${styleStr}></div>`;
+            }
+            
+            globalWeekCount += currentMonthWeeks;
+            html += `</div></div>`;
+        }
+
+        container.innerHTML = html;
+        
+        setTimeout(() => {
+            container.scrollLeft = container.scrollWidth;
+        }, 100);
+
+    } catch (err) {
+        console.error("Heatmap error:", err);
+    }
+};

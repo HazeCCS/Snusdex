@@ -86,6 +86,7 @@ function switchTab(tabId) {
             renderSocialFromCache();
         }
         loadBadges();
+        if (typeof loadActivityHeatmap === 'function') loadActivityHeatmap();
     }
 
     if (tabId === 'profile') {
