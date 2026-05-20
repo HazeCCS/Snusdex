@@ -278,9 +278,11 @@ async function cycleScanCamera() {
     // If zoom is supported by the current track, use applyConstraints
     if (scanCurrentTrack && typeof scanCurrentTrack.getCapabilities === 'function') {
         const capabilities = scanCurrentTrack.getCapabilities();
-        if (capabilities.zoom && mode.zoom !== null) {
+        if (capabilities.zoom) {
             try {
-                const clampedZoom = Math.min(Math.max(mode.zoom, capabilities.zoom.min), capabilities.zoom.max);
+                // null = Normal = 1.0x; always apply so switching Tele→Normal resets zoom
+                const targetZoom = mode.zoom !== null ? mode.zoom : 1.0;
+                const clampedZoom = Math.min(Math.max(targetZoom, capabilities.zoom.min), capabilities.zoom.max);
                 await scanCurrentTrack.applyConstraints({ advanced: [{ zoom: clampedZoom }] });
                 return;
             } catch (e) {
@@ -288,7 +290,6 @@ async function cycleScanCamera() {
             }
         }
     }
-    // Fallback: restart scanner with a zoom hint (no-op on unsupported devices)
     console.log(`Camera mode set to: ${mode.labelKey} (hardware zoom not available on this device)`);
 }
 
