@@ -342,6 +342,61 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
     `;
 }
 
+// Tracked scroll listener refs so we can remove them on re-render
+let _brandScrollListeners = [];
+
+// Batched scale-update für alle übergebenen Carousels: erst ALLE Rects lesen,
+// dann ALLE Styles schreiben → kein Layout-Thrashing über Carousel-Grenzen.
+function _updateCarouselScales(containers) {
+    if (!containers.length) return;
+
+    const focusRatio = 0.35;
+    const fadeRatio  = 0.15;
+
+    // Phase 1 – alle BCR Reads (kein Style-Write)
+    const data = containers.map(container => {
+        const cr   = container.getBoundingClientRect();
+        const cc   = cr.left + cr.width / 2;
+        const fw   = cr.width * focusRatio;
+        const fz   = cr.width * fadeRatio;
+        const cards = Array.from(container.querySelectorAll('.brand-anim-card'));
+        return { cards, cc, fw, fz, rects: cards.map(c => c.getBoundingClientRect()) };
+    });
+
+    // Phase 2 – alle Style Writes
+    data.forEach(({ cards, cc, fw, fz, rects }) => {
+        cards.forEach((card, i) => {
+            const dist = Math.abs(cc - (rects[i].left + rects[i].width / 2));
+            let scale = 1, opacity = 1;
+            if (dist > fw) {
+                const p = Math.min((dist - fw) / fz, 1);
+                scale   = 1 - 0.15 * p;
+                opacity = 1 - 0.6  * p;
+            }
+            card.style.transform = `scale(${scale})`;
+            card.style.opacity   = opacity;
+        });
+    });
+}
+
+function initBrandScrollAnimation(container) {
+    const cards = container.querySelectorAll('.brand-anim-card');
+    if (!cards.length) return;
+
+    let rafPending = false;
+    const onScroll = () => {
+        if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(() => {
+                rafPending = false;
+                _updateCarouselScales([container]);
+            });
+        }
+    };
+    container.addEventListener('scroll', onScroll, { passive: true });
+    _brandScrollListeners.push({ el: container, fn: onScroll });
+}
+
 // ─── Brand Observer für lazy Brand-Sections ──────────────────────────────────
 // Ersetzt Placeholder-Sentinels mit echtem Brand-Inhalt wenn sie in den View kommen.
 let _brandLazyObserver = null;
@@ -456,6 +511,13 @@ function _inflatesBrandSentinel(sentinel, myGen) {
         img.classList.add('observed');
         imageLazyObserver.observe(img);
     });
+
+    const carousel = section.querySelector('.brand-carousel:not(.anim-init)');
+    if (carousel) {
+        carousel.classList.add('anim-init');
+        initBrandScrollAnimation(carousel);
+        requestAnimationFrame(() => _updateCarouselScales([carousel]));
+    }
 }
 
 // ─── Render-Generation-Guard ─────────────────────────────────────────────────
@@ -470,6 +532,10 @@ function renderDexGrouped(groupedData) {
 
     // Neue Generation – veraltete Observer-Callbacks ignorieren sich selbst
     const myGen = ++_dexRenderGen;
+
+    // Bestehende Carousel-Scroll-Listener aufräumen
+    _brandScrollListeners.forEach(({ el, fn }) => el.removeEventListener('scroll', fn));
+    _brandScrollListeners = [];
 
     // Brand-Lazy-Observer für diese Render-Runde initialisieren
     _initBrandLazyObserver(myGen);
@@ -537,6 +603,16 @@ function renderDexGrouped(groupedData) {
             img.classList.add('observed');
             imageLazyObserver.observe(img);
         });
+
+        // Carousels der ersten Chunk: Scroll-Listener registrieren,
+        // dann EINEN gebatchten Scale-Pass für alle zusammen.
+        const firstCarousels = [];
+        grid.querySelectorAll('.brand-section .brand-carousel:not(.anim-init)').forEach(carousel => {
+            carousel.classList.add('anim-init');
+            initBrandScrollAnimation(carousel);
+            firstCarousels.push(carousel);
+        });
+        if (firstCarousels.length) _updateCarouselScales(firstCarousels);
 
         // Alle Sentinels beim Brand-Observer anmelden
         grid.querySelectorAll('.brand-section-sentinel').forEach(sentinel => {
