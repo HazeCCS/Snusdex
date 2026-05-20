@@ -274,6 +274,10 @@ const TRANSLATIONS = {
         'appearance.largeTilesDesc': 'Shows 2 instead of 3 columns in the Dex',
         'appearance.tileGlow': 'Tile Glow',
         'appearance.tileGlowDesc': 'Colored background glow based on rarity',
+        'appearance.cardGlow': 'Card Glow',
+        'appearance.intensity': 'Intensity',
+        'appearance.cardGlowDesc': 'Customize the animated background of your Collector Card. Unlock new colors by discovering new rarities.',
+        'appearance.dexSettings': 'Dex Settings',
 
         // Settings – Language
         'language.title': 'Language',
@@ -635,6 +639,10 @@ const TRANSLATIONS = {
         'appearance.largeTilesDesc': 'Zeigt 2 statt 3 Spalten im Dex an',
         'appearance.tileGlow': 'Kachel Glow',
         'appearance.tileGlowDesc': 'Farbiger Hintergrund-Glow der Seltenheit',
+        'appearance.cardGlow': 'Card Glow',
+        'appearance.intensity': 'Intensität',
+        'appearance.cardGlowDesc': 'Passe den animierten Hintergrund deiner Collector Card an. Neue Farben schaltest du durch das Entdecken neuer Raritäten frei.',
+        'appearance.dexSettings': 'Dex-Einstellungen',
 
         // Settings – Language
         'language.title': 'Sprache',
@@ -996,6 +1004,10 @@ const TRANSLATIONS = {
         'appearance.largeTilesDesc': 'Показывает 2 вместо 3 столбцов в Дексе',
         'appearance.tileGlow': 'Свечение плиток',
         'appearance.tileGlowDesc': 'Цветное фоновое свечение в зависимости от редкости',
+        'appearance.cardGlow': 'Свечение карты',
+        'appearance.intensity': 'Интенсивность',
+        'appearance.cardGlowDesc': 'Настройте анимированный фон вашей карточки коллекционера. Новые цвета открываются при обнаружении новых редкостей.',
+        'appearance.dexSettings': 'Настройки Декса',
 
         // Settings – Language
         'language.title': 'Язык',

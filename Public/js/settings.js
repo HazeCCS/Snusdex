@@ -65,11 +65,8 @@ function setMetalCardColor(colorId, colorHex) {
     document.documentElement.style.setProperty('--card-glow-color', colorHex);
     
     const subpage = document.getElementById('settings-subpage');
-    if (subpage && !subpage.classList.contains('hidden')) {
-        const titleObj = document.getElementById('subpage-title');
-        if (titleObj && titleObj.innerText === 'Darstellung') {
-            openSettingsSubpage('Darstellung'); 
-        }
+    if (subpage && !subpage.classList.contains('hidden') && window._currentSubpageType === 'Darstellung') {
+        openSettingsSubpage('Darstellung');
     }
 }
 
@@ -137,7 +134,7 @@ function openSettingsSubpage(type) {
             </div>
 
             <div class="w-full mb-4">
-                <p class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium mb-3 px-1">Featured Badge</p>
+                <p class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium mb-3 px-1">${t('editProfile.featuredBadge')}</p>
                 <div id="badge-selector-scroll" class="flex gap-3 overflow-x-auto pb-1 px-1" style="scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;">
                     <div onclick="triggerHapticFeedback();selectFeaturedBadge(null,this)" data-badge-id="none"
                         class="badge-sel-item flex-shrink-0 flex flex-col items-center gap-2">
@@ -146,36 +143,33 @@ function openSettingsSubpage(type) {
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
                         </div>
-                        <span class="text-[11px] text-[#8E8E93]">Keins</span>
+                        <span class="text-[11px] text-[#8E8E93]">${t('editProfile.none')}</span>
                     </div>
                 </div>
             </div>
 
             <div class="bg-[#1C1C1E] rounded-[24px] border border-white/10 shadow-sm w-full overflow-hidden mb-4">
-                <!-- Username -->
                 <div class="px-5 pt-4 pb-3">
                     <div class="flex items-center justify-between mb-2">
-                        <label class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium">Username</label>
+                        <label class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium">${t('editProfile.username')}</label>
                         <span id="username-changes-left">${changesLabel}</span>
                     </div>
                     <input type="text" id="edit-username" value=""
                         class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all placeholder:text-[#8E8E93]/60"
-                        placeholder="${cachedUsername || 'Username'}"
+                        placeholder="${cachedUsername || t('editProfile.username')}"
                         oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'')">
                     <p id="edit-username-error" class="hidden text-[#FF3B30] text-[13px] mt-2"></p>
-                    <p class="text-[11px] text-[#8E8E93] mt-2">3 changes per month</p>
+                    <p class="text-[11px] text-[#8E8E93] mt-2">${t('editProfile.changesPerMonth')}</p>
                 </div>
 
-                <!-- Email -->
                 <div class="px-5 py-4">
-                    <label class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium block mb-2">Email</label>
+                    <label class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium block mb-2">${t('editProfile.email')}</label>
                     <input type="email" id="edit-email" value="${cachedEmail}" disabled class="w-full bg-black/50 text-[#8E8E93] border border-white/5 rounded-[14px] px-4 py-3.5 text-[17px] outline-none cursor-not-allowed">
                 </div>
 
-                <!-- Save Changes inside the card -->
                 <div class="px-5 pb-4">
                     <button id="save-profile-btn" onclick="triggerHapticFeedback(); handleProfileSave(this)" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-all duration-300 shadow-[0_4px_14px_rgba(255,255,255,0.1)] flex justify-center items-center gap-2">
-                        <span>Save Changes</span>
+                        <span>${t('editProfile.saveChanges')}</span>
                     </button>
                 </div>
             </div>
@@ -273,7 +267,7 @@ function openSettingsSubpage(type) {
 
                     <!-- Footer Info -->
                     <div class="w-full bg-white/5 rounded-xl py-1.5 px-3 flex justify-between items-center mt-auto">
-                        <span class="text-[11px] font-medium text-[#8E8E93] uppercase tracking-wider">Collected</span>
+                        <span class="text-[11px] font-medium text-[#8E8E93] uppercase tracking-wider">${t('stats.collected')}</span>
                         <span class="text-[13px] font-semibold text-white">
                             ${stat.unlocked} <span class="text-[#8E8E93] font-normal">/ ${stat.total}</span>
                         </span>
@@ -286,7 +280,7 @@ function openSettingsSubpage(type) {
 
         html = `
             <p class="text-[#8E8E93] text-[15px] mb-6 leading-relaxed">
-                Verfolge deinen Sammler-Fortschritt sortiert nach Snus-Marken.
+                ${t('stats.subtitle')}
             </p>
             ${gridHTML}
         `;
@@ -294,34 +288,34 @@ function openSettingsSubpage(type) {
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex items-center justify-between p-5">
-                    <span class="text-white text-[17px]">Push Notifications</span>
+                    <span class="text-white text-[17px]">${t('notifications.pushNotifications')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
                 <div class="flex items-center justify-between p-5">
-                    <span class="text-white text-[17px]">New Snus Drops (Dex)</span>
+                    <span class="text-white text-[17px]">${t('notifications.newSnusDrops')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
                 <div class="flex items-center justify-between p-5">
-                    <span class="text-white text-[17px]">Email Summaries</span>
+                    <span class="text-white text-[17px]">${t('notifications.emailSummaries')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-[#3A3A3C] rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm"></div></div>
                 </div>
             </div>
         `;
     } else if (type === 'Privacy & Security') {
         html = `
-            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">Profile Visibility</p>
+            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">${t('privacy.profileVisibility')}</p>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 mb-8">
                 <div class="flex items-center justify-between p-5">
-                    <span class="text-white text-[17px]">Private Profile</span>
+                    <span class="text-white text-[17px]">${t('privacy.privateProfile')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-[#3A3A3C] rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm"></div></div>
                 </div>
             </div>
-            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">Data</p>
+            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">${t('privacy.data')}</p>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex items-center justify-between p-5">
-                    <span class="text-white text-[17px]">Share Analytics</span>
+                    <span class="text-white text-[17px]">${t('privacy.shareAnalytics')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
                 </div>
             </div>
@@ -337,8 +331,8 @@ function openSettingsSubpage(type) {
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex items-center justify-between p-5">
                     <div class="flex flex-col pr-4">
-                        <span class="text-white text-[17px]">Individual Pouch Tracking</span>
-                        <span class="text-[#8E8E93] text-[13px] mt-0.5">Tracke jeden einzelnen Pouch anstatt nur die ganze Dose am Ende.</span>
+                        <span class="text-white text-[17px]">${t('tracking.title')}</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('tracking.desc')}</span>
                     </div>
                     <div onclick="triggerHapticFeedback(); toggleTrackingMode(this)" class="w-12 h-7 ${trackToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${trackHandleBg} rounded-full transition-transform duration-300 ${trackHandleTransform} shadow-sm"></div></div>
                 </div>
@@ -436,47 +430,47 @@ function openSettingsSubpage(type) {
         const activeIntensity = localStorage.getItem('metalCardIntensity') || '1';
 
         html = `
-            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">Card Glow</h3>
+            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">${t('appearance.cardGlow')}</h3>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 p-5 mb-6">
                 <div class="flex flex-wrap gap-4 pb-2">
                     ${colorOptionsHTML}
                 </div>
                 <div class="mt-4 border-t border-white/5 pt-4">
                     <div class="flex justify-between items-center mb-3">
-                        <span class="text-white text-[15px]">Intensität</span>
+                        <span class="text-white text-[15px]">${t('appearance.intensity')}</span>
                         <span id="glow-intensity-val" class="text-[#8E8E93] text-[13px] font-medium">${parseFloat(activeIntensity).toFixed(1)}x</span>
                     </div>
                     <input type="range" min="1" max="4" step="0.1" id="glow-intensity" value="${activeIntensity}" oninput="setMetalCardIntensity(this.value)" class="w-full h-1.5 bg-[#3A3A3C] rounded-full appearance-none outline-none accent-white">
                 </div>
-                <p class="text-[12px] text-[#8E8E93] mt-4">Passe den animierten Hintergrund deiner Collector Card an. Neue Farben schaltest du durch das Entdecken neuer Raritäten frei.</p>
+                <p class="text-[12px] text-[#8E8E93] mt-4">${t('appearance.cardGlowDesc')}</p>
             </div>
 
-            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">Dex Settings</h3>
+            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">${t('appearance.dexSettings')}</h3>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex flex-col p-5">
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex flex-col pr-4">
-                            <span class="text-white text-[17px]">Standard-Sortierung: Marke</span>
-                            <span class="text-[#8E8E93] text-[13px] mt-0.5">Startet den Dex nach Marke statt ID sortiert.</span>
+                            <span class="text-white text-[17px]">${t('appearance.defaultSort')}</span>
+                            <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('appearance.defaultSortDesc')}</span>
                         </div>
                         <div onclick="triggerHapticFeedback(); toggleDefaultSort(this)" class="w-12 h-7 ${sortToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${sortHandleBg} rounded-full transition-transform duration-300 ${sortHandleTransform} shadow-sm"></div></div>
                     </div>
-                    <p class="text-[12px] text-[#FF3B30] font-semibold leading-tight">⚠️ Vorsicht beim Aktivieren: Dieses Feature verursacht Lags und könnte zu Abstürzen führen. Bitte nur auf eigenes Risiko verwenden.</p>
+                    <p class="text-[12px] text-[#FF3B30] font-semibold leading-tight">${t('appearance.warning')}</p>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
 
                 <div class="flex items-center justify-between p-5">
                     <div class="flex flex-col pr-4">
-                        <span class="text-white text-[17px]">Große Kacheln</span>
-                        <span class="text-[#8E8E93] text-[13px] mt-0.5">Zeigt 2 statt 3 Spalten im Dex an</span>
+                        <span class="text-white text-[17px]">${t('appearance.largeTiles')}</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('appearance.largeTilesDesc')}</span>
                     </div>
                     <div onclick="triggerHapticFeedback(); toggleGridColumns(this)" class="w-12 h-7 ${toggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${handleBg} rounded-full transition-transform duration-300 ${handleTransform} shadow-sm"></div></div>
                 </div>
                 <div class="h-[1px] bg-white/5 mx-5"></div>
                 <div class="flex items-center justify-between p-5">
                     <div class="flex flex-col pr-4">
-                        <span class="text-white text-[17px]">Kachel Glow</span>
-                        <span class="text-[#8E8E93] text-[13px] mt-0.5">Farbiger Hintergrund-Glow der Seltenheit</span>
+                        <span class="text-white text-[17px]">${t('appearance.tileGlow')}</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('appearance.tileGlowDesc')}</span>
                     </div>
                     <div onclick="triggerHapticFeedback(); toggleGridGlow(this)" class="w-12 h-7 ${glowToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${glowHandleBg} rounded-full transition-transform duration-300 ${glowHandleTransform} shadow-sm"></div></div>
                 </div>
@@ -486,25 +480,25 @@ function openSettingsSubpage(type) {
         html = `
             <div class="space-y-4">
                 <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
-                    <h3 class="text-white font-medium mb-1">How does the Dex work?</h3>
-                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">Every time you scan a new can, it gets added to your permanent Snusdex collection. You earn XP for rarities.</p>
+                    <h3 class="text-white font-medium mb-1">${t('helpCenter.q1')}</h3>
+                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">${t('helpCenter.a1')}</p>
                 </div>
                 <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
-                    <h3 class="text-white font-medium mb-1">Can I manually add a Snus?</h3>
-                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">Currently, scanning the barcode is required to verify the product and maintain the integrity of the Dex.</p>
+                    <h3 class="text-white font-medium mb-1">${t('helpCenter.q2')}</h3>
+                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">${t('helpCenter.a2')}</p>
                 </div>
                 <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
-                    <h3 class="text-white font-medium mb-1">How do I level up?</h3>
-                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">Your Collector Level increases as you gain XP. Rarer Snus (like Epic or Mythic) yield significantly more XP than Common ones.</p>
+                    <h3 class="text-white font-medium mb-1">${t('helpCenter.q3')}</h3>
+                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">${t('helpCenter.a3')}</p>
                 </div>
                 <div class="bg-[#1C1C1E] rounded-[24px] p-5 border border-white/10 shadow-sm">
-                    <h3 class="text-white font-medium mb-1">How is my usage calculated?</h3>
-                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">When you mark a can as 'Active' and later 'Empty', we calculate your daily average pouches and nicotine intake based on the time it took to finish it.</p>
+                    <h3 class="text-white font-medium mb-1">${t('helpCenter.q4')}</h3>
+                    <p class="text-[#8E8E93] text-[15px] leading-relaxed">${t('helpCenter.a4')}</p>
                 </div>
 
                 <div class="mt-10 flex justify-center pb-8">
                     <button onclick="triggerHapticFeedback()" class="text-[#8E8E93] hover:text-white text-[14px] font-medium underline decoration-white/30 underline-offset-4 active:opacity-50 transition-all">
-                        Contact Support
+                        ${t('helpCenter.contactSupport')}
                     </button>
                 </div>
             </div>
@@ -515,14 +509,14 @@ function openSettingsSubpage(type) {
                 <div class="w-16 h-16 bg-[#FF3B30]/10 border border-[#FF3B30]/20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-8 h-8 text-[#FF3B30]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                 </div>
-                <h2 class="text-white text-[22px] font-bold tracking-tight mb-2">Delete Account?</h2>
-                <p class="text-[#8E8E93] text-[15px] px-4 leading-relaxed">This action is permanent and cannot be undone. All your Dex collections and stats will be lost forever.</p>
+                <h2 class="text-white text-[22px] font-bold tracking-tight mb-2">${t('deleteAccount.title')}</h2>
+                <p class="text-[#8E8E93] text-[15px] px-4 leading-relaxed">${t('deleteAccount.desc')}</p>
             </div>
             <button onclick="triggerHapticFeedback()" class="w-full bg-[#FF3B30] text-white font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform mb-3 shadow-[0_4px_14px_rgba(255,59,48,0.2)]">
-                Yes, delete my account
+                ${t('deleteAccount.confirm')}
             </button>
             <button onclick="triggerHapticFeedback(); closeSettingsSubpage()" class="w-full bg-[#1C1C1E] border border-white/10 text-white font-medium text-[17px] py-4 rounded-[14px] active:bg-white/5 transition-colors">
-                Cancel
+                ${t('deleteAccount.cancel')}
             </button>
         `;
     }
