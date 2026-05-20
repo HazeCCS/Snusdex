@@ -29,7 +29,7 @@ A lightweight but fully wired iOS wrapper. The shell is responsible for everythi
 
 #### WKWebView (`WebView.swift`)
 - Loads `https://snusdex.com` inside a `WKWebView` with a custom iPhone Safari user agent
-- Registers a `hapticHandler` JavaScript message bridge — when the web app calls `window.webkit.messageHandlers.hapticHandler.postMessage(...)`, the native shell fires `UIImpactFeedbackGenerator(style: .light)` instantly
+- Registers a `hapticHandler` JavaScript message bridge — when the web app calls `window.webkit.messageHandlers.hapticHandler.postMessage(...)`, the native shell fires `UIImpactFeedbackGenerator(style: [...])` instantly
 - Auto-grants camera permission for barcode scanning via `requestMediaCapturePermissionFor` — no permission prompt interrupts the scan flow
 - Allows inline video autoplay for the splash screen animation
 - Injects a JavaScript snippet at document start that silences the web-layer splash sound, so the native audio player can handle it exclusively (prevents a Control Center media player from appearing)
@@ -37,7 +37,7 @@ A lightweight but fully wired iOS wrapper. The shell is responsible for everythi
 #### Network Monitor (`NetworkMonitor.swift`)
 - Uses Apple's `NWPathMonitor` to observe connectivity in real time via a `DispatchQueue`
 - Published as `@Published var isConnected` — ContentView reacts instantly when the connection drops or returns
-- When offline: the WebView is replaced by a fully native SwiftUI offline screen with a `wifi.slash` icon and a retry button
+- When offline: the WebView is replaced by a fully native SwiftUI offline screen
 - When back online: the WebView reloads automatically
 
 #### Widget Extension (`SDXWidget`)
