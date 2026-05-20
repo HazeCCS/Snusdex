@@ -282,6 +282,11 @@
   "privacy.privateProfile": "Privéprofiel",
   "privacy.data": "Gegevens",
   "privacy.shareAnalytics": "Analyses delen",
+  "privacy.exportSection": "Jouw gegevens",
+  "privacy.exportDesc": "Download een kopie van al jouw Snusdex-gegevens — collectie, gebruikslogboeken en profielinfo.",
+  "privacy.exportBtn": "Mijn gegevens downloaden",
+  "privacy.exportLoading": "Bezig met voorbereiden...",
+  "privacy.exportDone": "Gedownload",
 
   "notifications.pushNotifications": "Pushmeldingen",
   "notifications.newFollower": "Nieuwe volger",

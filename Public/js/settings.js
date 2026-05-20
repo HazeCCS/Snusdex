@@ -64,6 +64,60 @@ function toggleHapticDex(element) {
     localStorage.setItem('hapticDex', isOn ? 'on' : 'off');
 }
 
+async function exportUserData() {
+    const btn = document.getElementById('export-data-btn');
+    if (!btn || btn.disabled) return;
+
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> <span>${t('privacy.exportLoading')}</span>`;
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) throw new Error('not logged in');
+
+        const [profileRes, collectionRes, usageRes, followsRes] = await Promise.all([
+            supabaseClient.from('profiles').select('*').eq('id', user.id).single(),
+            supabaseClient.from('user_collections').select('*').eq('user_id', user.id),
+            supabaseClient.from('usage_logs').select('*').eq('user_id', user.id),
+            supabaseClient.from('user_follows').select('*').eq('follower_id', user.id),
+        ]);
+
+        const payload = {
+            exported_at: new Date().toISOString(),
+            profile: profileRes.data || {},
+            collection: collectionRes.data || [],
+            usage_logs: usageRes.data || [],
+            following: followsRes.data || [],
+        };
+
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `snusdex-data-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        btn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> <span>${t('privacy.exportDone')}</span>`;
+        btn.classList.replace('bg-white', 'bg-[#34C759]');
+        btn.classList.replace('text-black', 'text-white');
+
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.classList.replace('bg-[#34C759]', 'bg-white');
+            btn.classList.replace('text-white', 'text-black');
+            btn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> <span>${t('privacy.exportBtn')}</span>`;
+        }, 3000);
+
+    } catch (err) {
+        console.warn('Export failed:', err.message);
+        btn.disabled = false;
+        btn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> <span>${t('privacy.exportBtn')}</span>`;
+    }
+}
+
 function toggleTrackingMode(element) {
     toggleSetting(element);
     const isActive = element.classList.contains('bg-white');
@@ -331,10 +385,20 @@ function openSettingsSubpage(type) {
                 </div>
             </div>
             <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">${t('privacy.data')}</p>
-            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 mb-8">
                 <div class="flex items-center justify-between p-5">
                     <span class="text-white text-[17px]">${t('privacy.shareAnalytics')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
+                </div>
+            </div>
+            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">${t('privacy.exportSection')}</p>
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
+                <div class="p-5">
+                    <p class="text-[#8E8E93] text-[14px] leading-relaxed mb-4">${t('privacy.exportDesc')}</p>
+                    <button id="export-data-btn" onclick="triggerHapticFeedback(); exportUserData()" class="w-full bg-white text-black font-semibold text-[17px] py-3.5 rounded-[14px] active:scale-95 transition-transform flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>${t('privacy.exportBtn')}</span>
+                    </button>
                 </div>
             </div>
         `;
