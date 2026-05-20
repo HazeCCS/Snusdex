@@ -175,7 +175,7 @@ async function startNewCanFromModal() {
     }
 
     if (btn) {
-        btn.innerHTML = "Neue Dose öffnen";
+        btn.innerHTML = t('modal.openNewCan');
         btn.classList.remove('opacity-80');
         btn.disabled = false;
     }
@@ -278,7 +278,7 @@ function renderActiveCansUI() {
                         </div>
                         <div class="min-w-0 flex-1 pr-2">
                             <h4 class="text-white text-[15px] font-semibold truncate leading-tight">${snusName}</h4>
-                            <p class="text-[11px] text-[#8E8E93] tracking-wider mt-0.5">${pouchesTaken} / ${pouchesTotal} Pouches Taken</p>
+                            <p class="text-[11px] text-[#8E8E93] tracking-wider mt-0.5">${pouchesTaken} / ${pouchesTotal} ${t('activeCan.pouchesTaken')}</p>
                         </div>
                     </div>
 
@@ -583,3 +583,5 @@ function calculateUsageStats(allLogs) {
         currentDashboardStats.avgMg = avgMgPerDay;
     }
 }
+
+window.renderActiveCansUI = renderActiveCansUI;

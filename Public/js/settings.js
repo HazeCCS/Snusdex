@@ -340,25 +340,20 @@ function openSettingsSubpage(type) {
         `;
     } else if (type === 'Language') {
         const lang = localStorage.getItem('appLang') || 'en';
-        const check = (l) => lang === l
+        const checkIcon = (l) => lang === l
             ? `<svg class="lang-check-icon w-5 h-5 text-white flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`
             : `<svg class="lang-check-icon w-5 h-5 text-white flex-shrink-0 invisible" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
+        const langEntries = Object.entries(LANG_NAMES);
+        const langRows = langEntries.map(([code, name], i) => `
+                <div onclick="triggerHapticFeedback(); setLang('${code}').then(() => refreshLangPage())" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                    <span class="text-white text-[17px]">${name}</span>
+                    ${checkIcon(code)}
+                </div>
+                ${i < langEntries.length - 1 ? '<div class="h-[1px] bg-white/5 mx-5"></div>' : ''}
+        `).join('');
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
-                <div onclick="triggerHapticFeedback(); setLang('en'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
-                    <span class="text-white text-[17px]">English</span>
-                    ${check('en')}
-                </div>
-                <div class="h-[1px] bg-white/5 mx-5"></div>
-                <div onclick="triggerHapticFeedback(); setLang('de'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
-                    <span class="text-white text-[17px]">Deutsch</span>
-                    ${check('de')}
-                </div>
-                <div class="h-[1px] bg-white/5 mx-5"></div>
-                <div onclick="triggerHapticFeedback(); setLang('ru'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
-                    <span class="text-white text-[17px]">Русский</span>
-                    ${check('ru')}
-                </div>
+                ${langRows}
             </div>
         `;
     } else if (type === 'Darstellung') {
@@ -543,25 +538,20 @@ function refreshLangPage() {
     if (!contentObj || !titleObj) return;
     titleObj.innerText = t('settings.language');
     const lang = localStorage.getItem('appLang') || 'en';
-    const check = (l) => lang === l
+    const checkIcon = (l) => lang === l
         ? `<svg class="lang-check-icon w-5 h-5 text-white flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`
         : `<svg class="lang-check-icon w-5 h-5 text-white flex-shrink-0 invisible" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
+    const langEntries = Object.entries(LANG_NAMES);
+    const langRows = langEntries.map(([code, name], i) => `
+            <div onclick="triggerHapticFeedback(); setLang('${code}').then(() => refreshLangPage())" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
+                <span class="text-white text-[17px]">${name}</span>
+                ${checkIcon(code)}
+            </div>
+            ${i < langEntries.length - 1 ? '<div class="h-[1px] bg-white/5 mx-5"></div>' : ''}
+    `).join('');
     contentObj.innerHTML = `
         <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
-            <div onclick="triggerHapticFeedback(); setLang('en'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
-                <span class="text-white text-[17px]">English</span>
-                ${check('en')}
-            </div>
-            <div class="h-[1px] bg-white/5 mx-5"></div>
-            <div onclick="triggerHapticFeedback(); setLang('de'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
-                <span class="text-white text-[17px]">Deutsch</span>
-                ${check('de')}
-            </div>
-            <div class="h-[1px] bg-white/5 mx-5"></div>
-            <div onclick="triggerHapticFeedback(); setLang('ru'); refreshLangPage()" class="flex items-center justify-between p-5 active:bg-white/5 cursor-pointer">
-                <span class="text-white text-[17px]">Русский</span>
-                ${check('ru')}
-            </div>
+            ${langRows}
         </div>
     `;
 }
