@@ -207,7 +207,7 @@ async function loadMostScannedThisWeek() {
 
     _socialListData.days7 = mapToSnus(data?.most_scanned_7d, 'scan_count');
     _socialListData.today = mapToSnus(data?.most_scanned_today, 'scan_count');
-    _socialListData.topRated = mapToSnus(data?.top_rated_7d, 'rating_count');
+    _socialListData.topRated = mapToSnus(data?.top_rated_all_time, 'rating_count');
 
     renderSocialListUI();
 }
@@ -231,7 +231,7 @@ function renderSocialListUI() {
     } else {
         items = _socialListData.topRated;
         title = t('social.topRated');
-        countLabel = t('social.scoreLabel');
+        countLabel = t('social.ratingsLabel');
     }
 
     const scoreColor = (v) => {
@@ -289,7 +289,7 @@ function renderSocialListUI() {
 
             let countText = '';
             if (_socialListMode === 2) {
-                countText = t('social.rank', { n: rank });
+                countText = `${item.count} ${countLabel}`;
             } else {
                 countText = `${item.count} ${countLabel}`;
             }
