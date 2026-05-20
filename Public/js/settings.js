@@ -842,12 +842,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (diffX > 0) {
+            if (e.cancelable) e.preventDefault();
             isSwiping = true;
             settingsSubpage.style.transition = 'none';
             settingsSubpage.style.transform = `translateX(${diffX}px)`;
         }
     }, {
-        passive: true
+        passive: false
     });
 
     settingsSubpage.addEventListener('touchend', (e) => {

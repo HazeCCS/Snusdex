@@ -1,0 +1,24 @@
+{
+  "name": "snusdex",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "tailwindcss -i ./input.css -o ./Public/tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./input.css -o ./Public/tailwind.css --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HazeCCS/Snusdex.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/HazeCCS/Snusdex/issues"
+  },
+  "homepage": "https://github.com/HazeCCS/Snusdex#readme",
+  "description": "",
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}
