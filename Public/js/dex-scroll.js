@@ -84,9 +84,11 @@ function initDexScrollAnimation() {
         const dexIsActive = dexTab && (dexTab.dataset.tabState === 'visible' || !dexTab.classList.contains('tab-dex-hidden'));
 
         if (dexIsActive) {
-            // 1. Visual scale animation (60fps)
-            if (dexScrollRafId) cancelAnimationFrame(dexScrollRafId);
-            dexScrollRafId = requestAnimationFrame(updateDexScale);
+            // 1. Visual scale animation – skip entirely in alpha mode
+            if (dexSortMode !== 'alpha') {
+                if (dexScrollRafId) cancelAnimationFrame(dexScrollRafId);
+                dexScrollRafId = requestAnimationFrame(updateDexScale);
+            }
 
             // 2. Row-based haptics – ONLY in ID sort mode
             if (dexSortMode === 'id') {
@@ -322,7 +324,7 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
     const imgClass = `dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-300`;
 
     return `
-        <div onclick="openSnusDetail(${snus.id})" class="brand-anim-card cursor-pointer group flex-shrink-0 w-[28vw] max-w-[120px] snap-center transition-all duration-200 ease-out origin-center will-change-transform">
+        <div onclick="openSnusDetail(${snus.id})" class="brand-anim-card cursor-pointer group flex-shrink-0 w-[28vw] max-w-[120px] snap-center">
             <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] shadow-md overflow-hidden transition-transform group-active:scale-95 ${!isUnlocked ? 'opacity-40 grayscale' : ''}" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
                 <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
                     <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
@@ -339,9 +341,6 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
         </div>
     `;
 }
-
-// Tracked scroll listener refs so we can remove them on re-render
-let _brandScrollListeners = [];
 
 // ─── Brand Observer für lazy Brand-Sections ──────────────────────────────────
 // Ersetzt Placeholder-Sentinels mit echtem Brand-Inhalt wenn sie in den View kommen.
@@ -376,8 +375,7 @@ function _initBrandLazyObserver(myGen) {
             });
         }
     }, {
-        // 600px rootMargin: Brand-Sections ~1-2 Scrollbewegungen im Voraus laden
-        rootMargin: '0px 0px 600px 0px'
+        rootMargin: '0px 0px 250px 0px'
     });
 }
 
@@ -430,8 +428,9 @@ function _inflatesBrandSentinel(sentinel, myGen) {
     section.style.marginLeft  = '-20px';
     section.style.marginRight = '-20px';
     section.style.width       = 'calc(100% + 40px)';
-    // Kurze Fade-Animation beim Einblenden – kein inline opacity (würde Animation überschreiben)
+    section.style.willChange  = 'opacity, transform';
     section.style.animation   = `brandSectionIn 0.12s cubic-bezier(0.4, 0, 0.2, 1) both`;
+    section.addEventListener('animationend', () => { section.style.willChange = ''; }, { once: true });
 
     const header   = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
     let cardsHTML  = '';
@@ -457,12 +456,6 @@ function _inflatesBrandSentinel(sentinel, myGen) {
         img.classList.add('observed');
         imageLazyObserver.observe(img);
     });
-
-    const carousel = section.querySelector('.brand-carousel:not(.anim-init)');
-    if (carousel) {
-        carousel.classList.add('anim-init');
-        initBrandScrollAnimation(carousel);
-    }
 }
 
 // ─── Render-Generation-Guard ─────────────────────────────────────────────────
@@ -477,10 +470,6 @@ function renderDexGrouped(groupedData) {
 
     // Neue Generation – veraltete Observer-Callbacks ignorieren sich selbst
     const myGen = ++_dexRenderGen;
-
-    // Bestehende Carousel-Scroll-Listener aufräumen
-    _brandScrollListeners.forEach(({ el, fn }) => el.removeEventListener('scroll', fn));
-    _brandScrollListeners = [];
 
     // Brand-Lazy-Observer für diese Render-Runde initialisieren
     _initBrandLazyObserver(myGen);
@@ -507,8 +496,9 @@ function renderDexGrouped(groupedData) {
             section.style.marginLeft  = '-20px';
             section.style.marginRight = '-20px';
             section.style.width       = 'calc(100% + 40px)';
-            // Staggered Fade – kein inline opacity (überschreibt Keyframes)
+            section.style.willChange  = 'opacity, transform';
             section.style.animation   = `brandSectionIn 0.15s cubic-bezier(0.4, 0, 0.2, 1) ${globalIndex * 40}ms both`;
+            section.addEventListener('animationend', () => { section.style.willChange = ''; }, { once: true });
 
             const header   = createBrandHeaderHTML(brandData.brandName, brandData.unlockedCount, brandData.totalCount);
             let cardsHTML  = '';
@@ -548,12 +538,6 @@ function renderDexGrouped(groupedData) {
             imageLazyObserver.observe(img);
         });
 
-        // Carousels der ersten Chunk initialisieren
-        grid.querySelectorAll('.brand-section .brand-carousel:not(.anim-init)').forEach(carousel => {
-            carousel.classList.add('anim-init');
-            initBrandScrollAnimation(carousel);
-        });
-
         // Alle Sentinels beim Brand-Observer anmelden
         grid.querySelectorAll('.brand-section-sentinel').forEach(sentinel => {
             _brandLazyObserver.observe(sentinel);
@@ -565,58 +549,6 @@ function renderDexGrouped(groupedData) {
     });
 }
 
-
-// Horizontale Scroll-Animation für Brand-Carousels
-// Throttled mit RAF – ein Listener pro Carousel, kein Thrashing
-function initBrandScrollAnimation(container) {
-    const cards = Array.from(container.querySelectorAll('.brand-anim-card'));
-    if (cards.length === 0) return;
-
-    let rafPending = false;
-
-    const updateScale = () => {
-        rafPending = false;
-        const containerRect = container.getBoundingClientRect();
-        const containerCenter = containerRect.left + containerRect.width / 2;
-        const focusZoneHalfWidth = containerRect.width * 0.35;
-        const fadeZoneWidth = containerRect.width * 0.15;
-
-        // Alle Rects auf einmal lesen
-        const rects = cards.map(card => card.getBoundingClientRect());
-
-        // Dann alle Styles schreiben
-        cards.forEach((card, i) => {
-            const cardCenter = rects[i].left + rects[i].width / 2;
-            const distanceToCenter = Math.abs(containerCenter - cardCenter);
-
-            let scale = 1.0;
-            let opacity = 1.0;
-
-            if (distanceToCenter > focusZoneHalfWidth) {
-                let progress = (distanceToCenter - focusZoneHalfWidth) / fadeZoneWidth;
-                if (progress > 1) progress = 1;
-                scale = 1.0 - (0.15 * progress);
-                opacity = 1.0 - (0.6 * progress);
-            }
-
-            card.style.transform = `scale(${scale})`;
-            card.style.opacity = opacity;
-        });
-    };
-
-    requestAnimationFrame(updateScale); // Initialer Aufruf – defer verhindert Forced Reflow nach innerHTML-Write
-
-    const onScroll = () => {
-        if (!rafPending) {
-            rafPending = true;
-            requestAnimationFrame(updateScale);
-        }
-    };
-
-    container.addEventListener('scroll', onScroll, { passive: true });
-    // Für späteres Cleanup tracken
-    _brandScrollListeners.push({ el: container, fn: onScroll });
-}
 
 // ==========================================
 // STATS HELPER

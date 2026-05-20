@@ -127,38 +127,38 @@ function _showDexTab() {
     const dexTab = document.getElementById('tab-dex');
     if (!dexTab) return;
 
-    // 1. Inline-Styles cleanen (könnten von altem Lauf übrig sein)
-    dexTab.style.transition  = '';
-    dexTab.style.opacity     = '';
-    dexTab.style.transform   = '';
-
-    // 2. Animation-Klasse vorab entfernen (damit sie frisch startet)
+    // 1. Laufende Animationen canceln (kein Layout nötig)
+    dexTab.getAnimations().forEach(a => a.cancel());
     dexTab.classList.remove('tab-dex-entering');
+    dexTab.style.willChange = 'opacity, transform';
 
-    // 3. Scroll auf 0 setzen BEVOR der Tab sichtbar wird.
-    //    Der Tab ist jetzt noch tab-dex-hidden (position:absolute; height:0),
-    //    also hat der DOM noch keine Höhe. CSS Scroll Anchoring hat dann keinen
-    //    Anker-Kandidaten und verschiebt den Scroll nicht, wenn der lange
-    //    Alpha-Mode-Content gleich in den Flow zurückkehrt.
+    // 2. Scroll auf 0 BEVOR tab-dex-hidden entfernt wird – verhindert dass
+    //    CSS Scroll Anchoring den Scroll korrigiert wenn der lange Alpha-Content
+    //    in den Flow zurückkehrt.
     window.scrollTo(0, 0);
 
-    // 4. Aus dem hidden-Zustand holen
+    // 3. Aus dem hidden-Zustand holen
     dexTab.classList.remove('tab-dex-hidden');
     dexTab.dataset.tabState = 'visible';
 
-    // 5. Tab als eine Compositor-Layer promoten, BEVOR der Reflow stattfindet.
-    //    scale() der tabFadeIn-Animation läuft so auf dem pre-gerenderten
-    //    Tab-Layer statt auf 30 einzelnen brand-section Sub-Layern → O(1) composite.
-    dexTab.style.willChange = 'opacity, transform';
+    // 4. Web Animations API statt void offsetWidth + CSS-Klasse.
+    //    fill:'both' wendet den from-Keyframe (opacity:0) SOFORT synchron an –
+    //    kein Reflow nötig, kein schwarzes Frame zwischen Tab-Wechsel und
+    //    Animations-Start. commitStyles() schreibt den End-Zustand als
+    //    Inline-Style, cancel() gibt die fill-mode-Sperre frei.
+    const anim = dexTab.animate(
+        [
+            { opacity: '0', transform: 'translateY(12px)' },
+            { opacity: '1', transform: 'translateY(0)'    }
+        ],
+        { duration: 280, easing: 'cubic-bezier(0.4,0,0.2,1)', fill: 'both' }
+    );
 
-    // 6. Forced Reflow: Browser committet den Zustand vor der Animation
-    void dexTab.offsetWidth;
-
-    // 7. Animation starten
-    dexTab.classList.add('tab-dex-entering');
-
-    // 8. will-change nach Ende der Animation freigeben
-    setTimeout(() => { dexTab.style.willChange = ''; }, 300);
+    anim.onfinish = () => {
+        anim.commitStyles();
+        anim.cancel();
+        dexTab.style.willChange = '';
+    };
 
     updateDexScale();
 }

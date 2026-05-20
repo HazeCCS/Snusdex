@@ -150,8 +150,6 @@ function preloadAllDexImages(items) {
 }
 
 function initImageLazyLoadObserver() {
-    if (imageLazyObserver) return;
-
     imageLazyObserver = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
             if (!entry.isIntersecting) return;
@@ -190,7 +188,7 @@ function initImageLazyLoadObserver() {
             };
             img.src = src;
         });
-    }, { rootMargin: '0px 0px 1200px 0px' });
+    }, { rootMargin: '0px 0px 400px 0px' });
 }
 
 function initDexObserver() {
@@ -456,6 +454,13 @@ function _injectDexSkeleton(grid) {
 }
 
 function _executeDexRender(grid, filtered) {
+    // Alten Image-Observer wegwerfen: verhindert Speicherlecks durch
+    // beobachtete Elemente die gleich aus dem DOM entfernt werden.
+    if (imageLazyObserver) {
+        imageLazyObserver.disconnect();
+        imageLazyObserver = null;
+    }
+
     // Grid-Layout hier setzen (nicht in filterDex), damit altes Content
     // während des Fade-Outs noch im korrekten Layout verbleibt.
     if (dexSortMode === 'alpha') {
