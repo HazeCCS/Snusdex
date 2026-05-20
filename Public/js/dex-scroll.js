@@ -117,6 +117,8 @@ function initDexScrollAnimation() {
 }
 
 function triggerLightHapticFeedback() {
+    if (localStorage.getItem('hapticGlobal') === 'off') return;
+    if (localStorage.getItem('hapticDex') === 'off') return;
     if (window.webkit && window.webkit.messageHandlers.hapticHandler) {
         window.webkit.messageHandlers.hapticHandler.postMessage("selection");
     } else if (navigator.vibrate) {

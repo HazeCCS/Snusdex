@@ -46,6 +46,24 @@ function toggleDefaultSort(element) {
     localStorage.setItem('dexDefaultSort', isActive ? 'alpha' : 'id');
 }
 
+function toggleHapticGlobal(element) {
+    toggleSetting(element);
+    const isOn = element.classList.contains('bg-white');
+    localStorage.setItem('hapticGlobal', isOn ? 'on' : 'off');
+    // direkt am element arbeiten statt ganzen subpage neu rendern — so läuft die transition
+    const dexToggle = document.getElementById('haptic-dex-toggle');
+    if (dexToggle) {
+        dexToggle.classList.toggle('opacity-40', !isOn);
+        dexToggle.classList.toggle('pointer-events-none', !isOn);
+    }
+}
+
+function toggleHapticDex(element) {
+    toggleSetting(element);
+    const isOn = element.classList.contains('bg-white');
+    localStorage.setItem('hapticDex', isOn ? 'on' : 'off');
+}
+
 function toggleTrackingMode(element) {
     toggleSetting(element);
     const isActive = element.classList.contains('bg-white');
@@ -335,6 +353,39 @@ function openSettingsSubpage(type) {
                         <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('tracking.desc')}</span>
                     </div>
                     <div onclick="triggerHapticFeedback(); toggleTrackingMode(this)" class="w-12 h-7 ${trackToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${trackHandleBg} rounded-full transition-transform duration-300 ${trackHandleTransform} shadow-sm"></div></div>
+                </div>
+            </div>
+        `;
+    } else if (type === 'Haptics') {
+        const globalOn = localStorage.getItem('hapticGlobal') !== 'off';
+        const dexOn = localStorage.getItem('hapticDex') !== 'off';
+
+        const gBg = globalOn ? 'bg-white' : 'bg-[#3A3A3C]';
+        const gT  = globalOn ? 'translate-x-5' : '';
+        const gHBg = globalOn ? 'bg-black' : 'bg-white';
+
+        const dBg = dexOn ? 'bg-white' : 'bg-[#3A3A3C]';
+        const dT  = dexOn ? 'translate-x-5' : '';
+        const dHBg = dexOn ? 'bg-black' : 'bg-white';
+
+        const dexToggleClass = !globalOn ? 'opacity-40 pointer-events-none' : '';
+
+        html = `
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
+                <div class="flex items-center justify-between p-5">
+                    <div class="flex flex-col pr-4">
+                        <span class="text-white text-[17px]">${t('haptics.globalLabel')}</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('haptics.globalDesc')}</span>
+                    </div>
+                    <div onclick="toggleHapticGlobal(this)" class="w-12 h-7 ${gBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${gHBg} rounded-full transition-transform duration-300 ${gT} shadow-sm"></div></div>
+                </div>
+                <div class="h-[1px] bg-white/5 mx-5"></div>
+                <div class="flex items-center justify-between p-5">
+                    <div class="flex flex-col pr-4">
+                        <span class="text-white text-[17px]">${t('haptics.dexLabel')}</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('haptics.dexDesc')}</span>
+                    </div>
+                    <div id="haptic-dex-toggle" onclick="triggerHapticFeedback(); toggleHapticDex(this)" class="w-12 h-7 ${dBg} rounded-full relative cursor-pointer transition-[colors,opacity] duration-200 flex-shrink-0 ${dexToggleClass}"><div class="absolute left-1 top-1 w-5 h-5 ${dHBg} rounded-full transition-transform duration-300 ${dT} shadow-sm"></div></div>
                 </div>
             </div>
         `;

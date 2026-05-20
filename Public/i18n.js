@@ -231,9 +231,16 @@ const _EN = {
     'settings.tracking': 'Tracking',
     'settings.appearance': 'Appearance',
     'settings.language': 'Language',
+    'settings.haptics': 'Haptics',
     'settings.helpCenter': 'Help Center & FAQ',
     'settings.deleteAccount': 'Delete Account',
     'settings.signOut': 'Sign Out',
+
+    'haptics.globalLabel': 'Button Haptics',
+    'haptics.globalDesc': 'Vibration for taps & interactions',
+    'haptics.dexLabel': 'Dex Scroll Haptics',
+    'haptics.dexDesc': 'Light vibration while scrolling',
+    'haptics.dexDisabledHint': 'Disabled when button haptics is off',
 
     'editProfile.featuredBadge': 'Featured Badge',
     'editProfile.none': 'None',

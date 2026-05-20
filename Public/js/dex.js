@@ -308,6 +308,7 @@ function toggleDexFilterUnlocked() {
 // setupProfile: nur eine Definition weiter unten
 
 function triggerHapticFeedback() {
+    if (localStorage.getItem('hapticGlobal') === 'off') return;
     if (window.webkit && window.webkit.messageHandlers.hapticHandler) window.webkit.messageHandlers.hapticHandler.postMessage("vibrate");
     else if (navigator.vibrate) navigator.vibrate(15);
 }

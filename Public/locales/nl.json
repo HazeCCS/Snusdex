@@ -220,7 +220,13 @@
   "settings.tracking": "Bijhouden",
   "settings.appearance": "Weergave",
   "settings.language": "Taal",
+  "settings.haptics": "Haptics",
   "settings.helpCenter": "Helpcentrum & FAQ",
+  "haptics.globalLabel": "Knop Haptics",
+  "haptics.globalDesc": "Trillen bij tikken & interacties",
+  "haptics.dexLabel": "Dex Scroll Haptics",
+  "haptics.dexDesc": "Lichte trilling bij scrollen",
+  "haptics.dexDisabledHint": "Uitgeschakeld als knop haptics uit staat",
   "settings.deleteAccount": "Account verwijderen",
   "settings.signOut": "Uitloggen",
 
