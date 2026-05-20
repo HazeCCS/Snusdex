@@ -230,6 +230,12 @@
   "appearance.largeTilesDesc": "Zeigt 2 statt 3 Spalten im Dex an",
   "appearance.tileGlow": "Kachel Glow",
   "appearance.tileGlowDesc": "Farbiger Hintergrund-Glow der Seltenheit",
+  "appearance.animation": "Animation",
+  "appearance.animSweep": "Durchlaufen",
+  "appearance.animPulse": "Pulsieren",
+  "appearance.animNone": "Keine",
+  "appearance.saturation": "Sättigung",
+  "appearance.cardFont": "Karten-Schrift",
   "appearance.cardGlow": "Card Glow",
   "appearance.intensity": "Intensität",
   "appearance.cardGlowDesc": "Passe den animierten Hintergrund deiner Collector Card an. Neue Farben schaltest du durch das Entdecken neuer Raritäten frei.",
@@ -303,5 +309,13 @@
   "scanHelp.scanningDesc": "Du scannst schon eine Weile — wir helfen dir gerne.",
   "scanHelp.noThanks": "Nein danke",
   "scanHelp.getHelp": "Hilfe holen",
-  "common.on": "An"
+  "common.on": "An",
+  "appearance.pattern": "Muster",
+  "appearance.patternNone": "Kein",
+  "appearance.patternDots": "Punkte",
+  "appearance.patternGrid": "Raster",
+  "appearance.patternLines": "Linien",
+  "appearance.patternCarbon": "Carbon",
+  "appearance.patternHex": "Hex",
+  "appearance.patternRings": "Ringe"
 }

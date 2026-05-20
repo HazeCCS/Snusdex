@@ -49,11 +49,23 @@ document.addEventListener('DOMContentLoaded', () => {
     initDexScrollAnimation();
     loadBadgesFromCache();
 
-    // Initialize metal card glow color
+    // Initialize metal card glow color + border + font
     const savedGlowColor = localStorage.getItem('metalCardColorHex') || '#ffffff';
     document.documentElement.style.setProperty('--card-glow-color', savedGlowColor);
     const savedGlowIntensity = localStorage.getItem('metalCardIntensity') || '1';
     document.documentElement.style.setProperty('--card-glow-intensity', savedGlowIntensity);
+    if (typeof _applyCardBorderColor === 'function') _applyCardBorderColor(savedGlowColor);
+    const savedFont = localStorage.getItem('metalCardFont') || 'system';
+    const fontMap = { system: '-apple-system, sans-serif', rounded: 'ui-rounded, -apple-system, sans-serif', futura: 'Futura, -apple-system, sans-serif', serif: 'Georgia, serif', baskerville: 'Baskerville, serif', display: 'Didot, serif', copperplate: 'Copperplate, serif', mono: 'Menlo, monospace' };
+    document.documentElement.style.setProperty('--card-font', fontMap[savedFont] || fontMap.system);
+    const savedSaturation = localStorage.getItem('metalCardSaturation') || '1.3';
+    document.documentElement.style.setProperty('--card-saturation', savedSaturation);
+    const savedAnim = localStorage.getItem('metalCardAnim') || 'sweep';
+    const cardContainer = document.getElementById('metal-card-container');
+    if (cardContainer) cardContainer.dataset.anim = savedAnim;
+    const savedPattern = localStorage.getItem('metalCardPattern') || 'none';
+    const patternEl = document.getElementById('metal-card-pattern');
+    if (patternEl && savedPattern !== 'none') patternEl.classList.add('p-' + savedPattern);
 
     // Initialize tracking mode preview label
     const trackingModeEl = document.getElementById('tracking-mode-preview');

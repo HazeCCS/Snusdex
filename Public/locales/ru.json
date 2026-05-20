@@ -230,6 +230,12 @@
   "appearance.largeTilesDesc": "Показывает 2 вместо 3 столбцов в Дексе",
   "appearance.tileGlow": "Свечение плиток",
   "appearance.tileGlowDesc": "Цветное фоновое свечение в зависимости от редкости",
+  "appearance.animation": "Анимация",
+  "appearance.animSweep": "Движение",
+  "appearance.animPulse": "Пульсация",
+  "appearance.animNone": "Нет",
+  "appearance.saturation": "Насыщенность",
+  "appearance.cardFont": "Шрифт карты",
   "appearance.cardGlow": "Свечение карты",
   "appearance.intensity": "Интенсивность",
   "appearance.cardGlowDesc": "Настройте анимированный фон вашей карточки коллекционера. Новые цвета открываются при обнаружении новых редкостей.",
@@ -303,5 +309,13 @@
   "scanHelp.scanningDesc": "Вы сканируете уже давно — давайте поможем вам.",
   "scanHelp.noThanks": "Нет, спасибо",
   "scanHelp.getHelp": "Получить помощь",
-  "common.on": "Вкл."
+  "common.on": "Вкл.",
+  "appearance.pattern": "Узор",
+  "appearance.patternNone": "Нет",
+  "appearance.patternDots": "Точки",
+  "appearance.patternGrid": "Сетка",
+  "appearance.patternLines": "Линии",
+  "appearance.patternCarbon": "Карбон",
+  "appearance.patternHex": "Шест.",
+  "appearance.patternRings": "Кольца"
 }

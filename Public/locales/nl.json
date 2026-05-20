@@ -256,6 +256,12 @@
   "appearance.largeTilesDesc": "Toont 2 in plaats van 3 kolommen in de Dex",
   "appearance.tileGlow": "Tegelgloed",
   "appearance.tileGlowDesc": "Gekleurde achtergrondgloed op basis van zeldzaamheid",
+  "appearance.animation": "Animatie",
+  "appearance.animSweep": "Doorlopen",
+  "appearance.animPulse": "Pulseren",
+  "appearance.animNone": "Geen",
+  "appearance.saturation": "Verzadiging",
+  "appearance.cardFont": "Kaartlettertype",
   "appearance.cardGlow": "Kaartgloed",
   "appearance.intensity": "Intensiteit",
   "appearance.cardGlowDesc": "Pas de geanimeerde achtergrond van je Collector Card aan. Ontgrendel nieuwe kleuren door nieuwe zeldzaamheden te ontdekken.",
@@ -336,5 +342,13 @@
   "scanHelp.havingTrouble": "Problemen?",
   "scanHelp.scanningDesc": "Al een tijdje aan het scannen — laat ons je helpen.",
   "scanHelp.noThanks": "Nee, bedankt",
-  "scanHelp.getHelp": "Hulp krijgen"
+  "scanHelp.getHelp": "Hulp krijgen",
+  "appearance.pattern": "Patroon",
+  "appearance.patternNone": "Geen",
+  "appearance.patternDots": "Stippen",
+  "appearance.patternGrid": "Raster",
+  "appearance.patternLines": "Lijnen",
+  "appearance.patternCarbon": "Carbon",
+  "appearance.patternHex": "Hex",
+  "appearance.patternRings": "Ringen"
 }

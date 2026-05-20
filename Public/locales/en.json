@@ -230,6 +230,12 @@
   "appearance.largeTilesDesc": "Shows 2 instead of 3 columns in the Dex",
   "appearance.tileGlow": "Tile Glow",
   "appearance.tileGlowDesc": "Colored background glow based on rarity",
+  "appearance.animation": "Animation",
+  "appearance.animSweep": "Sweep",
+  "appearance.animPulse": "Pulse",
+  "appearance.animNone": "None",
+  "appearance.saturation": "Saturation",
+  "appearance.cardFont": "Card Font",
   "appearance.cardGlow": "Card Glow",
   "appearance.intensity": "Intensity",
   "appearance.cardGlowDesc": "Customize the animated background of your Collector Card. Unlock new colors by discovering new rarities.",
@@ -303,5 +309,13 @@
   "scanHelp.scanningDesc": "Been scanning for a while — let us help you out.",
   "scanHelp.noThanks": "No thanks",
   "scanHelp.getHelp": "Get help",
-  "common.on": "On"
+  "common.on": "On",
+  "appearance.pattern": "Pattern",
+  "appearance.patternNone": "None",
+  "appearance.patternDots": "Dots",
+  "appearance.patternGrid": "Grid",
+  "appearance.patternLines": "Lines",
+  "appearance.patternCarbon": "Carbon",
+  "appearance.patternHex": "Hex",
+  "appearance.patternRings": "Rings"
 }

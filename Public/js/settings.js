@@ -131,15 +131,71 @@ function toggleTrackingMode(element) {
     renderActiveCansUI();
 }
 
+const _CARD_FONT_MAP = {
+    system:      '-apple-system, sans-serif',
+    rounded:     'ui-rounded, -apple-system, sans-serif',
+    futura:      'Futura, -apple-system, sans-serif',
+    serif:       'Georgia, serif',
+    baskerville: 'Baskerville, serif',
+    display:     'Didot, serif',
+    copperplate: 'Copperplate, serif',
+    mono:        'Menlo, monospace',
+};
+
+function _applyCardBorderColor(colorHex) {
+    const hex = (colorHex.match(/#([0-9a-fA-F]{6})/) || [])[1];
+    if (hex) {
+        const r = parseInt(hex.slice(0,2), 16);
+        const g = parseInt(hex.slice(2,4), 16);
+        const b = parseInt(hex.slice(4,6), 16);
+        document.documentElement.style.setProperty('--card-border-color', `rgba(${r},${g},${b},0.45)`);
+        document.documentElement.style.setProperty('--card-outer-glow', `rgba(${r},${g},${b},0.25)`);
+    } else {
+        document.documentElement.style.setProperty('--card-border-color', 'rgba(255,255,255,0.15)');
+        document.documentElement.style.setProperty('--card-outer-glow', 'rgba(255,255,255,0.08)');
+    }
+}
+
 function setMetalCardColor(colorId, colorHex) {
     localStorage.setItem('metalCardColorId', colorId);
     localStorage.setItem('metalCardColorHex', colorHex);
     document.documentElement.style.setProperty('--card-glow-color', colorHex);
-    
+    _applyCardBorderColor(colorHex);
+
     const subpage = document.getElementById('settings-subpage');
     if (subpage && !subpage.classList.contains('hidden') && window._currentSubpageType === 'Darstellung') {
         openSettingsSubpage('Darstellung');
     }
+}
+
+function setMetalCardFont(fontId) {
+    localStorage.setItem('metalCardFont', fontId);
+    document.documentElement.style.setProperty('--card-font', _CARD_FONT_MAP[fontId] || _CARD_FONT_MAP.system);
+    if (window._currentSubpageType === 'Darstellung') openSettingsSubpage('Darstellung');
+}
+
+function setMetalCardAnim(type) {
+    localStorage.setItem('metalCardAnim', type);
+    const container = document.getElementById('metal-card-container');
+    if (container) container.dataset.anim = type;
+    if (window._currentSubpageType === 'Darstellung') openSettingsSubpage('Darstellung');
+}
+
+function setMetalCardSaturation(val) {
+    localStorage.setItem('metalCardSaturation', val);
+    document.documentElement.style.setProperty('--card-saturation', val);
+    const el = document.getElementById('saturation-val');
+    if (el) el.innerText = parseFloat(val).toFixed(1) + 'x';
+}
+
+function setMetalCardPattern(id) {
+    localStorage.setItem('metalCardPattern', id);
+    const el = document.getElementById('metal-card-pattern');
+    if (el) {
+        el.className = 'metal-card-pattern';
+        if (id && id !== 'none') el.classList.add('p-' + id);
+    }
+    if (window._currentSubpageType === 'Darstellung') openSettingsSubpage('Darstellung');
 }
 
 function setMetalCardIntensity(val) {
@@ -546,13 +602,80 @@ function openSettingsSubpage(type) {
                     ${colorOptionsHTML}
                 </div>
                 <div class="mt-4 border-t border-white/5 pt-4">
+                    <span class="text-white text-[15px] block mb-3">${t('appearance.animation')}</span>
+                    <div class="flex gap-3">
+                        ${[
+                            { id: 'sweep', label: t('appearance.animSweep') },
+                            { id: 'pulse', label: t('appearance.animPulse') },
+                            { id: 'none',  label: t('appearance.animNone')  },
+                        ].map(a => {
+                            const active = (localStorage.getItem('metalCardAnim') || 'sweep') === a.id;
+                            return `<button onclick="triggerHapticFeedback(); setMetalCardAnim('${a.id}')"
+                                class="flex-1 py-2 rounded-[12px] text-[15px] font-medium transition-all active:scale-95 ${active ? 'bg-white text-black' : 'bg-white/10 text-white/70'}">
+                                ${a.label}
+                            </button>`;
+                        }).join('')}
+                    </div>
+                </div>
+                <div class="mt-4 border-t border-white/5 pt-4">
                     <div class="flex justify-between items-center mb-3">
                         <span class="text-white text-[15px]">${t('appearance.intensity')}</span>
                         <span id="glow-intensity-val" class="text-[#8E8E93] text-[13px] font-medium">${parseFloat(activeIntensity).toFixed(1)}x</span>
                     </div>
                     <input type="range" min="1" max="4" step="0.1" id="glow-intensity" value="${activeIntensity}" oninput="setMetalCardIntensity(this.value)" class="w-full h-1.5 bg-[#3A3A3C] rounded-full appearance-none outline-none accent-white">
                 </div>
+                <div class="mt-4 border-t border-white/5 pt-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-white text-[15px]">${t('appearance.saturation')}</span>
+                        <span id="saturation-val" class="text-[#8E8E93] text-[13px] font-medium">${parseFloat(localStorage.getItem('metalCardSaturation') || '1.3').toFixed(1)}x</span>
+                    </div>
+                    <input type="range" min="0.5" max="3" step="0.1" value="${localStorage.getItem('metalCardSaturation') || '1.3'}" oninput="setMetalCardSaturation(this.value)" class="w-full h-1.5 bg-[#3A3A3C] rounded-full appearance-none outline-none accent-white">
+                </div>
                 <p class="text-[12px] text-[#8E8E93] mt-4">${t('appearance.cardGlowDesc')}</p>
+            </div>
+
+            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">${t('appearance.cardFont')}</h3>
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 p-5 mb-6">
+                <div class="flex gap-3 flex-wrap">
+                    ${[
+                        { id: 'system',      label: 'Default',     style: '-apple-system, sans-serif' },
+                        { id: 'rounded',     label: 'Rounded',     style: 'ui-rounded, -apple-system, sans-serif' },
+                        { id: 'futura',      label: 'Futura',      style: 'Futura, sans-serif' },
+                        { id: 'serif',       label: 'Georgia',     style: 'Georgia, serif' },
+                        { id: 'baskerville', label: 'Baskerville', style: 'Baskerville, serif' },
+                        { id: 'display',     label: 'Didot',       style: 'Didot, serif' },
+                        { id: 'copperplate', label: 'Copper',      style: 'Copperplate, serif' },
+                        { id: 'mono',        label: 'Mono',        style: 'Menlo, monospace' },
+                    ].map(f => {
+                        const active = (localStorage.getItem('metalCardFont') || 'system') === f.id;
+                        return `<button onclick="triggerHapticFeedback(); setMetalCardFont('${f.id}')"
+                            style="font-family: ${f.style}"
+                            class="px-4 py-2 rounded-[12px] text-[16px] transition-all ${active ? 'bg-white text-black font-semibold' : 'bg-white/10 text-white/70'} active:scale-95">
+                            ${f.label}
+                        </button>`;
+                    }).join('')}
+                </div>
+            </div>
+
+            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">${t('appearance.pattern')}</h3>
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 p-5 mb-6">
+                <div class="flex gap-2 flex-wrap">
+                    ${[
+                        { id: 'none',   label: t('appearance.patternNone')   },
+                        { id: 'dots',   label: t('appearance.patternDots')   },
+                        { id: 'grid',   label: t('appearance.patternGrid')   },
+                        { id: 'lines',  label: t('appearance.patternLines')  },
+                        { id: 'carbon', label: t('appearance.patternCarbon') },
+                        { id: 'hex',    label: t('appearance.patternHex')    },
+                        { id: 'rings',  label: t('appearance.patternRings')  },
+                    ].map(p => {
+                        const active = (localStorage.getItem('metalCardPattern') || 'none') === p.id;
+                        return `<button onclick="triggerHapticFeedback(); setMetalCardPattern('${p.id}')"
+                            class="px-4 py-2 rounded-[12px] text-[15px] font-medium transition-all active:scale-95 ${active ? 'bg-white text-black' : 'bg-white/10 text-white/70'}">
+                            ${p.label}
+                        </button>`;
+                    }).join('')}
+                </div>
             </div>
 
             <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">${t('appearance.dexSettings')}</h3>

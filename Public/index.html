@@ -460,21 +460,127 @@
             }
         }
 
-        @keyframes pulseGlow {
-            0% { transform: scale(1) translate(0, 0); opacity: calc(var(--card-glow-intensity, 1) * 0.1); }
-            50% { transform: scale(1.1) translate(2%, 2%); opacity: calc(var(--card-glow-intensity, 1) * 0.25); }
-            100% { transform: scale(1) translate(-2%, -2%); opacity: calc(var(--card-glow-intensity, 1) * 0.15); }
+        /* ambient tint — immer sichtbar, karte wird nie grau */
+        .metal-card-ambient {
+            position: absolute;
+            inset: 0;
+            background: var(--card-glow-color, transparent);
+            opacity: calc(var(--card-glow-intensity, 1) * 0.10);
+            filter: saturate(var(--card-saturation, 1.3));
+            pointer-events: none;
+            z-index: 0;
+            mix-blend-mode: screen;
+        }
+
+        /* pattern layer — sits between ambient and glow */
+        .metal-card-pattern {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            border-radius: inherit;
+            mix-blend-mode: screen;
+        }
+        .metal-card-pattern.p-dots {
+            background-image: radial-gradient(circle, rgba(255,255,255,0.22) 1px, transparent 1px);
+            background-size: 14px 14px;
+        }
+        .metal-card-pattern.p-grid {
+            background-image: linear-gradient(rgba(255,255,255,0.13) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.13) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .metal-card-pattern.p-lines {
+            background-image: repeating-linear-gradient(
+                -45deg,
+                rgba(255,255,255,0.11) 0px,
+                rgba(255,255,255,0.11) 1px,
+                transparent 1px,
+                transparent 10px
+            );
+        }
+        .metal-card-pattern.p-carbon {
+            background-image:
+                repeating-linear-gradient(
+                    45deg,
+                    rgba(255,255,255,0.07) 0px,
+                    rgba(255,255,255,0.07) 2px,
+                    transparent 2px,
+                    transparent 8px
+                ),
+                repeating-linear-gradient(
+                    -45deg,
+                    rgba(255,255,255,0.07) 0px,
+                    rgba(255,255,255,0.07) 2px,
+                    transparent 2px,
+                    transparent 8px
+                );
+        }
+        .metal-card-pattern.p-hex {
+            background-image:
+                linear-gradient(30deg, rgba(255,255,255,0.1) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,0.1) 87.5%, rgba(255,255,255,0.1)),
+                linear-gradient(150deg, rgba(255,255,255,0.1) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,0.1) 87.5%, rgba(255,255,255,0.1)),
+                linear-gradient(30deg, rgba(255,255,255,0.1) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,0.1) 87.5%, rgba(255,255,255,0.1)),
+                linear-gradient(150deg, rgba(255,255,255,0.1) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,0.1) 87.5%, rgba(255,255,255,0.1)),
+                linear-gradient(60deg, rgba(255,255,255,0.07) 25%, transparent 25.5%, transparent 75%, rgba(255,255,255,0.07) 75%, rgba(255,255,255,0.07)),
+                linear-gradient(60deg, rgba(255,255,255,0.07) 25%, transparent 25.5%, transparent 75%, rgba(255,255,255,0.07) 75%, rgba(255,255,255,0.07));
+            background-size: 20px 35px;
+            background-position: 0 0, 0 0, 10px 18px, 10px 18px, 0 0, 10px 18px;
+        }
+        /* concentric rings from card center */
+        .metal-card-pattern.p-rings {
+            background-image: repeating-radial-gradient(
+                circle at 50% 50%,
+                transparent 0px,
+                transparent 10px,
+                rgba(255,255,255,0.14) 11px,
+                rgba(255,255,255,0.14) 12px,
+                transparent 13px
+            );
+        }
+
+        @keyframes sweepGlow {
+            0%   { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        @keyframes pulseCardGlow {
+            0%   { transform: scale(0.88); opacity: calc(var(--card-glow-intensity, 1) * 0.26); }
+            100% { transform: scale(1.18); opacity: calc(var(--card-glow-intensity, 1) * 0.48); }
+        }
+
+        /* border-sweep: links hell → rechts hell → wieder links, nahtlose schleife */
+        @keyframes borderSweep {
+            0%   { box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 2px 5px rgba(255,255,255,0.1),   0px 0 10px -4px var(--card-outer-glow, rgba(255,255,255,0.1)); }
+            25%  { box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 2px 5px rgba(255,255,255,0.1), -12px 0 20px -5px var(--card-outer-glow, rgba(255,255,255,0.1)); }
+            75%  { box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 2px 5px rgba(255,255,255,0.1),  12px 0 20px -5px var(--card-outer-glow, rgba(255,255,255,0.1)); }
+            100% { box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 2px 5px rgba(255,255,255,0.1),   0px 0 10px -4px var(--card-outer-glow, rgba(255,255,255,0.1)); }
+        }
+
+        @keyframes borderPulse {
+            0%   { box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 2px 5px rgba(255,255,255,0.1), 0 0  8px -3px var(--card-outer-glow, rgba(255,255,255,0.1)); }
+            100% { box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 2px 5px rgba(255,255,255,0.1), 0 0 22px -3px var(--card-outer-glow, rgba(255,255,255,0.1)); }
         }
 
         .metal-card-glow {
             position: absolute;
             inset: -50%;
-            background: radial-gradient(circle at 50% 50%, var(--card-glow-color, #ffffff) 0%, transparent 60%);
-            animation: pulseGlow 6s ease-in-out infinite alternate;
+            background: radial-gradient(ellipse 55% 75% at 50% 50%, var(--card-glow-color, #ffffff) 0%, transparent 100%);
+            opacity: calc(var(--card-glow-intensity, 1) * 0.38);
             pointer-events: none;
-            z-index: 1;
-            mix-blend-mode: screen;
+            z-index: 2;
+            filter: blur(28px) saturate(var(--card-saturation, 1.3));
         }
+
+        .metal-card-container[data-anim="sweep"] .metal-card-glow      { animation: sweepGlow 5s linear infinite; }
+        .metal-card-container[data-anim="sweep"] .metal-card-glow-2    { animation: sweepGlow 5s linear infinite; animation-delay: -2.5s; }
+        .metal-card-container[data-anim="pulse"] .metal-card-glow      { animation: pulseCardGlow 3s ease-in-out infinite alternate; }
+        .metal-card-container[data-anim="pulse"] .metal-card-glow-2    { opacity: 0; animation: none; }
+        .metal-card-container[data-anim="none"]  .metal-card-glow      { animation: none; }
+        .metal-card-container[data-anim="none"]  .metal-card-glow-2    { opacity: 0; animation: none; }
+        .metal-card-container[data-anim="sweep"] .metal-collector-card { animation: borderSweep 5s linear infinite; }
+        .metal-card-container[data-anim="pulse"] .metal-collector-card { animation: borderPulse 3s ease-in-out infinite alternate; }
+        .metal-card-container[data-anim="none"]  .metal-collector-card { box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 2px 5px rgba(255,255,255,0.1), 0 0 14px -4px var(--card-outer-glow, rgba(255,255,255,0.1)); }
 
         @keyframes heatmapPulse {
             0%, 100% { background-color: #2C2C2E; }
@@ -520,7 +626,6 @@
         .metal-collector-card {
             width: 100%;
             height: 192px;
-            /* h-48 */
             border-radius: 24px;
             position: relative;
             overflow: hidden;
@@ -538,7 +643,8 @@
 
             background-blend-mode: overlay, soft-light;
 
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid var(--card-border-color, rgba(255, 255, 255, 0.15));
+            font-family: var(--card-font, -apple-system, sans-serif);
 
             box-shadow:
                 0 15px 35px rgba(0, 0, 0, 0.4),
@@ -563,30 +669,34 @@
         }
 
         .engraved-text {
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(255, 255, 255, 0.90);
             text-shadow:
-                0 0 2px rgba(0, 0, 0, 0.8),
-                /* Tiefe */
-                0 0 2px rgba(255, 255, 255, 0.1);
-            /* Kante */
+                0 1px 3px rgba(0, 0, 0, 0.9),
+                0 0 2px rgba(0, 0, 0, 0.7),
+                0 0 1px rgba(255, 255, 255, 0.15);
             position: relative;
             z-index: 10;
         }
 
         #greeting.engraved-text {
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.78);
         }
 
         #score.engraved-text {
-            color: rgba(255, 255, 255, 0.85);
-
+            color: rgba(255, 255, 255, 0.95);
             text-shadow:
-                0 0 4px rgba(0, 0, 0, 0.8),
-                0 0 3px rgba(255, 255, 255, 0.15);
+                0 1px 4px rgba(0, 0, 0, 0.9),
+                0 0 3px rgba(0, 0, 0, 0.7),
+                0 0 2px rgba(255, 255, 255, 0.2);
         }
 
         #score.engraved-text span {
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(255, 255, 255, 0.60);
+        }
+
+        /* prevent horizontal slider drags from triggering WKWebView back-swipe gesture */
+        input[type="range"] {
+            touch-action: pan-y;
         }
 
         .flex {
@@ -902,9 +1012,12 @@
             <h1 class="text-[34px] font-bold tracking-tight" data-i18n="nav.home">Home</h1>
         </header>
 
-        <div class="metal-card-container">
+        <div class="metal-card-container" id="metal-card-container" data-anim="sweep">
             <div class="metal-collector-card">
+                <div class="metal-card-ambient"></div>
+                <div class="metal-card-pattern" id="metal-card-pattern"></div>
                 <div class="metal-card-glow" id="metal-card-glow"></div>
+                <div class="metal-card-glow metal-card-glow-2"></div>
                 <div class="flex justify-between items-start relative z-10">
                     <span class="engraved-text font-medium uppercase tracking-widest" style="font-size: 13px;" data-i18n="home.collectorId">Collector ID</span>
                     <span id="home-level" class="engraved-text font-semibold" style="font-size: 14px;">LVL --</span>
