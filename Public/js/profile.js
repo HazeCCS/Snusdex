@@ -73,6 +73,15 @@ async function setupProfile(user) {
             // Apply immediately to own profile card — read back from localStorage so the
             // canvas renderer captures a fresh object and isn't bound to a stale snapshot.
             applyCardAppearance('metal-card-container', getLocalCardAppearance());
+
+            // If the Darstellung subpage is open when cloud sync arrives, refresh
+            // the preview card and button states so they don't show stale values.
+            if (window._currentSubpageType === 'Darstellung') {
+                applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
+                if (typeof _refreshAppearanceButtonStates === 'function') {
+                    _refreshAppearanceButtonStates();
+                }
+            }
         }
 
         // Sync daily streak from DB

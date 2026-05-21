@@ -992,10 +992,6 @@ function openSettingsSubpage(type, _pushHistory) {
         renderBadgeSelectorItems();
     }
 
-    if (type === 'Darstellung') {
-        applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
-    }
-
     subpage.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 
@@ -1008,6 +1004,14 @@ function openSettingsSubpage(type, _pushHistory) {
             subpage.classList.remove('translate-x-full');
             subpage.classList.add('translate-x-0');
         }, 10);
+    }
+
+    // Apply card appearance after hidden is removed so getBoundingClientRect()
+    // returns real dimensions (canvas patterns initialize at 0x0 on hidden elements).
+    if (type === 'Darstellung') {
+        requestAnimationFrame(() => {
+            applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
+        });
     }
 }
 
