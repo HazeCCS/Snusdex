@@ -1004,7 +1004,7 @@ function openSettingsSubpage(type, _pushHistory) {
                     <div id="arch-map-bar" style="height:100%;width:0%;background:rgba(255,255,255,.85);border-radius:999px;transition:width 1.6s cubic-bezier(0.4,0,0.2,1)"></div>
                 </div>
             </div>
-            <iframe id="arch-map-iframe" src="../architecture-map.html"
+            <iframe id="arch-map-iframe" src="architecture-map.html"
                 style="width:100%;height:100%;border:none;display:block;position:absolute;inset:0"
                 allow="fullscreen">
             </iframe>`;
