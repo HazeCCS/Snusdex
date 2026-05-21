@@ -117,24 +117,53 @@ window.toggleListScore = function (btn, id) {
     triggerHapticFeedback();
     const detailsDiv = document.getElementById(`score-details-${id}`);
     if (detailsDiv) {
-        const isHidden = detailsDiv.classList.contains('hidden');
+        const isHidden = detailsDiv.classList.contains('hidden') || window.getComputedStyle(detailsDiv).display === 'none';
 
         if (isHidden) {
+            // Zeige das Element an und setze Startwerte für die Animation
             detailsDiv.classList.remove('hidden');
+            detailsDiv.style.display = 'block';
+            
+            detailsDiv.style.transition = 'none';
+            detailsDiv.style.height = '0px';
+            detailsDiv.style.borderTopWidth = '0px';
             detailsDiv.style.opacity = '0';
             detailsDiv.style.transform = 'translateY(-10px)';
-            detailsDiv.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
 
             // Force reflow
-            void detailsDiv.offsetWidth;
+            void detailsDiv.offsetHeight;
 
+            // Miss die tatsächliche Höhe des Inhalts (inklusive padding)
+            const targetHeight = detailsDiv.scrollHeight;
+
+            // Starte Animation
+            detailsDiv.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-top-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            detailsDiv.style.height = targetHeight + 'px';
+            detailsDiv.style.borderTopWidth = '1px';
             detailsDiv.style.opacity = '1';
             detailsDiv.style.transform = 'translateY(0)';
         } else {
+            // Setze aktuelle Höhe explizit vor dem Einklappen
+            const currentHeight = detailsDiv.offsetHeight;
+            detailsDiv.style.height = currentHeight + 'px';
+            detailsDiv.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-top-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+
+            // Force reflow
+            void detailsDiv.offsetHeight;
+
+            // Starte Animation zum Einklappen
+            detailsDiv.style.height = '0px';
+            detailsDiv.style.borderTopWidth = '0px';
             detailsDiv.style.opacity = '0';
             detailsDiv.style.transform = 'translateY(-10px)';
+
+            // Nach der Animation ausblenden
             setTimeout(() => {
-                detailsDiv.classList.add('hidden');
+                // Nur ausblenden, falls nicht in der Zwischenzeit wieder ausgeklappt wurde
+                if (detailsDiv.style.height === '0px') {
+                    detailsDiv.style.display = 'none';
+                    detailsDiv.classList.add('hidden');
+                }
             }, 300);
         }
 
@@ -148,7 +177,7 @@ window.toggleListScore = function (btn, id) {
         setTimeout(() => {
             const topContainer = document.getElementById('top-snus-container');
             if (topContainer) _socialCacheData = topContainer.innerHTML;
-        }, 300);
+        }, 320);
     }
 };
 
@@ -314,14 +343,16 @@ function renderSocialListUI() {
                         </button>
                     </div>
                     <!-- Details Dropdown -->
-                    <div id="score-details-${snus.id}_${i}" class="hidden bg-black/20 border-t border-white/5 p-3">
-                        <div class="grid grid-cols-6 gap-1 pt-1 pb-1">
-                            ${createCircle(t('rating.vis'), item.ratings?.visuals)}
-                            ${createCircle(t('rating.smell'), item.ratings?.smell)}
-                            ${createCircle(t('rating.taste'), item.ratings?.taste)}
-                            ${createCircle(t('rating.bite'), item.ratings?.bite)}
-                            ${createCircle(t('rating.drip'), item.ratings?.drip)}
-                            ${createCircle(t('rating.str'), item.ratings?.strength)}
+                    <div id="score-details-${snus.id}_${i}" class="hidden bg-black/20 border-t border-white/5 overflow-hidden">
+                        <div class="p-3">
+                            <div class="grid grid-cols-6 gap-1 pt-1 pb-1">
+                                ${createCircle(t('rating.vis'), item.ratings?.visuals)}
+                                ${createCircle(t('rating.smell'), item.ratings?.smell)}
+                                ${createCircle(t('rating.taste'), item.ratings?.taste)}
+                                ${createCircle(t('rating.bite'), item.ratings?.bite)}
+                                ${createCircle(t('rating.drip'), item.ratings?.drip)}
+                                ${createCircle(t('rating.str'), item.ratings?.strength)}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1448,7 +1479,7 @@ async function openFriendProfile(friendId) {
 
         const profileRes = await supabaseClient
             .from('profiles')
-            .select('id, username, avatar_url, xp, featured_badge_id')
+            .select('id, username, avatar_url, xp, featured_badge_id, card_appearance')
             .eq('id', friendId)
             .single();
 
@@ -1456,14 +1487,24 @@ async function openFriendProfile(friendId) {
         error = profileRes.error;
 
         if (error && error.code === '42703') {
-            console.warn("Column featured_badge_id doesn't exist on profiles, retrying without it...");
+            console.warn("Column featured_badge_id or card_appearance doesn't exist on profiles, retrying with fallback...");
             const retryRes = await supabaseClient
                 .from('profiles')
-                .select('id, username, avatar_url, xp')
+                .select('id, username, avatar_url, xp, featured_badge_id')
                 .eq('id', friendId)
                 .single();
             profile = retryRes.data;
             error = retryRes.error;
+
+            if (error && error.code === '42703') {
+                const finalRetry = await supabaseClient
+                    .from('profiles')
+                    .select('id, username, avatar_url, xp')
+                    .eq('id', friendId)
+                    .single();
+                profile = finalRetry.data;
+                error = finalRetry.error;
+            }
         }
 
         if (error) {
@@ -1543,18 +1584,18 @@ async function openFriendProfile(friendId) {
         if (cardUserEl) cardUserEl.innerHTML = `COLLECTOR, <span class="text-white font-semibold">${profile.username || 'Unknown'}</span>`;
         if (cardScoreEl) cardScoreEl.innerHTML = weBlockedThem ? `- <span class="font-medium text-[20px] text-white/50">XP</span>` : `${xpVal} <span class="font-medium text-[20px] text-white/50">XP</span>`;
 
-        // Apply card animation and pattern from user preferences
+        // Apply card appearance from the friend's profile details
         const cardContainer = document.getElementById('friend-metal-card-container');
         if (cardContainer) {
-            cardContainer.dataset.anim = localStorage.getItem('metalCardAnim') || 'sweep';
-        }
-        const patternEl = document.getElementById('friend-metal-card-pattern');
-        if (patternEl) {
-            patternEl.className = 'metal-card-pattern';
-            const savedPattern = localStorage.getItem('metalCardPattern') || 'none';
-            if (savedPattern !== 'none') {
-                patternEl.classList.add('p-' + savedPattern);
-            }
+            applyCardAppearance(cardContainer, profile.card_appearance || {
+                colorId: 'white',
+                colorHex: '#ffffff',
+                font: 'system',
+                anim: 'sweep',
+                saturation: '1.3',
+                pattern: 'none',
+                intensity: '1'
+            });
         }
 
         const xpEl = document.getElementById('friend-stat-xp');

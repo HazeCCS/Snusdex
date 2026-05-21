@@ -110,6 +110,12 @@ async function checkUser() {
                 if (nav) { nav.style.opacity = '1'; nav.style.pointerEvents = ''; }
                 const tabHome = document.getElementById('tab-home');
                 if (tabHome) tabHome.classList.remove('pre-auth');
+                // Re-apply card appearance now that the card is visible and has real dimensions.
+                // Canvas-based animations (ripple, GoL, cubes) size the canvas at init time,
+                // so if called while the card was hidden/zero-size they need a fresh init.
+                if (typeof applyCardAppearance !== 'undefined' && typeof getLocalCardAppearance !== 'undefined') {
+                    applyCardAppearance('metal-card-container', getLocalCardAppearance());
+                }
             }, 500);
 
             // Scroll home to top after login

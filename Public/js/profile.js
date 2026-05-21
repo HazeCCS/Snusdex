@@ -23,26 +23,31 @@ async function setupProfile(user) {
     updateGreeting();
     loadUserStats(user.id);
 
-    // Vollständiges Profil im Hintergrund nachladen (featured badge + korrekter username aus DB)
+    // Vollständiges Profil im Hintergrund nachladen (featured badge + korrekter username aus DB + card design & streak)
     try {
         let profileData = null;
-        const res = await supabaseClient
+        let res = await supabaseClient
             .from('profiles')
-            .select('username, featured_badge_id')
+            .select('username, featured_badge_id, card_appearance, streak_count, last_tracked_date')
             .eq('id', user.id)
             .single();
 
         if (res.error && res.error.code === '42703') {
-            console.warn("Column featured_badge_id doesn't exist on profiles, retrying without it...");
-            const retryRes = await supabaseClient
+            console.warn("Retrying profile fetch without new sync columns...");
+            res = await supabaseClient
                 .from('profiles')
-                .select('username')
+                .select('username, featured_badge_id')
                 .eq('id', user.id)
                 .single();
-            profileData = retryRes.data;
-        } else {
-            profileData = res.data;
+            if (res.error && res.error.code === '42703') {
+                res = await supabaseClient
+                    .from('profiles')
+                    .select('username')
+                    .eq('id', user.id)
+                    .single();
+            }
         }
+        profileData = res.data;
 
         if (profileData?.username && profileData.username !== currentUsername) {
             currentUsername = profileData.username;
@@ -53,6 +58,33 @@ async function setupProfile(user) {
 
         window._featuredBadgeId = profileData?.featured_badge_id || null;
         renderFeaturedBadgeOverlay();
+
+        // Sync card appearance from DB
+        if (profileData?.card_appearance && Object.keys(profileData.card_appearance).length > 0) {
+            const app = profileData.card_appearance;
+            if (app.colorId) localStorage.setItem('metalCardColorId', app.colorId);
+            if (app.colorHex) localStorage.setItem('metalCardColorHex', app.colorHex);
+            if (app.font) localStorage.setItem('metalCardFont', app.font);
+            if (app.anim) localStorage.setItem('metalCardAnim', app.anim);
+            if (app.saturation) localStorage.setItem('metalCardSaturation', app.saturation);
+            if (app.pattern) localStorage.setItem('metalCardPattern', app.pattern);
+            if (app.intensity) localStorage.setItem('metalCardIntensity', app.intensity);
+            
+            // Apply immediately to own profile card — read back from localStorage so the
+            // canvas renderer captures a fresh object and isn't bound to a stale snapshot.
+            applyCardAppearance('metal-card-container', getLocalCardAppearance());
+        }
+
+        // Sync daily streak from DB
+        if (profileData?.last_tracked_date) {
+            localStorage.setItem('lastTrackedDate', profileData.last_tracked_date);
+            localStorage.setItem('streakCount', profileData.streak_count || 0);
+            
+            // Re-validate and render streak UI
+            if (typeof validateAndRenderStreak === 'function') {
+                validateAndRenderStreak();
+            }
+        }
     } catch (e) { /* ignore */ }
 }
 

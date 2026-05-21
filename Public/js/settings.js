@@ -142,65 +142,160 @@ const _CARD_FONT_MAP = {
     mono:        'Menlo, monospace',
 };
 
+async function syncCardAppearanceToCloud() {
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        const appearance = getLocalCardAppearance();
+
+        const { error } = await supabaseClient
+            .from('profiles')
+            .update({ card_appearance: appearance })
+            .eq('id', user.id);
+
+        if (error) {
+            console.error("Error syncing card appearance to cloud:", error);
+        }
+    } catch (e) {
+        console.error("Failed to sync card appearance:", e);
+    }
+}
+
 function _applyCardBorderColor(colorHex) {
     const hex = (colorHex.match(/#([0-9a-fA-F]{6})/) || [])[1];
     if (hex) {
         const r = parseInt(hex.slice(0,2), 16);
         const g = parseInt(hex.slice(2,4), 16);
         const b = parseInt(hex.slice(4,6), 16);
-        document.documentElement.style.setProperty('--card-border-color', `rgba(${r},${g},${b},0.45)`);
-        document.documentElement.style.setProperty('--card-outer-glow', `rgba(${r},${g},${b},0.25)`);
+        const container = document.getElementById('metal-card-container');
+        if (container) {
+            container.style.setProperty('--card-border-color', `rgba(${r},${g},${b},0.45)`);
+            container.style.setProperty('--card-outer-glow', `rgba(${r},${g},${b},0.25)`);
+        }
     } else {
-        document.documentElement.style.setProperty('--card-border-color', 'rgba(255,255,255,0.15)');
-        document.documentElement.style.setProperty('--card-outer-glow', 'rgba(255,255,255,0.08)');
+        const container = document.getElementById('metal-card-container');
+        if (container) {
+            container.style.setProperty('--card-border-color', 'rgba(255,255,255,0.15)');
+            container.style.setProperty('--card-outer-glow', 'rgba(255,255,255,0.08)');
+        }
     }
 }
 
 function setMetalCardColor(colorId, colorHex) {
     localStorage.setItem('metalCardColorId', colorId);
     localStorage.setItem('metalCardColorHex', colorHex);
-    document.documentElement.style.setProperty('--card-glow-color', colorHex);
-    _applyCardBorderColor(colorHex);
-
-    const subpage = document.getElementById('settings-subpage');
-    if (subpage && !subpage.classList.contains('hidden') && window._currentSubpageType === 'Darstellung') {
-        openSettingsSubpage('Darstellung');
-    }
+    applyCardAppearance('metal-card-container', getLocalCardAppearance());
+    applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
+    _refreshAppearanceButtonStates();
+    syncCardAppearanceToCloud();
 }
 
 function setMetalCardFont(fontId) {
     localStorage.setItem('metalCardFont', fontId);
-    document.documentElement.style.setProperty('--card-font', _CARD_FONT_MAP[fontId] || _CARD_FONT_MAP.system);
-    if (window._currentSubpageType === 'Darstellung') openSettingsSubpage('Darstellung');
+    applyCardAppearance('metal-card-container', getLocalCardAppearance());
+    applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
+    _refreshAppearanceButtonStates();
+    syncCardAppearanceToCloud();
 }
 
 function setMetalCardAnim(type) {
     localStorage.setItem('metalCardAnim', type);
-    const container = document.getElementById('metal-card-container');
-    if (container) container.dataset.anim = type;
-    if (window._currentSubpageType === 'Darstellung') openSettingsSubpage('Darstellung');
+    if (type === 'gol') {
+        localStorage.setItem('metalCardPattern', 'cubes');
+    }
+    applyCardAppearance('metal-card-container', getLocalCardAppearance());
+    applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
+    _refreshAppearanceButtonStates();
+    syncCardAppearanceToCloud();
 }
 
 function setMetalCardSaturation(val) {
     localStorage.setItem('metalCardSaturation', val);
-    document.documentElement.style.setProperty('--card-saturation', val);
+    applyCardAppearance('metal-card-container', getLocalCardAppearance());
+    applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
     const el = document.getElementById('saturation-val');
     if (el) el.innerText = parseFloat(val).toFixed(1) + 'x';
 }
 
 function setMetalCardPattern(id) {
     localStorage.setItem('metalCardPattern', id);
-    const el = document.getElementById('metal-card-pattern');
-    if (el) {
-        el.className = 'metal-card-pattern';
-        if (id && id !== 'none') el.classList.add('p-' + id);
+    const currentAnim = localStorage.getItem('metalCardAnim') || 'sweep';
+    if (currentAnim === 'gol' && id !== 'cubes') {
+        localStorage.setItem('metalCardAnim', 'none');
     }
-    if (window._currentSubpageType === 'Darstellung') openSettingsSubpage('Darstellung');
+    applyCardAppearance('metal-card-container', getLocalCardAppearance());
+    applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
+    _refreshAppearanceButtonStates();
+    syncCardAppearanceToCloud();
+}
+
+// Refreshes button active states and pattern classes in the Darstellung subpage
+// without re-rendering the whole page (which would push history and reset canvas)
+function _refreshAppearanceButtonStates() {
+    if (window._currentSubpageType !== 'Darstellung') return;
+
+    const app = getLocalCardAppearance();
+
+    // Update animation buttons
+    document.querySelectorAll('[onclick*="setMetalCardAnim"]').forEach(btn => {
+        const match = btn.getAttribute('onclick').match(/setMetalCardAnim\('([^']+)'\)/);
+        if (!match) return;
+        const id = match[1];
+        if (id === app.anim) {
+            btn.classList.add('bg-white', 'text-black');
+            btn.classList.remove('bg-white/10', 'text-white/70');
+        } else {
+            btn.classList.remove('bg-white', 'text-black');
+            btn.classList.add('bg-white/10', 'text-white/70');
+        }
+    });
+
+    // Update pattern buttons
+    document.querySelectorAll('[onclick*="setMetalCardPattern"]').forEach(btn => {
+        const match = btn.getAttribute('onclick').match(/setMetalCardPattern\('([^']+)'\)/);
+        if (!match) return;
+        const id = match[1];
+        if (id === app.pattern) {
+            btn.classList.add('bg-white', 'text-black');
+            btn.classList.remove('bg-white/10', 'text-white/70');
+        } else {
+            btn.classList.remove('bg-white', 'text-black');
+            btn.classList.add('bg-white/10', 'text-white/70');
+        }
+    });
+
+    // Update font buttons
+    document.querySelectorAll('[onclick*="setMetalCardFont"]').forEach(btn => {
+        const match = btn.getAttribute('onclick').match(/setMetalCardFont\('([^']+)'\)/);
+        if (!match) return;
+        const id = match[1];
+        if (id === app.font) {
+            btn.classList.add('bg-white', 'text-black', 'font-semibold');
+            btn.classList.remove('bg-white/10', 'text-white/70');
+        } else {
+            btn.classList.remove('bg-white', 'text-black', 'font-semibold');
+            btn.classList.add('bg-white/10', 'text-white/70');
+        }
+    });
+
+    // Update color ring highlights
+    document.querySelectorAll('[onclick*="setMetalCardColor"]').forEach(btn => {
+        const match = btn.getAttribute('onclick').match(/setMetalCardColor\('([^']+)'/);
+        if (!match) return;
+        const id = match[1];
+        const ring = btn.querySelector('div');
+        if (ring) {
+            ring.classList.toggle('border-white', id === app.colorId);
+            ring.classList.toggle('border-transparent', id !== app.colorId);
+        }
+    });
 }
 
 function setMetalCardIntensity(val) {
     localStorage.setItem('metalCardIntensity', val);
-    document.documentElement.style.setProperty('--card-glow-intensity', val);
+    applyCardAppearance('metal-card-container', getLocalCardAppearance());
+    applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
     const valEl = document.getElementById('glow-intensity-val');
     if (valEl) valEl.innerText = parseFloat(val).toFixed(1) + 'x';
 }
@@ -237,6 +332,12 @@ function _ghMarkdown(md) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function openSettingsSubpage(type, _pushHistory) {
+    // Destroy previous preview canvas if any to prevent memory leaks
+    const previewContainer = document.getElementById('preview-metal-card-container');
+    if (previewContainer && typeof CardCanvasRenderer !== 'undefined') {
+        CardCanvasRenderer.destroy(previewContainer);
+    }
+
     if (_pushHistory !== false) {
         if (!window._subpageHistory) window._subpageHistory = [];
         if (window._currentSubpageType) window._subpageHistory.push(window._currentSubpageType);
@@ -584,6 +685,11 @@ function openSettingsSubpage(type, _pushHistory) {
         const sortHandleTransform = isAlphaDefault ? 'translate-x-5' : '';
         const sortHandleBg = isAlphaDefault ? 'bg-black' : 'bg-white';
 
+        // Get actual user credentials for the preview card
+        const homeLevelVal = document.getElementById('home-level')?.innerText || 'LVL 1';
+        const scoreVal = document.getElementById('score')?.innerHTML || '0 <span class="font-medium text-[20px] text-white/50">XP</span>';
+        const greetingVal = document.getElementById('greeting')?.innerHTML || 'COLLECTOR';
+
         // --- NEW ---
         const metalColors = [
             { id: 'white', name: 'White', color: '#ffffff', reqRarity: null },
@@ -633,6 +739,24 @@ function openSettingsSubpage(type, _pushHistory) {
         const activeIntensity = localStorage.getItem('metalCardIntensity') || '1';
 
         html = `
+            <!-- Live Preview Card -->
+            <div class="metal-card-container mb-6 animate-fade-in" id="preview-metal-card-container" data-anim="sweep" style="padding: 0 0 20px 0;">
+                <div class="metal-collector-card">
+                    <div class="metal-card-ambient"></div>
+                    <div class="metal-card-pattern"></div>
+                    <div class="metal-card-glow"></div>
+                    <div class="metal-card-glow metal-card-glow-2"></div>
+                    <div class="flex justify-between items-start relative z-10">
+                        <span class="engraved-text font-medium uppercase tracking-widest" style="font-size: 13px;">${t('home.collectorId')}</span>
+                        <span id="preview-home-level" class="engraved-text font-semibold" style="font-size: 14px;">${homeLevelVal}</span>
+                    </div>
+                    <div class="relative z-10">
+                        <p id="preview-greeting" class="engraved-text uppercase tracking-wide" style="font-size: 13px; margin-bottom: 2px;">${greetingVal}</p>
+                        <p id="preview-score" class="engraved-text font-semibold tracking-tight leading-none" style="font-size: 38px; margin: 0;">${scoreVal}</p>
+                    </div>
+                </div>
+            </div>
+
             <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">${t('appearance.cardGlow')}</h3>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 p-5 mb-6">
                 <div class="flex flex-wrap gap-4 pb-2">
@@ -640,15 +764,17 @@ function openSettingsSubpage(type, _pushHistory) {
                 </div>
                 <div class="mt-4 border-t border-white/5 pt-4">
                     <span class="text-white text-[15px] block mb-3">${t('appearance.animation')}</span>
-                    <div class="flex gap-3">
+                    <div class="flex gap-2 flex-wrap">
                         ${[
                             { id: 'sweep', label: t('appearance.animSweep') },
                             { id: 'pulse', label: t('appearance.animPulse') },
+                            { id: 'ripple', label: t('appearance.animRipple') },
+                            { id: 'gol', label: t('appearance.animGol') },
                             { id: 'none',  label: t('appearance.animNone')  },
                         ].map(a => {
                             const active = (localStorage.getItem('metalCardAnim') || 'sweep') === a.id;
                             return `<button onclick="triggerHapticFeedback(); setMetalCardAnim('${a.id}')"
-                                class="flex-1 py-2 rounded-[12px] text-[15px] font-medium transition-all active:scale-95 ${active ? 'bg-white text-black' : 'bg-white/10 text-white/70'}">
+                                class="px-4 py-2 rounded-[12px] text-[15px] font-medium transition-all active:scale-95 ${active ? 'bg-white text-black' : 'bg-white/10 text-white/70'}">
                                 ${a.label}
                             </button>`;
                         }).join('')}
@@ -659,14 +785,14 @@ function openSettingsSubpage(type, _pushHistory) {
                         <span class="text-white text-[15px]">${t('appearance.intensity')}</span>
                         <span id="glow-intensity-val" class="text-[#8E8E93] text-[13px] font-medium">${parseFloat(activeIntensity).toFixed(1)}x</span>
                     </div>
-                    <input type="range" min="1" max="4" step="0.1" id="glow-intensity" value="${activeIntensity}" oninput="setMetalCardIntensity(this.value)" class="w-full h-1.5 bg-[#3A3A3C] rounded-full appearance-none outline-none accent-white">
+                    <input type="range" min="1" max="4" step="0.1" id="glow-intensity" value="${activeIntensity}" oninput="setMetalCardIntensity(this.value)" onchange="syncCardAppearanceToCloud()" class="w-full h-1.5 bg-[#3A3A3C] rounded-full appearance-none outline-none accent-white">
                 </div>
                 <div class="mt-4 border-t border-white/5 pt-4">
                     <div class="flex justify-between items-center mb-3">
                         <span class="text-white text-[15px]">${t('appearance.saturation')}</span>
                         <span id="saturation-val" class="text-[#8E8E93] text-[13px] font-medium">${parseFloat(localStorage.getItem('metalCardSaturation') || '1.3').toFixed(1)}x</span>
                     </div>
-                    <input type="range" min="0.5" max="3" step="0.1" value="${localStorage.getItem('metalCardSaturation') || '1.3'}" oninput="setMetalCardSaturation(this.value)" class="w-full h-1.5 bg-[#3A3A3C] rounded-full appearance-none outline-none accent-white">
+                    <input type="range" min="0.5" max="3" step="0.1" value="${localStorage.getItem('metalCardSaturation') || '1.3'}" oninput="setMetalCardSaturation(this.value)" onchange="syncCardAppearanceToCloud()" class="w-full h-1.5 bg-[#3A3A3C] rounded-full appearance-none outline-none accent-white">
                 </div>
                 <p class="text-[12px] text-[#8E8E93] mt-4">${t('appearance.cardGlowDesc')}</p>
             </div>
@@ -705,6 +831,7 @@ function openSettingsSubpage(type, _pushHistory) {
                         { id: 'carbon', label: t('appearance.patternCarbon') },
                         { id: 'hex',    label: t('appearance.patternHex')    },
                         { id: 'rings',  label: t('appearance.patternRings')  },
+                        { id: 'cubes',  label: t('appearance.patternCubes')  },
                     ].map(p => {
                         const active = (localStorage.getItem('metalCardPattern') || 'none') === p.id;
                         return `<button onclick="triggerHapticFeedback(); setMetalCardPattern('${p.id}')"
@@ -909,6 +1036,10 @@ function openSettingsSubpage(type, _pushHistory) {
         renderBadgeSelectorItems();
     }
 
+    if (type === 'Darstellung') {
+        applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
+    }
+
     subpage.classList.remove('hidden');
 
     document.body.classList.add('overflow-hidden');
@@ -950,6 +1081,9 @@ function closeSettingsSubpage() {
         openSettingsSubpage(prev, false);
         return;
     }
+
+    const wasAppearancePage = window._currentSubpageType === 'Darstellung';
+
     window._subpageHistory = [];
     window._currentSubpageType = null;
 
@@ -962,10 +1096,23 @@ function closeSettingsSubpage() {
     subpage.classList.remove('translate-x-0');
     subpage.classList.add('translate-x-full');
 
+    // Hide subpage after slide-out animation (300ms)
     setTimeout(() => {
         subpage.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
     }, 300);
+
+    // Destroy preview canvas and refresh homepage card 500ms after closing —
+    // after the subpage is fully out of view and homepage card has real dimensions.
+    setTimeout(() => {
+        const previewContainer = document.getElementById('preview-metal-card-container');
+        if (previewContainer && typeof CardCanvasRenderer !== 'undefined') {
+            CardCanvasRenderer.destroy(previewContainer);
+        }
+        if (wasAppearancePage && typeof applyCardAppearance !== 'undefined') {
+            applyCardAppearance('metal-card-container', getLocalCardAppearance());
+        }
+    }, 500);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

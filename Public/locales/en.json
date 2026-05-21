@@ -245,6 +245,9 @@
   "appearance.animation": "Animation",
   "appearance.animSweep": "Sweep",
   "appearance.animPulse": "Pulse",
+  "appearance.animRipple": "Ripple",
+  "appearance.animGol": "Game of Life",
+  "appearance.animTopography": "Topography",
   "appearance.animNone": "None",
   "appearance.saturation": "Saturation",
   "appearance.cardFont": "Card Font",
@@ -329,5 +332,6 @@
   "appearance.patternLines": "Lines",
   "appearance.patternCarbon": "Carbon",
   "appearance.patternHex": "Hex",
-  "appearance.patternRings": "Rings"
+  "appearance.patternRings": "Rings",
+  "appearance.patternCubes": "Cubes"
 }

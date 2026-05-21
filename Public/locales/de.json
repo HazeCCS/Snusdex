@@ -245,6 +245,9 @@
   "appearance.animation": "Animation",
   "appearance.animSweep": "Durchlaufen",
   "appearance.animPulse": "Pulsieren",
+  "appearance.animRipple": "Ripple",
+  "appearance.animGol": "Game of Life",
+  "appearance.animTopography": "Topographie",
   "appearance.animNone": "Keine",
   "appearance.saturation": "Sättigung",
   "appearance.cardFont": "Karten-Schrift",
@@ -329,5 +332,6 @@
   "appearance.patternLines": "Linien",
   "appearance.patternCarbon": "Carbon",
   "appearance.patternHex": "Hex",
-  "appearance.patternRings": "Ringe"
+  "appearance.patternRings": "Ringe",
+  "appearance.patternCubes": "Würfel"
 }

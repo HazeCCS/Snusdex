@@ -245,6 +245,9 @@
   "appearance.animation": "Анимация",
   "appearance.animSweep": "Движение",
   "appearance.animPulse": "Пульсация",
+  "appearance.animRipple": "Рябь",
+  "appearance.animGol": "Игра «Жизнь»",
+  "appearance.animTopography": "Топография",
   "appearance.animNone": "Нет",
   "appearance.saturation": "Насыщенность",
   "appearance.cardFont": "Шрифт карты",
@@ -329,5 +332,6 @@
   "appearance.patternLines": "Линии",
   "appearance.patternCarbon": "Карбон",
   "appearance.patternHex": "Шест.",
-  "appearance.patternRings": "Кольца"
+  "appearance.patternRings": "Кольца",
+  "appearance.patternCubes": "Кубики"
 }

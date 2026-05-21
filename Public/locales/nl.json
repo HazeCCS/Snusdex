@@ -271,6 +271,9 @@
   "appearance.animation": "Animatie",
   "appearance.animSweep": "Doorlopen",
   "appearance.animPulse": "Pulseren",
+  "appearance.animRipple": "Rimpel",
+  "appearance.animGol": "Game of Life",
+  "appearance.animTopography": "Topografie",
   "appearance.animNone": "Geen",
   "appearance.saturation": "Verzadiging",
   "appearance.cardFont": "Kaartlettertype",
@@ -362,5 +365,6 @@
   "appearance.patternLines": "Lijnen",
   "appearance.patternCarbon": "Carbon",
   "appearance.patternHex": "Hex",
-  "appearance.patternRings": "Ringen"
+  "appearance.patternRings": "Ringen",
+  "appearance.patternCubes": "Kubussen"
 }

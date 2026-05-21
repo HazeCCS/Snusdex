@@ -71,11 +71,19 @@ function switchTab(tabId) {
 
     // ── Seiteneffekte ────────────────────────────────────────────────────────
 
-    if (tabId === 'home' && displayedXp !== null && actualXp !== null && displayedXp !== actualXp) {
-        setTimeout(() => {
-            const level = Math.floor(actualXp / 300) + 1;
-            animateXp(displayedXp, actualXp, level);
-        }, 200);
+    if (tabId === 'home') {
+        // Reload the collector card every time the home tab is opened so the
+        // canvas loop is always live and correctly sized.
+        if (typeof applyCardAppearance !== 'undefined' && typeof getLocalCardAppearance !== 'undefined') {
+            applyCardAppearance('metal-card-container', getLocalCardAppearance());
+        }
+
+        if (displayedXp !== null && actualXp !== null && displayedXp !== actualXp) {
+            setTimeout(() => {
+                const level = Math.floor(actualXp / 300) + 1;
+                animateXp(displayedXp, actualXp, level);
+            }, 200);
+        }
     }
 
     if (tabId === 'social') {

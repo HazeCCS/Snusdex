@@ -286,6 +286,9 @@ const _EN = {
     'appearance.animation': 'Animation',
     'appearance.animSweep': 'Sweep',
     'appearance.animPulse': 'Pulse',
+    'appearance.animRipple': 'Ripple',
+    'appearance.animGol': 'Game of Life',
+    'appearance.animTopography': 'Topography',
     'appearance.animNone': 'None',
     'appearance.saturation': 'Saturation',
     'appearance.cardFont': 'Card Font',
@@ -301,6 +304,7 @@ const _EN = {
     'appearance.patternCarbon': 'Carbon',
     'appearance.patternHex': 'Hex',
     'appearance.patternRings': 'Rings',
+    'appearance.patternCubes': 'Cubes',
 
     'language.title': 'Language',
 
