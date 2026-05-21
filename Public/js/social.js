@@ -552,8 +552,8 @@ function openBadgesGrid() {
                     </div>
                     <h3 class="text-white text-[15px] font-bold text-center leading-tight mb-1">${badge.name}</h3>
                     <p class="text-[#8E8E93] text-[11px] text-center mb-3 line-clamp-2">${badge.description}</p>
-                    <div class="w-full bg-[#34C759]/20 rounded-full py-1 text-center mt-auto border border-[#34C759]/30">
-                        <span class="text-[#34C759] text-[10px] font-bold uppercase tracking-wider">${t('badges.unlocked')}</span>
+                    <div class="w-full bg-[#34C759]/20 rounded-full py-1.5 flex items-center justify-center mt-auto border border-[#34C759]/30">
+                        <span class="text-[#34C759] text-[12px] font-bold uppercase tracking-wider">${t('badges.unlocked')}</span>
                     </div>
                 </div>
             `;

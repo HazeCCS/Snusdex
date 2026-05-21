@@ -219,6 +219,8 @@
   "haptics.dexDisabledHint": "Disabled when button haptics is off",
   "settings.deleteAccount": "Delete Account",
   "settings.signOut": "Sign Out",
+  "settings.noResults": "No settings found",
+  "settings.searchPlaceholder": "Search settings…",
   "editProfile.featuredBadge": "Featured Badge",
   "editProfile.none": "None",
   "editProfile.username": "Username",

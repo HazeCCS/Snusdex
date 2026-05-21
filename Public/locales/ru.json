@@ -219,6 +219,8 @@
   "haptics.dexDisabledHint": "Недоступно, когда вибрация кнопок выключена",
   "settings.deleteAccount": "Удалить аккаунт",
   "settings.signOut": "Выйти",
+  "settings.noResults": "Настройки не найдены",
+  "settings.searchPlaceholder": "Поиск настроек…",
   "editProfile.featuredBadge": "Значок профиля",
   "editProfile.none": "Нет",
   "editProfile.username": "Имя пользователя",

@@ -57,6 +57,7 @@ svg#map{position:absolute;top:0;left:0;touch-action:none}
 .sev-low{background:rgba(48,209,88,.12);color:#30D158;border:1px solid rgba(48,209,88,.22)}
 .finding-item{font-size:13px;color:rgba(255,255,255,.55);margin-bottom:12px;padding-left:12px;border-left:2px solid rgba(255,255,255,.12);line-height:1.55}
 .finding-item strong{color:rgba(255,255,255,.85)}
+.finding-item.good{border-left-color:rgba(48,209,88,.4)}
 #close-sidebar{position:absolute;top:12px;right:12px;width:32px;height:32px;background:#1C1C1E;border:1px solid rgba(255,255,255,.12);border-radius:50%;color:rgba(255,255,255,.6);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;-webkit-tap-highlight-color:transparent;transition:all .15s}
 #close-sidebar:hover,#close-sidebar:active{background:rgba(255,255,255,.1);color:#fff}
 
@@ -68,6 +69,7 @@ svg#map{position:absolute;top:0;left:0;touch-action:none}
 .node-title{font-size:10px;font-weight:700;fill:#fff;pointer-events:none}
 .node-sub{font-size:9px;fill:rgba(255,255,255,.5);pointer-events:none}
 .bug-badge{font-size:9px;font-weight:700;fill:#ff9f9f;pointer-events:none}
+.new-badge{font-size:7px;font-weight:800;fill:#34d399;pointer-events:none;letter-spacing:.4px}
 .edge-path{fill:none;stroke-width:1.5;opacity:.65}
 .edge-path.highlighted{opacity:1;stroke-width:2.5}
 .edge-path.dimmed{opacity:.1}
@@ -177,13 +179,14 @@ svg#map{position:absolute;top:0;left:0;touch-action:none}
 const clusters = [
   { id:'entry',      label:'Entry Point',       x:30,   y:60,  w:185, h:200, color:'#1a1a2e' },
   { id:'foundation', label:'Foundation',         x:255,  y:60,  w:185, h:200, color:'#1a2010' },
-  { id:'auth',       label:'Auth',               x:480,  y:60,  w:185, h:280, color:'#1e1a10' },
+  { id:'auth',       label:'Auth',               x:480,  y:60,  w:185, h:320, color:'#1e1a10' },
   { id:'nav',        label:'Navigation',         x:705,  y:60,  w:185, h:160, color:'#101828' },
   { id:'dex',        label:'Dex + Scanner',      x:30,   y:310, w:410, h:280, color:'#1a1030' },
   { id:'collection', label:'Collection + Usage', x:480,  y:310, w:410, h:280, color:'#0d1a1a' },
-  { id:'social',     label:'Social + Profile',   x:930,  y:60,  w:410, h:530, color:'#1a1020' },
-  { id:'data',       label:'Data Layer',         x:1390, y:60,  w:185, h:530, color:'#101a10' },
-  { id:'external',   label:'External Services',  x:1625, y:60,  w:220, h:530, color:'#1a1010' },
+  { id:'social',     label:'Social + Profile',   x:930,  y:60,  w:410, h:450, color:'#1a1020' },
+  { id:'friends',    label:'Friends & Blocking', x:930,  y:530, w:410, h:280, color:'#0d1828' },
+  { id:'data',       label:'Data Layer',         x:1390, y:60,  w:185, h:480, color:'#101a10' },
+  { id:'external',   label:'External Services',  x:1625, y:60,  w:220, h:320, color:'#1a1010' },
 ];
 
 const N = (id, cluster, label, sub, x, y, w, h, color, opts={}) => ({
@@ -192,162 +195,211 @@ const N = (id, cluster, label, sub, x, y, w, h, color, opts={}) => ({
 
 const nodes = [
   // Entry Point
-  N('index',    'entry',      'index.html',      'DOMContentLoaded',       55,  90,  135, 46, '#1e3a5f'),
-  N('splash',   'entry',      'Splash / Init',   'video + audio',          55,  150, 135, 36, '#1e3a5f'),
-  N('i18n',     'entry',      'i18n.js',         't() / setLang()',         55,  200, 135, 36, '#1e3a5f'),
+  N('index',       'entry',      'index.html',           'DOMContentLoaded',         55,  90,  135, 46, '#1e3a5f'),
+  N('splash',      'entry',      'Splash / Init',        'video + AudioContext det.', 55,  150, 135, 36, '#1e3a5f'),
+  N('i18n',        'entry',      'i18n.js',              't() / setLang()',           55,  200, 135, 36, '#1e3a5f'),
 
   // Foundation
-  N('config',   'foundation', 'config.js',       'supabaseClient init',     280, 90,  135, 36, '#2a4020'),
-  N('supabase', 'foundation', 'Supabase Client', '@supabase/supabase-js',   280, 140, 135, 36, '#2a4020'),
-  N('github_b', 'foundation', 'GITHUB_BASE',     'Image CDN const',         280, 190, 135, 36, '#2a4020'),
+  N('config',      'foundation', 'config.js',            'supabaseClient init',       280, 90,  135, 36, '#2a4020'),
+  N('supabase',    'foundation', 'Supabase Client',      '@supabase/supabase-js',     280, 140, 135, 36, '#2a4020'),
+  N('github_b',    'foundation', 'GITHUB_BASE',          'Image CDN const',           280, 190, 135, 36, '#2a4020'),
 
   // Auth
-  N('auth',     'auth',       'auth.js',         'checkUser()',             505, 90,  135, 36, '#4a3010'),
-  N('auth_g',   'auth',       'signInWithGoogle','OAuth redirect',          505, 140, 135, 36, '#4a3010'),
-  N('auth_e',   'auth',       'handleLogin\nWrapper()', 'email/pass',       505, 190, 135, 46, '#4a3010'),
-  N('auth_u',   'auth',       'saveSetup\nUsername()', 'post-Google setup', 505, 250, 135, 46, '#4a3010'),
+  N('auth',        'auth',       'auth.js',              'checkUser()',               505, 90,  135, 36, '#4a3010'),
+  N('auth_g',      'auth',       'signInWithGoogle',     'OAuth redirect',            505, 140, 135, 36, '#4a3010'),
+  N('auth_e',      'auth',       'handleLogin\nWrapper()','email/pass + validation',  505, 190, 135, 46, '#4a3010'),
+  N('auth_u',      'auth',       'saveSetup\nUsername()', 'post-Google setup',        505, 250, 135, 46, '#4a3010'),
+  N('otp_stub',    'auth',       'OTP stubs',            '⚠ dead code',               505, 310, 135, 46, '#3a1a1a', {bug:'auth.js:570'}),
 
   // Navigation
-  N('nav',      'nav',        'navigation.js',   'switchTab()',             730, 90,  135, 36, '#103050'),
-  N('nav_dex',  'nav',        '_showDexTab()',    'Web Anim API fade',       730, 140, 135, 36, '#103050'),
+  N('nav',         'nav',        'navigation.js',        'switchTab()',               730, 90,  135, 36, '#103050'),
+  N('nav_dex',     'nav',        '_showDexTab()',         'Web Anim API fade',         730, 140, 135, 36, '#103050'),
 
   // Dex + Scanner
-  N('dex',      'dex',        'dex.js',          'loadDex() / filterDex()', 55,  345, 135, 46, '#251040'),
-  N('dex_s',    'dex',        'dex-scroll.js',   'alpha sort / scale',      55,  410, 135, 46, '#251040'),
-  N('dex_r',    'dex',        'renderDexGrid()', 'DocumentFragment chunks', 55,  475, 135, 36, '#251040'),
-  N('scanner',  'dex',        'scanner.js',      'Html5Qrcode 60fps',       230, 345, 135, 36, '#251040', {bug:'scanner.js:543'}),
-  N('scan_h',   'dex',        'openScanHelp\nModal()', 'help overlay',      230, 400, 135, 46, '#251040'),
-  N('submit_r', 'dex',        'submitProduct\nRequest()', '⚠ TODO stub',    230, 460, 135, 46, '#3a1a1a', {bug:'scanner.js:543'}),
+  N('dex',         'dex',        'dex.js',               'loadDex() / filterDex()',   55,  345, 135, 46, '#251040'),
+  N('dex_s',       'dex',        'dex-scroll.js',        'alpha sort / scale',        55,  410, 135, 46, '#251040'),
+  N('dex_r',       'dex',        'renderDexGrid()',       'DocumentFragment chunks',   55,  475, 135, 36, '#251040'),
+  N('scanner',     'dex',        'scanner.js',           'Html5Qrcode 60fps',         230, 345, 135, 36, '#251040'),
+  N('scan_h',      'dex',        'openScanHelp\nModal()', 'help overlay',             230, 400, 135, 46, '#251040'),
+  N('submit_r',    'dex',        'submitProduct\nRequest()', '⚠ dead stub',           230, 460, 135, 46, '#3a1a1a', {bug:'scanner.js:543'}),
 
   // Collection + Usage
-  N('rating',   'collection', 'rating.js',       'openSnusDetail()',         505, 345, 135, 36, '#0d2828'),
-  N('wizard',   'collection', 'initRating\nWizard()', '6-step wizard',      505, 400, 135, 46, '#0d2828'),
-  N('collect',  'collection', 'collectCurrent\nSnus()', 'upsert collection', 505, 460, 135, 46, '#0d2828'),
-  N('usage',    'collection', 'usage.js',        'loadUsageData()',          680, 345, 135, 36, '#0d2828'),
-  N('can',      'collection', 'startNewCan()',   'insert usage_logs',        680, 400, 135, 36, '#0d2828'),
-  N('pouch',    'collection', 'startAddPouch()', 'rAF hold-confirm ring',    680, 450, 135, 36, '#0d2828'),
-  N('scans',    'collection', 'scans.js',        'updateLive\nPerformance()', 680, 500, 135, 46, '#0d2828'),
+  N('rating',      'collection', 'rating.js',            'openSnusDetail()',          505, 345, 135, 36, '#0d2828'),
+  N('wizard',      'collection', 'initRating\nWizard()',  '6-step wizard',            505, 400, 135, 46, '#0d2828'),
+  N('collect',     'collection', 'collectCurrent\nSnus()','upsert collection',        505, 460, 135, 46, '#0d2828'),
+  N('usage',       'collection', 'usage.js',             'loadUsageData()',            680, 345, 135, 36, '#0d2828'),
+  N('can',         'collection', 'startNewCan()',         'insert usage_logs',         680, 400, 135, 36, '#0d2828'),
+  N('pouch',       'collection', 'startAddPouch()',       'rAF hold-confirm ring',     680, 450, 135, 36, '#0d2828'),
+  N('scans',       'collection', 'scans.js',             'updateLive\nPerformance()', 680, 500, 135, 46, '#0d2828'),
 
   // Social + Profile
-  N('social',   'social',     'social.js',       'loadTopSnusOfWeek()',      955, 90,  135, 36, '#251030', {bug:'social.js:1225'}),
-  N('badges',   'social',     'evaluateBadges()', 'increment_badge_xp RPC',  955, 140, 135, 36, '#251030'),
-  N('heatmap',  'social',     'loadActivity\nHeatmap()', '6-month grid',     955, 200, 135, 46, '#251030'),
-  N('conns',    'social',     'setupConnections\nSwipe()', '⚠ double handler',1100,90,  135, 46, '#251030', {bug:'social.js:1109,1225'}),
-  N('profile',  'social',     'profile.js',      'setupProfile()',           1100,150, 135, 36, '#251030'),
-  N('xp',       'social',     'animateXp()',     'easing counter',           1100,200, 135, 36, '#251030'),
-  N('settings', 'social',     'settings.js',     'openSettings\nSubpage()',  1100,250, 135, 36, '#251030', {bug:'settings.js:208'}),
-  N('version',  'social',     'version.js',      'GitHub commit API',        955,  280, 135, 36, '#251030'),
-  N('admin',    'social',     'admin.js',        'adminAddSnus()',           955,  330, 135, 36, '#251030'),
+  N('social',      'social',     'social.js',            'loadTopSnusOfWeek()',        955,  90,  135, 36, '#251030'),
+  N('badges',      'social',     'evaluateBadges()',      'increment_badge_xp RPC',   955,  140, 135, 36, '#251030'),
+  N('badge_grid',  'social',     'openBadgesGrid()',      'progress + unlock UI',      955,  190, 135, 46, '#251030', {isNew:true}),
+  N('feat_badge',  'social',     'selectFeatured\nBadge()','profiles update',          955,  250, 135, 46, '#251030', {isNew:true}),
+  N('heatmap',     'social',     'loadActivity\nHeatmap()','6-month grid',             955,  310, 135, 46, '#251030'),
+  N('version',     'social',     'version.js',           'GitHub commit API',          955,  375, 135, 36, '#251030'),
+  N('admin',       'social',     'admin.js',             'adminAddSnus()',             955,  425, 135, 36, '#251030'),
+  N('profile',     'social',     'profile.js',           'setupProfile()',            1100,  90,  135, 36, '#251030'),
+  N('xp',          'social',     'animateXp()',           'easing counter',           1100,  140, 135, 36, '#251030'),
+  N('settings',    'social',     'settings.js',          'openSettingsSubpage()',     1100,  190, 135, 46, '#251030', {bug:'settings.js:452'}),
+  N('appearance',  'social',     'Darstellung',          'color / font / pattern',   1100,  250, 135, 46, '#251030', {isNew:true}),
+  N('export_data', 'social',     'exportUserData()',      'JSON download',            1100,  310, 135, 46, '#251030', {isNew:true}),
+  N('conns',       'social',     'setupConnections\nSwipe()','⚠ double handler',      1100,  370, 135, 46, '#251030', {bug:'social.js:1256'}),
+
+  // Friends & Blocking (Friendship Update)
+  N('search_users','friends',    'searchUsers\nConnections()','rate-limited search',   955,  565, 135, 46, '#0d2030', {isNew:true}),
+  N('tog_follow',  'friends',    'toggleFollow()',        'optimistic UI',             955,  625, 135, 46, '#0d2030', {isNew:true, bug:'social.js:835'}),
+  N('load_conns',  'friends',    'loadConnections\nData()','4-tab data loader',        955,  685, 135, 46, '#0d2030', {isNew:true}),
+  N('conn_tabs',   'friends',    'switchConnTab()\naccept / decline','request mgmt',  955,  745, 135, 46, '#0d2030', {isNew:true}),
+  N('friend_prof', 'friends',    'openFriend\nProfile()', 'full profile view',        1100,  565, 135, 46, '#0d2030', {isNew:true}),
+  N('block_sys',   'friends',    'handleFriend\nBlockAction()','block / unblock',     1100,  625, 135, 46, '#0d2030', {isNew:true}),
+  N('blocked',     'friends',    'openBlocked\nUsers()',  'blocked users list',       1100,  685, 135, 46, '#0d2030', {isNew:true}),
+  N('ff_follow',   'friends',    'friendProfile\nFollowToggle()','follow from profile',1100,  745, 135, 46, '#0d2030', {isNew:true}),
 
   // Data Layer
-  N('profiles_t','data',      'profiles table',  'Supabase Postgres',        1415, 90,  135, 36, '#103020'),
-  N('products_t','data',      'snus_products',   'Supabase Postgres',        1415, 140, 135, 36, '#103020'),
-  N('usage_t',   'data',      'usage_logs',      'Supabase Postgres',        1415, 190, 135, 36, '#103020'),
-  N('coll_t',    'data',      'user_collections','Supabase Postgres',        1415, 240, 135, 36, '#103020'),
-  N('badges_t',  'data',      'user_badges',     'Supabase Postgres',        1415, 290, 135, 36, '#103020'),
-  N('rpcs',      'data',      'Supabase RPCs',   'get_social_stats etc.',    1415, 340, 135, 36, '#103020'),
+  N('profiles_t',  'data',       'profiles table',       'Supabase Postgres',        1415,  90,  135, 36, '#103020'),
+  N('products_t',  'data',       'snus_products',        'Supabase Postgres',        1415,  140, 135, 36, '#103020'),
+  N('usage_t',     'data',       'usage_logs',           'Supabase Postgres',        1415,  190, 135, 36, '#103020'),
+  N('coll_t',      'data',       'user_collections',     'Supabase Postgres',        1415,  240, 135, 36, '#103020'),
+  N('badges_t',    'data',       'user_badges',          'Supabase Postgres',        1415,  290, 135, 36, '#103020'),
+  N('rpcs',        'data',       'Supabase RPCs',        'get_social_stats etc.',    1415,  340, 135, 36, '#103020'),
+  N('follows_t',   'data',       'user_follows',         'pending / accepted',       1415,  400, 135, 46, '#103020', {isNew:true}),
+  N('blocks_t',    'data',       'user_blocks',          'RLS-enforced',             1415,  460, 135, 46, '#103020', {isNew:true}),
 
   // External Services
-  N('gh_assets', 'external',  'GitHub Assets CDN','HazeCCS/snusdex-assets',  1650, 90,  170, 36, '#2a1010'),
-  N('gh_api',    'external',  'GitHub API',      'commits endpoint',         1650, 140, 170, 36, '#2a1010'),
-  N('supabase_e','external',  'Supabase Cloud',  'Auth + DB + Storage',      1650, 190, 170, 36, '#2a1010'),
-  N('webkit',    'external',  'WebKit Bridge',   'hapticHandler / camera',   1650, 240, 170, 36, '#2a1010'),
-  N('html5qr',   'external',  'Html5Qrcode CDN', '60fps barcode scan',       1650, 290, 170, 36, '#2a1010'),
-  N('tailwind',  'external',  'Tailwind CSS CDN','utility classes',          1650, 340, 170, 36, '#2a1010'),
+  N('gh_assets',   'external',   'GitHub Assets CDN',    'HazeCCS/snusdex-assets',   1650,  90,  170, 36, '#2a1010'),
+  N('gh_api',      'external',   'GitHub API',           'commits endpoint',          1650,  140, 170, 36, '#2a1010'),
+  N('supabase_e',  'external',   'Supabase Cloud',       'Auth + DB + Storage',       1650,  190, 170, 36, '#2a1010'),
+  N('webkit',      'external',   'WebKit Bridge',        'hapticHandler / camera',    1650,  240, 170, 36, '#2a1010'),
+  N('html5qr',     'external',   'Html5Qrcode CDN',      '60fps barcode scan',        1650,  290, 170, 36, '#2a1010'),
+  N('tailwind',    'external',   'Tailwind CSS CDN',     'utility classes',           1650,  340, 170, 36, '#2a1010'),
 ];
 
 const edges = [
-  { from:'index',     to:'config',    type:'mount',    label:'init' },
-  { from:'index',     to:'i18n',      type:'mount',    label:'init' },
-  { from:'config',    to:'supabase',  type:'normal',   label:'creates' },
-  { from:'index',     to:'auth',      type:'critical', label:'checkUser()' },
-  { from:'auth',      to:'nav',       type:'critical', label:'success' },
-  { from:'auth',      to:'dex',       type:'critical', label:'loadDex()' },
-  { from:'auth',      to:'usage',     type:'critical', label:'loadUsageData()' },
-  { from:'auth',      to:'profile',   type:'critical', label:'setupProfile()' },
-  { from:'auth',      to:'profiles_t',type:'db',       label:'profiles' },
-  { from:'auth_g',    to:'supabase_e',type:'api',      label:'OAuth' },
-  { from:'auth_e',    to:'supabase_e',type:'api',      label:'signIn()' },
-  { from:'nav',       to:'nav_dex',   type:'normal',   label:'dex tab' },
-  { from:'nav',       to:'social',    type:'normal',   label:'social tab' },
-  { from:'nav',       to:'profile',   type:'normal',   label:'profile tab' },
-  { from:'dex',       to:'products_t',type:'db',       label:'snus_products' },
-  { from:'dex',       to:'coll_t',    type:'db',       label:'user_collections' },
-  { from:'dex',       to:'dex_s',     type:'normal',   label:'grouped render' },
-  { from:'dex',       to:'dex_r',     type:'normal',   label:'renderGrid()' },
-  { from:'dex_r',     to:'gh_assets', type:'api',      label:'image URLs' },
-  { from:'scanner',   to:'rating',    type:'critical', label:'on match' },
-  { from:'scanner',   to:'html5qr',   type:'mount',    label:'uses' },
-  { from:'rating',    to:'wizard',    type:'normal',   label:'initWizard()' },
-  { from:'rating',    to:'collect',   type:'critical', label:'collectSnus()' },
-  { from:'collect',   to:'coll_t',    type:'db',       label:'upsert' },
-  { from:'collect',   to:'can',       type:'normal',   label:'startNewCan()' },
-  { from:'collect',   to:'badges',    type:'normal',   label:'evaluateBadges()' },
-  { from:'can',       to:'usage_t',   type:'db',       label:'insert' },
-  { from:'usage',     to:'usage_t',   type:'db',       label:'fetch logs' },
-  { from:'usage',     to:'scans',     type:'normal',   label:'updateLive()' },
-  { from:'social',    to:'rpcs',      type:'db',       label:'get_social_stats' },
-  { from:'badges',    to:'badges_t',  type:'db',       label:'read/write' },
-  { from:'badges',    to:'rpcs',      type:'db',       label:'increment_badge_xp' },
-  { from:'heatmap',   to:'usage_t',   type:'db',       label:'daily grid' },
-  { from:'conns',     to:'profiles_t',type:'db',       label:'follows / requests' },
-  { from:'profile',   to:'profiles_t',type:'db',       label:'profiles' },
-  { from:'xp',        to:'coll_t',    type:'db',       label:'count for XP' },
-  { from:'version',   to:'gh_api',    type:'api',      label:'commits API' },
-  { from:'config',    to:'supabase_e',type:'mount',    label:'createClient()' },
-  { from:'nav',       to:'webkit',    type:'normal',   label:'haptic' },
+  // Boot
+  { from:'index',       to:'config',      type:'mount',    label:'init' },
+  { from:'index',       to:'i18n',        type:'mount',    label:'init' },
+  { from:'config',      to:'supabase',    type:'normal',   label:'creates' },
+  { from:'config',      to:'supabase_e',  type:'mount',    label:'createClient()' },
+  { from:'index',       to:'auth',        type:'critical', label:'checkUser()' },
+  // Auth
+  { from:'auth',        to:'nav',         type:'critical', label:'success' },
+  { from:'auth',        to:'dex',         type:'critical', label:'loadDex()' },
+  { from:'auth',        to:'usage',       type:'critical', label:'loadUsageData()' },
+  { from:'auth',        to:'profile',     type:'critical', label:'setupProfile()' },
+  { from:'auth',        to:'profiles_t',  type:'db',       label:'profiles' },
+  { from:'auth_g',      to:'supabase_e',  type:'api',      label:'OAuth' },
+  { from:'auth_e',      to:'supabase_e',  type:'api',      label:'signIn()' },
+  // Navigation
+  { from:'nav',         to:'nav_dex',     type:'normal',   label:'dex tab' },
+  { from:'nav',         to:'social',      type:'normal',   label:'social tab' },
+  { from:'nav',         to:'profile',     type:'normal',   label:'profile tab' },
+  { from:'nav',         to:'load_conns',  type:'normal',   label:'connections tab' },
+  { from:'nav',         to:'webkit',      type:'normal',   label:'haptic' },
+  // Dex
+  { from:'dex',         to:'products_t',  type:'db',       label:'snus_products' },
+  { from:'dex',         to:'coll_t',      type:'db',       label:'user_collections' },
+  { from:'dex',         to:'dex_s',       type:'normal',   label:'grouped render' },
+  { from:'dex',         to:'dex_r',       type:'normal',   label:'renderGrid()' },
+  { from:'dex_r',       to:'gh_assets',   type:'api',      label:'image URLs' },
+  { from:'scanner',     to:'rating',      type:'critical', label:'on match' },
+  { from:'scanner',     to:'html5qr',     type:'mount',    label:'uses' },
+  // Collection
+  { from:'rating',      to:'wizard',      type:'normal',   label:'initWizard()' },
+  { from:'rating',      to:'collect',     type:'critical', label:'collectSnus()' },
+  { from:'collect',     to:'coll_t',      type:'db',       label:'upsert' },
+  { from:'collect',     to:'can',         type:'normal',   label:'startNewCan()' },
+  { from:'collect',     to:'badges',      type:'normal',   label:'evaluateBadges()' },
+  { from:'can',         to:'usage_t',     type:'db',       label:'insert' },
+  { from:'usage',       to:'usage_t',     type:'db',       label:'fetch logs' },
+  { from:'usage',       to:'scans',       type:'normal',   label:'updateLive()' },
+  // Social core
+  { from:'social',      to:'rpcs',        type:'db',       label:'get_social_stats' },
+  { from:'social',      to:'badge_grid',  type:'normal',   label:'openBadgesGrid()' },
+  { from:'badges',      to:'badges_t',    type:'db',       label:'read/write' },
+  { from:'badges',      to:'rpcs',        type:'db',       label:'increment_badge_xp' },
+  { from:'badges',      to:'feat_badge',  type:'normal',   label:'select badge' },
+  { from:'badge_grid',  to:'badges_t',    type:'db',       label:'progress data' },
+  { from:'feat_badge',  to:'profiles_t',  type:'db',       label:'featured_badge_id' },
+  { from:'heatmap',     to:'usage_t',     type:'db',       label:'daily grid' },
+  { from:'version',     to:'gh_api',      type:'api',      label:'commits API' },
+  { from:'admin',       to:'products_t',  type:'db',       label:'insert snus' },
+  // Profile & Settings
+  { from:'profile',     to:'profiles_t',  type:'db',       label:'profiles' },
+  { from:'profile',     to:'feat_badge',  type:'normal',   label:'render badge' },
+  { from:'xp',          to:'coll_t',      type:'db',       label:'count for XP' },
+  { from:'settings',    to:'appearance',  type:'normal',   label:'subpage' },
+  { from:'settings',    to:'export_data', type:'normal',   label:'subpage' },
+  { from:'settings',    to:'gh_api',      type:'api',      label:'commits / README' },
+  { from:'export_data', to:'coll_t',      type:'db',       label:'export' },
+  { from:'export_data', to:'usage_t',     type:'db',       label:'export' },
+  { from:'export_data', to:'follows_t',   type:'db',       label:'export' },
+  // Friends & Blocking
+  { from:'search_users',to:'profiles_t',  type:'db',       label:'user search' },
+  { from:'tog_follow',  to:'follows_t',   type:'db',       label:'follow / unfollow' },
+  { from:'load_conns',  to:'follows_t',   type:'db',       label:'fetch follows' },
+  { from:'friend_prof', to:'profiles_t',  type:'db',       label:'view profile' },
+  { from:'friend_prof', to:'coll_t',      type:'db',       label:'collection grid' },
+  { from:'friend_prof', to:'badges_t',    type:'db',       label:'featured badge' },
+  { from:'block_sys',   to:'blocks_t',    type:'db',       label:'block / unblock' },
+  { from:'blocked',     to:'blocks_t',    type:'db',       label:'list' },
+  { from:'ff_follow',   to:'follows_t',   type:'db',       label:'follow toggle' },
 ];
 
 const KNOWN_BUGS = {
-  'submit_r': [{ sev:'med', ref:'scanner.js:543', t:'submitProductRequest() is a dead stub — clicking "Submit" does nothing.' }],
-  'conns':    [{ sev:'low', ref:'social.js:1109,1225', t:'Two separate DOMContentLoaded handlers both register swipe listeners on the connections page.' }],
-  'settings': [{ sev:'low', ref:'settings.js:208', t:'Notification and profile-visibility toggles are decorative only — no localStorage or backend binding.' }],
+  'submit_r':   [{ sev:'med', ref:'scanner.js:543',   t:'submitProductRequest() is a dead stub — clicking "Submit" does nothing. No network call is made.' }],
+  'otp_stub':   [{ sev:'low', ref:'auth.js:570',      t:'handleCodeVerification() and hideVerificationScreen() are empty function bodies. The OTP flow is retired but the HTML elements remain.' }],
+  'conns':      [{ sev:'low', ref:'social.js:1256',   t:'A second DOMContentLoaded block re-registers the same touch listeners that setupConnectionsSwipe() already attached. Every gesture fires twice.' }],
+  'settings':   [{ sev:'low', ref:'settings.js:452',  t:'Notification and privacy-visibility toggles have no localStorage or backend binding — they reset to default on every reload.' }],
+  'tog_follow': [{ sev:'low', ref:'social.js:835',    t:'Optimistic UI race: rapid taps before button.disabled propagates can queue two conflicting network calls, potentially inverting follow state.' }],
 };
 
 const NOTABLE_FINDINGS = [
-  { title:'Dead code: submitProductRequest()', detail:'scanner.js:543 — The "Not Found" modal has a submit button wired to a TODO stub. Users can fill the form but nothing is ever sent.' },
-  { title:'Double swipe handler', detail:'social.js:1109 and 1225 — Two DOMContentLoaded closures both call setupConnectionsSwipe(), registering duplicate touch listeners.' },
-  { title:'Decorative toggles in Settings', detail:'settings.js:208 — Notification toggle and profile-visibility switch have no state persistence or backend writes. They reset on reload.' },
-  { title:'Superseded badges.js at root', detail:"Public/badges.js uses sequential Supabase queries. social.js's Promise.all version supersedes it. Unclear if index.html still loads the old file." },
-  { title:'Deprecated monolith still on disk', detail:'Public/deprecated_app_.js is a ~5500-line pre-refactor monolith. Not loaded by the app, but poses a maintenance risk.' },
-  { title:'Hardcoded admin email', detail:"profile.js:21 — Admin panel visibility gated on user.email === 'tarayannorman@gmail.com'. Should be a role claim." },
-  { title:'Promise.all parallel queries (good)', detail:'loadDex() and loadBadges() both use Promise.all for parallel Supabase fetches — a clean optimization from the May 2026 refactor.' },
+  { title:'Dead code: submitProductRequest()', detail:'scanner.js:543 — "Not Found" modal submit button calls a TODO stub. Nothing is sent to the server. Users can fill the form and get no result.', good:false },
+  { title:'Dead OTP stubs in auth.js', detail:'auth.js:570 — handleCodeVerification() and hideVerificationScreen() are empty stubs from a retired OTP flow. The active flow is email-link; these can be deleted.', good:false },
+  { title:'Duplicate swipe handler — Connections', detail:'social.js:1256 — A second DOMContentLoaded block re-registers touch listeners already set up by setupConnectionsSwipe(). Every gesture fires duplicate handlers.', good:false },
+  { title:'Decorative toggles in Settings', detail:'settings.js:452 — Notification and privacy-visibility switches have no backend writes. They are cosmetic only and reset on reload.', good:false },
+  { title:'toggleFollow optimistic UI race', detail:'social.js:835 — Rapid taps before the button disable propagates can queue two conflicting network calls, potentially toggling follow state in the wrong direction.', good:false },
+  { title:'Hardcoded admin email', detail:"profile.js:21 — Admin panel visibility gated on user.email === 'tarayannorman@gmail.com'. Should be a Supabase role column or metadata flag.", good:false },
+  { title:'Block enforcement at RLS level', detail:'user_blocks + RLS policies prevent blocked users from reading each others profiles, collections, and heatmaps at the database level, not just in the UI. Clean architecture.', good:true },
+  { title:'Promise.all parallel queries', detail:'loadDex(), loadBadges(), loadConnectionsData(), and openFriendProfile() all use Promise.all — total latency is bounded by the slowest single query, not the sum.', good:true },
+  { title:'Deprecated monolith still on disk', detail:'Public/deprecated_app_.js is a ~5500-line pre-refactor monolith. Not loaded by the app, but poses a confusion risk for future maintainers.', good:false },
 ];
 
 // ─── SVG SETUP ─────────────────────────────────────────────────────────────
 
 const SVG_W = 1900;
-const SVG_H = 660;
-const INIT_SCALE = 0.72;
-const INIT_SCALE_MOBILE = 0.28;
+const SVG_H = 860;
+const INIT_SCALE_MOBILE = 0.24;
 
 const svg = document.getElementById('map');
 const wrap = document.getElementById('canvas-wrap');
-// SVG fixed size — never resized during interaction.
-// overflow:visible lets the <g> CSS transform move content outside the SVG
-// bounds; canvas-wrap overflow:hidden clips the visible area instead.
 svg.setAttribute('width',  SVG_W);
 svg.setAttribute('height', SVG_H);
 svg.style.overflow = 'visible';
 
-let tx = 0, ty = 0, scale = INIT_SCALE;
+let tx = 0, ty = 0, scale = 1;
 let dragging = false, dragStartX = 0, dragStartY = 0, txStart = 0, tyStart = 0;
 
 const g = document.createElementNS('http://www.w3.org/2000/svg','g');
 g.id = 'world';
-// CSS transform on <g> → GPU compositor layer, zero layout/paint cost per frame
 g.style.transformOrigin = '0 0';
 g.style.willChange = 'transform';
 svg.appendChild(g);
 
 function isMobile() { return window.innerWidth <= 768; }
 
+function haptic(type) {
+  try { window.webkit?.messageHandlers?.hapticHandler?.postMessage(type); } catch(_) {}
+}
+
 // ── Cached viewport + wrapper rect ─────────────────────────────────────────
 let _vpW = 0, _vpH = 0, _wrapRect = null;
 function _cacheVp() {
   _vpW = wrap.clientWidth;
   _vpH = wrap.clientHeight;
-  _wrapRect = null; // invalidate rect cache on resize
+  _wrapRect = null;
 }
 _cacheVp();
 function _getWrapRect() {
@@ -355,17 +407,16 @@ function _getWrapRect() {
   return _wrapRect;
 }
 
-// ── rAF-batched CSS transform — only one DOM write per display frame ────────
+// ── rAF-batched CSS transform ───────────────────────────────────────────────
 let _rafId = null;
 function setTransform() {
-  if (_rafId) return; // already scheduled for this frame
+  if (_rafId) return;
   _rafId = requestAnimationFrame(() => {
     _rafId = null;
     g.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
   });
 }
 
-// Immediate version for reset / button clicks where we need sync apply
 function _applyNow() {
   if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
   g.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
@@ -373,8 +424,8 @@ function _applyNow() {
 
 function resetView() {
   const ch = _vpH || wrap.clientHeight;
-  const SVG_Y_SPAN = 530;   // Entry top (60) → Dex+Scanner bottom (590)
-  const SVG_Y_CENTER = 325;
+  const SVG_Y_SPAN   = 740;  // y=60 (entry top) → y=800 (friends bottom)
+  const SVG_Y_CENTER = 430;
   scale = Math.min((ch * 0.80) / SVG_Y_SPAN, 2);
   tx = isMobile() ? 14 : 24;
   ty = ch / 2 - SVG_Y_CENTER * scale;
@@ -383,8 +434,8 @@ function resetView() {
 
 // ─── SIDEBAR HELPERS ───────────────────────────────────────────────────────
 
-const sidebar   = document.getElementById('sidebar');
-const backdrop  = document.getElementById('backdrop');
+const sidebar  = document.getElementById('sidebar');
+const backdrop = document.getElementById('backdrop');
 
 function openSidebar() {
   sidebar.classList.add('open');
@@ -392,6 +443,7 @@ function openSidebar() {
 }
 
 function closeSidebar() {
+  haptic('light');
   sidebar.classList.remove('open');
   backdrop.classList.remove('visible');
   clearSelection();
@@ -526,8 +578,8 @@ nodes.forEach(n => {
   rect.setAttribute('width', n.w); rect.setAttribute('height', n.h);
   rect.setAttribute('rx', 7);
   rect.setAttribute('fill', n.color);
-  rect.setAttribute('stroke', n.bug ? '#7a2020' : '#333');
-  rect.setAttribute('stroke-width', n.bug ? 1.5 : 1);
+  rect.setAttribute('stroke', n.bug ? '#7a2020' : n.isNew ? '#1d4a3a' : '#333');
+  rect.setAttribute('stroke-width', (n.bug || n.isNew) ? 1.5 : 1);
   grp.appendChild(rect);
 
   const lines = n.label.split('\n');
@@ -560,6 +612,25 @@ nodes.forEach(n => {
     grp.appendChild(badge);
   }
 
+  if (n.isNew) {
+    const pill = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    pill.setAttribute('x', n.x + 4);  pill.setAttribute('y', n.y + 3);
+    pill.setAttribute('width', 26);    pill.setAttribute('height', 11);
+    pill.setAttribute('rx', 3);
+    pill.setAttribute('fill', 'rgba(52,211,153,.18)');
+    pill.setAttribute('stroke', 'rgba(52,211,153,.45)');
+    pill.setAttribute('stroke-width', 0.8);
+    pill.setAttribute('pointer-events', 'none');
+    grp.appendChild(pill);
+    const newLbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    newLbl.setAttribute('x', n.x + 17);
+    newLbl.setAttribute('y', n.y + 12);
+    newLbl.setAttribute('class', 'new-badge');
+    newLbl.setAttribute('text-anchor', 'middle');
+    newLbl.textContent = 'NEW';
+    grp.appendChild(newLbl);
+  }
+
   grp.addEventListener('click', () => selectNode(n.id));
   nodeLayer.appendChild(grp);
   nodeEls[n.id] = grp;
@@ -590,6 +661,7 @@ let selectedNode = null;
 let activeFilter = 'all';
 
 function selectNode(id) {
+  haptic('medium');
   selectedNode = id;
   const n = nodes.find(x => x.id === id);
   if (!n) return;
@@ -637,6 +709,7 @@ function renderSidebarNode(n) {
       <h3>Details</h3>
       <div class="detail-row"><span class="detail-label">Cluster</span><span class="detail-val">${n.cluster}</span></div>
       <div class="detail-row"><span class="detail-label">Sub-label</span><span class="detail-val">${n.sub}</span></div>
+      ${n.isNew ? `<div class="detail-row"><span class="detail-label">Added in</span><span class="detail-val" style="color:#34d399">✦ Friendship Update</span></div>` : ''}
       ${n.bug ? `<div class="detail-row"><span class="detail-label">Bug ref</span><span class="detail-val" style="color:#f87171;font-family:monospace">${n.bug}</span></div>` : ''}
     </div>
     ${bugs.length ? `
@@ -687,18 +760,18 @@ function renderSidebarDefault() {
     <div class="sidebar-section">
       <h3>Findings (${NOTABLE_FINDINGS.length})</h3>
       ${NOTABLE_FINDINGS.map(f => `
-      <div class="finding-item">
+      <div class="finding-item${f.good ? ' good' : ''}">
         <strong>${f.title}</strong><br>${f.detail}
       </div>`).join('')}
     </div>
   `;
-  openSidebar();
 }
 
 // ─── FILTER CHIPS ──────────────────────────────────────────────────────────
 
 document.querySelectorAll('.chip[data-filter]').forEach(btn => {
   btn.addEventListener('click', () => {
+    haptic('light');
     activeFilter = btn.dataset.filter;
     document.querySelectorAll('.chip[data-filter]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -778,7 +851,7 @@ let touchStartX = 0, touchStartY = 0;
 
 wrap.addEventListener('touchstart', e => {
   e.preventDefault();
-  _wrapRect = wrap.getBoundingClientRect(); // cache once per gesture — no layout in touchmove
+  _wrapRect = wrap.getBoundingClientRect();
   if (e.touches.length === 1) {
     const t = e.touches[0];
     touchDragStartX = t.clientX; touchDragStartY = t.clientY;
@@ -802,11 +875,11 @@ wrap.addEventListener('touchmove', e => {
     ty = touchTyStart + (t.clientY - touchDragStartY);
     const dx = t.clientX - touchStartX, dy = t.clientY - touchStartY;
     if (Math.abs(dx) > 5 || Math.abs(dy) > 5) touchMoved = true;
-    setTransform(); // batched — one DOM write per display frame
+    setTransform();
   } else if (e.touches.length === 2 && lastPinchDist !== null) {
     const t0 = e.touches[0], t1 = e.touches[1];
     const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-    const rect = _wrapRect; // cached at touchstart — no layout flush
+    const rect = _wrapRect;
     const mx = (t0.clientX + t1.clientX) / 2 - rect.left;
     const my = (t0.clientY + t1.clientY) / 2 - rect.top;
     const zoomFactor = dist / lastPinchDist;
@@ -816,7 +889,7 @@ wrap.addEventListener('touchmove', e => {
     scale = newScale;
     lastPinchDist = dist;
     touchMoved = true;
-    setTransform(); // batched
+    setTransform();
   }
 }, { passive: false });
 
@@ -850,6 +923,7 @@ wrap.addEventListener('click', e => {
 // ─── ZOOM BUTTONS ──────────────────────────────────────────────────────────
 
 document.getElementById('zin').addEventListener('click', () => {
+  haptic('light');
   const cw = _vpW / 2, ch = _vpH / 2;
   const newScale = Math.min(3, scale * 1.25);
   tx = cw - (cw - tx) * (newScale / scale);
@@ -857,14 +931,16 @@ document.getElementById('zin').addEventListener('click', () => {
   scale = newScale; _applyNow();
 });
 document.getElementById('zout').addEventListener('click', () => {
+  haptic('light');
   const cw = _vpW / 2, ch = _vpH / 2;
   const newScale = Math.max(0.15, scale / 1.25);
   tx = cw - (cw - tx) * (newScale / scale);
   ty = ch - (ch - ty) * (newScale / scale);
   scale = newScale; _applyNow();
 });
-document.getElementById('zreset').addEventListener('click', resetView);
+document.getElementById('zreset').addEventListener('click', () => { haptic('light'); resetView(); });
 document.getElementById('zfindings').addEventListener('click', () => {
+  haptic('light');
   renderSidebarDefault();
   openSidebar();
 });
@@ -882,6 +958,7 @@ window.addEventListener('resize', () => {
 
 resetView();
 renderSidebarDefault();
+if (!isMobile()) openSidebar();
 </script>
 </body>
 </html>

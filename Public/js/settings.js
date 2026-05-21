@@ -90,15 +90,22 @@ async function exportUserData() {
             following: followsRes.data || [],
         };
 
+        const filename = `snusdex-data-${new Date().toISOString().split('T')[0]}.json`;
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `snusdex-data-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        const file = new File([blob], filename, { type: 'application/json' });
+
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'Snusdex Daten' });
+        } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
 
         btn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> <span>${t('privacy.exportDone')}</span>`;
         btn.classList.replace('bg-white', 'bg-[#34C759]');
@@ -353,7 +360,7 @@ function openSettingsSubpage(type, _pushHistory) {
         'Language': 'settings.language', 'Darstellung': 'settings.appearance',
         'Tracking': 'settings.tracking', 'Help Center & FAQ': 'settings.helpCenter',
         'Delete Account': 'settings.deleteAccount',
-        'GitHub': 'GitHub', 'README': 'README', 'Architecture Map': 'Architecture Map',
+        'README': 'README', 'Architecture Map': 'Architecture Map',
     };
     titleObj.innerText = t(_subpageTitleMap[type] || type);
     window._currentSubpageType = type;
@@ -917,57 +924,6 @@ function openSettingsSubpage(type, _pushHistory) {
             </button>
         `;
 
-    } else if (type === 'GitHub') {
-        const _spinnerSvg = `<svg class="animate-spin w-4 h-4 text-[#8E8E93]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
-        const _errRow = `<div class="flex items-center gap-2 px-5 py-5"><svg class="w-4 h-4 text-[#FFD60A] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span class="text-[#8E8E93] text-[14px]">Repository is private or rate limit reached.</span></div>`;
-        html = `
-            <div class="flex gap-3 mb-6">
-                <button onclick="triggerHapticFeedback(); openSettingsSubpage('Architecture Map')"
-                    class="flex-1 bg-[#1C1C1E] rounded-[20px] border border-white/10 py-5 flex flex-col items-center gap-2 active:bg-white/5 transition-colors shadow-sm">
-                    <svg class="w-7 h-7 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15"/></svg>
-                    <span class="text-white text-[13px] font-semibold">Architecture Map</span>
-                </button>
-                <button onclick="triggerHapticFeedback(); openSettingsSubpage('README')"
-                    class="flex-1 bg-[#1C1C1E] rounded-[20px] border border-white/10 py-5 flex flex-col items-center gap-2 active:bg-white/5 transition-colors shadow-sm">
-                    <svg class="w-7 h-7 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
-                    <span class="text-white text-[13px] font-semibold">README</span>
-                </button>
-            </div>
-            <p class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium mb-3 px-1">Recent Commits</p>
-            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
-                <div id="gh-commits-container" class="flex items-center justify-center py-8 gap-2">
-                    ${_spinnerSvg}<span class="text-[#8E8E93] text-[14px]">Loading commits…</span>
-                </div>
-            </div>
-        `;
-        setTimeout(async () => {
-            const el = document.getElementById('gh-commits-container');
-            if (!el) return;
-            try {
-                const res = await fetch('https://api.github.com/repos/HazeCCS/Snusdex/commits?per_page=20');
-                if (!res.ok) throw new Error('private');
-                const data = await res.json();
-                el.className = '';
-                el.style.opacity = '0';
-                el.innerHTML = data.map((c, i) => {
-                    const msg = c.commit.message.split('\n')[0];
-                    const sha = c.sha.substring(0, 7);
-                    const author = c.commit.author.name;
-                    const time = _ghRelTime(c.commit.author.date);
-                    const div = i > 0 ? '<div class="h-[1px] bg-white/5 mx-5"></div>' : '';
-                    return `${div}
-                    <div class="px-5 py-4">
-                        <p class="text-white text-[15px] font-medium leading-snug">${msg.length > 72 ? msg.substring(0,72)+'…' : msg}</p>
-                        <p class="text-[#8E8E93] text-[13px] mt-1.5"><span style="font-family:Menlo,monospace;color:rgba(255,255,255,.35)">${sha}</span> · ${author} · ${time}</p>
-                    </div>`;
-                }).join('');
-                requestAnimationFrame(() => requestAnimationFrame(() => {
-                    el.style.transition = 'opacity 0.55s ease';
-                    el.style.opacity = '1';
-                }));
-            } catch(e) { el.innerHTML = _errRow; }
-        }, 0);
-
     } else if (type === 'README') {
         const _spinnerSvg = `<svg class="animate-spin w-4 h-4 text-[#8E8E93]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
         html = `
@@ -1041,13 +997,18 @@ function openSettingsSubpage(type, _pushHistory) {
     }
 
     subpage.classList.remove('hidden');
-
     document.body.classList.add('overflow-hidden');
 
-    setTimeout(() => {
+    if (window._skipSubpageAnimation) {
+        window._skipSubpageAnimation = false;
         subpage.classList.remove('translate-x-full');
         subpage.classList.add('translate-x-0');
-    }, 10);
+    } else {
+        setTimeout(() => {
+            subpage.classList.remove('translate-x-full');
+            subpage.classList.add('translate-x-0');
+        }, 10);
+    }
 }
 
 function refreshLangPage() {
@@ -1099,7 +1060,10 @@ function closeSettingsSubpage() {
     // Hide subpage after slide-out animation (300ms)
     setTimeout(() => {
         subpage.classList.add('hidden');
-        document.body.classList.remove('overflow-hidden');
+        // Keep body scroll-locked if a parent page (settings/github) is still open behind us
+        if (!_isOverlayPageOpen()) {
+            document.body.classList.remove('overflow-hidden');
+        }
     }, 300);
 
     // Destroy preview canvas and refresh homepage card 500ms after closing —
@@ -1122,32 +1086,30 @@ document.addEventListener('DOMContentLoaded', () => {
     let touchStartX = 0;
     let touchStartY = 0;
     let isSwiping = false;
+    let _swipeLock = false;
 
     settingsSubpage.addEventListener('touchstart', (e) => {
+        if (_swipeLock) return;
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
         isSwiping = false;
-    }, {
-        passive: true
-    });
+    }, { passive: true });
 
     settingsSubpage.addEventListener('touchmove', (e) => {
-        if (!touchStartX || !touchStartY) return;
+        if (_swipeLock || !touchStartX || !touchStartY) return;
 
         const touchCurrentX = e.touches[0].clientX;
         const touchCurrentY = e.touches[0].clientY;
         const diffX = touchCurrentX - touchStartX;
         const diffY = Math.abs(touchCurrentY - touchStartY);
 
-        // once horizontal swipe is confirmed, lock ALL scroll for the rest of the gesture
         if (isSwiping) {
             if (e.cancelable) e.preventDefault();
             if (diffX > 0) settingsSubpage.style.transform = `translateX(${diffX}px)`;
             return;
         }
 
-        // first move: decide gesture direction
-        if (diffY > Math.abs(diffX)) return; // vertical → don't interfere
+        if (diffY > Math.abs(diffX)) return;
 
         if (diffX > 0) {
             if (e.cancelable) e.preventDefault();
@@ -1155,32 +1117,66 @@ document.addEventListener('DOMContentLoaded', () => {
             settingsSubpage.style.transition = 'none';
             settingsSubpage.style.transform = `translateX(${diffX}px)`;
         }
-    }, {
-        passive: false
-    });
+    }, { passive: false });
 
     settingsSubpage.addEventListener('touchend', (e) => {
         if (!isSwiping) return;
 
-        let touchEndX = e.changedTouches[0].clientX;
-        let diffX = touchEndX - touchStartX;
-
-        settingsSubpage.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
-
-        if (diffX > window.innerWidth / 3 || diffX > 100) {
-            closeSettingsSubpage();
-        } else {
-            settingsSubpage.style.transform = 'translateX(0)';
-        }
-
-        setTimeout(() => {
-            settingsSubpage.style.transform = '';
-            settingsSubpage.style.transition = '';
-        }, 300);
+        const touchEndX = e.changedTouches[0].clientX;
+        const diffX = touchEndX - touchStartX;
+        const shouldClose = diffX > window.innerWidth / 3 || diffX > 100;
 
         touchStartX = 0;
         touchStartY = 0;
         isSwiping = false;
+
+        if (!shouldClose) {
+            settingsSubpage.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+            settingsSubpage.style.transform = 'translateX(0)';
+            setTimeout(() => {
+                settingsSubpage.style.transform = '';
+                settingsSubpage.style.transition = '';
+            }, 300);
+            return;
+        }
+
+        // Lock gestures during exit animation
+        _swipeLock = true;
+        const hasHistory = !!(window._subpageHistory?.length);
+
+        // Animate fully off-screen (user may have already dragged partway)
+        settingsSubpage.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+        settingsSubpage.style.transform = `translateX(${window.innerWidth}px)`;
+
+        setTimeout(() => {
+            // Kill inline styles — element is off-screen, safe to reset
+            settingsSubpage.style.transition = 'none';
+            settingsSubpage.style.transform = '';
+
+            if (hasHistory) {
+                // Load previous page without slide-in animation (element is at translate-x-0 CSS class)
+                const prev = window._subpageHistory.pop();
+                window._currentSubpageType = null;
+                window._skipSubpageAnimation = true;
+                openSettingsSubpage(prev, false);
+                // Re-enable CSS transitions after one paint frame
+                requestAnimationFrame(() => {
+                    settingsSubpage.style.transition = '';
+                    _swipeLock = false;
+                });
+            } else {
+                window._subpageHistory = [];
+                window._currentSubpageType = null;
+                settingsSubpage.classList.remove('translate-x-0');
+                settingsSubpage.classList.add('translate-x-full', 'hidden');
+                // Keep body scroll-locked if a parent page (settings/github) is still open behind us
+                if (!_isOverlayPageOpen()) {
+                    document.body.classList.remove('overflow-hidden');
+                }
+                settingsSubpage.style.transition = '';
+                _swipeLock = false;
+            }
+        }, 300);
     });
 });
 
@@ -1257,4 +1253,346 @@ document.addEventListener('DOMContentLoaded', () => {
         splashVideo.addEventListener('ended', removeSplashScreen);
         setTimeout(removeSplashScreen, 2500);
     }
+});
+
+// ── Profile Sub-Tab ────────────────────────────────────────────────────────
+function switchProfileSubtab(tab) {
+    const overviewEl  = document.getElementById('prof-tab-overview');
+    const settingsEl  = document.getElementById('prof-tab-settings');
+    const overviewBtn = document.getElementById('prof-tab-btn-overview');
+    const settingsBtn = document.getElementById('prof-tab-btn-settings');
+    if (!overviewEl || !settingsEl) return;
+
+    const showOverview = tab === 'overview';
+    overviewEl.classList.toggle('hidden', !showOverview);
+    settingsEl.classList.toggle('hidden', showOverview);
+
+    overviewBtn.classList.toggle('bg-white', showOverview);
+    overviewBtn.classList.toggle('text-black', showOverview);
+    overviewBtn.classList.toggle('text-[#8E8E93]', !showOverview);
+
+    settingsBtn.classList.toggle('bg-white', !showOverview);
+    settingsBtn.classList.toggle('text-black', !showOverview);
+    settingsBtn.classList.toggle('text-[#8E8E93]', showOverview);
+
+    if (!showOverview) {
+        const inp = document.getElementById('settings-search-input');
+        if (inp) { inp.value = ''; filterSettingsItems(''); }
+    }
+}
+window.switchProfileSubtab = switchProfileSubtab;
+
+// ── Settings Search Filter ─────────────────────────────────────────────────
+function filterSettingsItems(query) {
+    const q        = query.trim().toLowerCase();
+    const sections = document.querySelectorAll('.settings-search-section');
+    const empty    = document.getElementById('settings-search-empty');
+    const danger   = document.getElementById('settings-danger-zone');
+    let anyVisible = false;
+
+    sections.forEach(section => {
+        const rows = section.querySelectorAll('.settings-row');
+        let sectionVisible = false;
+        let lastVisible    = null;
+
+        rows.forEach(row => {
+            const keywords = (row.dataset.search || '').toLowerCase();
+            const visible  = !q || keywords.includes(q);
+            row.style.display = visible ? '' : 'none';
+            if (visible) { sectionVisible = true; lastVisible = row; }
+        });
+
+        // Hide the bottom divider of the last visible row to avoid orphan line
+        rows.forEach(row => {
+            const divider = row.querySelector('.settings-divider');
+            if (divider) divider.style.display = (row === lastVisible) ? 'none' : '';
+        });
+
+        section.style.display = sectionVisible ? '' : 'none';
+        if (sectionVisible) anyVisible = true;
+    });
+
+    if (empty)  empty.classList.toggle('hidden', anyVisible || !q);
+    if (danger) danger.style.display = q ? 'none' : '';
+}
+window.filterSettingsItems = filterSettingsItems;
+
+// ── Settings Page open / close ─────────────────────────────────────────────
+function openSettingsPage() {
+    const page = document.getElementById('settings-page');
+    if (!page) return;
+
+    const searchInput = document.getElementById('settings-search-input');
+    if (searchInput) { searchInput.value = ''; filterSettingsItems(''); }
+
+    // Freeze background: profile tab becomes non-interactive while settings is open
+    const profileTab = document.getElementById('tab-profile');
+    if (profileTab) profileTab.style.pointerEvents = 'none';
+
+    page.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    setTimeout(() => {
+        page.classList.remove('translate-x-full');
+        page.classList.add('translate-x-0');
+    }, 10);
+}
+window.openSettingsPage = openSettingsPage;
+
+function closeSettingsPage() {
+    const page = document.getElementById('settings-page');
+    if (!page) return;
+
+    page.classList.remove('translate-x-0');
+    page.classList.add('translate-x-full');
+    setTimeout(() => {
+        page.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+        const profileTab = document.getElementById('tab-profile');
+        if (profileTab) profileTab.style.pointerEvents = '';
+    }, 300);
+}
+window.closeSettingsPage = closeSettingsPage;
+
+// ── Settings Page swipe-to-close ───────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const settingsPage = document.getElementById('settings-page');
+    if (!settingsPage) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isSwiping = false;
+    let _pageSwipeLock = false;
+
+    settingsPage.addEventListener('touchstart', (e) => {
+        if (_pageSwipeLock) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isSwiping = false;
+    }, { passive: true });
+
+    settingsPage.addEventListener('touchmove', (e) => {
+        if (_pageSwipeLock || !touchStartX || !touchStartY) return;
+
+        const touchCurrentX = e.touches[0].clientX;
+        const touchCurrentY = e.touches[0].clientY;
+        const diffX = touchCurrentX - touchStartX;
+        const diffY = Math.abs(touchCurrentY - touchStartY);
+
+        if (isSwiping) {
+            if (e.cancelable) e.preventDefault();
+            if (diffX > 0) settingsPage.style.transform = `translateX(${diffX}px)`;
+            return;
+        }
+
+        if (diffY > Math.abs(diffX)) return;
+
+        if (diffX > 0) {
+            if (e.cancelable) e.preventDefault();
+            isSwiping = true;
+            settingsPage.style.transition = 'none';
+            settingsPage.style.transform = `translateX(${diffX}px)`;
+        }
+    }, { passive: false });
+
+    settingsPage.addEventListener('touchend', (e) => {
+        if (!isSwiping) return;
+
+        const touchEndX = e.changedTouches[0].clientX;
+        const diffX = touchEndX - touchStartX;
+        const shouldClose = diffX > window.innerWidth / 3 || diffX > 100;
+
+        touchStartX = 0;
+        touchStartY = 0;
+        isSwiping = false;
+
+        if (!shouldClose) {
+            settingsPage.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+            settingsPage.style.transform = 'translateX(0)';
+            setTimeout(() => {
+                settingsPage.style.transform = '';
+                settingsPage.style.transition = '';
+            }, 300);
+            return;
+        }
+
+        _pageSwipeLock = true;
+        settingsPage.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+        settingsPage.style.transform = `translateX(${window.innerWidth}px)`;
+
+        setTimeout(() => {
+            settingsPage.style.transition = 'none';
+            settingsPage.style.transform = '';
+            settingsPage.classList.remove('translate-x-0');
+            settingsPage.classList.add('translate-x-full', 'hidden');
+            document.body.classList.remove('overflow-hidden');
+            const profileTab = document.getElementById('tab-profile');
+            if (profileTab) profileTab.style.pointerEvents = '';
+            settingsPage.style.transition = '';
+            _pageSwipeLock = false;
+        }, 300);
+    });
+});
+
+// ── Overlay page helper ────────────────────────────────────────────────────
+// True if a persistent full-screen page (settings/github) is still open behind
+// a closing subpage — so we keep the body scroll-lock instead of releasing it.
+function _isOverlayPageOpen() {
+    return ['settings-page', 'github-page'].some(id => {
+        const el = document.getElementById(id);
+        return el && !el.classList.contains('hidden');
+    });
+}
+
+// ── GitHub Page open / close ───────────────────────────────────────────────
+function _loadGithubCommits() {
+    const el = document.getElementById('gh-commits-container');
+    if (!el) return;
+    const _spinnerSvg = `<svg class="animate-spin w-4 h-4 text-[#8E8E93]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
+    const _errRow = `<div class="flex items-center gap-2 px-5 py-5"><svg class="w-4 h-4 text-[#FFD60A] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span class="text-[#8E8E93] text-[14px]">Repository is private or rate limit reached.</span></div>`;
+    el.className = 'flex items-center justify-center py-8 gap-2';
+    el.style.opacity = '';
+    el.style.transition = '';
+    el.innerHTML = `${_spinnerSvg}<span class="text-[#8E8E93] text-[14px]">Loading commits…</span>`;
+    (async () => {
+        try {
+            const res = await fetch('https://api.github.com/repos/HazeCCS/Snusdex/commits?per_page=20');
+            if (!res.ok) throw new Error('private');
+            const data = await res.json();
+            el.className = '';
+            el.style.opacity = '0';
+            el.innerHTML = data.map((c, i) => {
+                const msg = c.commit.message.split('\n')[0];
+                const sha = c.sha.substring(0, 7);
+                const author = c.commit.author.name;
+                const time = _ghRelTime(c.commit.author.date);
+                const div = i > 0 ? '<div class="h-[1px] bg-white/5 mx-5"></div>' : '';
+                return `${div}
+                <div class="px-5 py-4">
+                    <p class="text-white text-[15px] font-medium leading-snug">${msg.length > 72 ? msg.substring(0,72)+'…' : msg}</p>
+                    <p class="text-[#8E8E93] text-[13px] mt-1.5"><span style="font-family:Menlo,monospace;color:rgba(255,255,255,.35)">${sha}</span> · ${author} · ${time}</p>
+                </div>`;
+            }).join('');
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                el.style.transition = 'opacity 0.55s ease';
+                el.style.opacity = '1';
+            }));
+        } catch (e) {
+            el.className = '';
+            el.innerHTML = _errRow;
+        }
+    })();
+}
+
+function openGithubPage() {
+    const page = document.getElementById('github-page');
+    if (!page) return;
+
+    // README / Architecture open as subpages above this page — start with a clean
+    // stack so their back-swipe reveals the GitHub page, not a stale subpage.
+    window._subpageHistory = [];
+    window._currentSubpageType = null;
+
+    const profileTab = document.getElementById('tab-profile');
+    if (profileTab) profileTab.style.pointerEvents = 'none';
+
+    page.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    _loadGithubCommits();
+    setTimeout(() => {
+        page.classList.remove('translate-x-full');
+        page.classList.add('translate-x-0');
+    }, 10);
+}
+window.openGithubPage = openGithubPage;
+
+function closeGithubPage() {
+    const page = document.getElementById('github-page');
+    if (!page) return;
+
+    page.classList.remove('translate-x-0');
+    page.classList.add('translate-x-full');
+    setTimeout(() => {
+        page.classList.add('hidden');
+        if (!_isOverlayPageOpen()) document.body.classList.remove('overflow-hidden');
+        const profileTab = document.getElementById('tab-profile');
+        if (profileTab) profileTab.style.pointerEvents = '';
+    }, 300);
+}
+window.closeGithubPage = closeGithubPage;
+
+// ── GitHub Page swipe-to-close ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const githubPage = document.getElementById('github-page');
+    if (!githubPage) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isSwiping = false;
+    let _pageSwipeLock = false;
+
+    githubPage.addEventListener('touchstart', (e) => {
+        if (_pageSwipeLock) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isSwiping = false;
+    }, { passive: true });
+
+    githubPage.addEventListener('touchmove', (e) => {
+        if (_pageSwipeLock || !touchStartX || !touchStartY) return;
+
+        const diffX = e.touches[0].clientX - touchStartX;
+        const diffY = Math.abs(e.touches[0].clientY - touchStartY);
+
+        if (isSwiping) {
+            if (e.cancelable) e.preventDefault();
+            if (diffX > 0) githubPage.style.transform = `translateX(${diffX}px)`;
+            return;
+        }
+
+        if (diffY > Math.abs(diffX)) return;
+
+        if (diffX > 0) {
+            if (e.cancelable) e.preventDefault();
+            isSwiping = true;
+            githubPage.style.transition = 'none';
+            githubPage.style.transform = `translateX(${diffX}px)`;
+        }
+    }, { passive: false });
+
+    githubPage.addEventListener('touchend', (e) => {
+        if (!isSwiping) return;
+
+        const diffX = e.changedTouches[0].clientX - touchStartX;
+        const shouldClose = diffX > window.innerWidth / 3 || diffX > 100;
+
+        touchStartX = 0;
+        touchStartY = 0;
+        isSwiping = false;
+
+        if (!shouldClose) {
+            githubPage.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+            githubPage.style.transform = 'translateX(0)';
+            setTimeout(() => {
+                githubPage.style.transform = '';
+                githubPage.style.transition = '';
+            }, 300);
+            return;
+        }
+
+        _pageSwipeLock = true;
+        githubPage.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+        githubPage.style.transform = `translateX(${window.innerWidth}px)`;
+
+        setTimeout(() => {
+            githubPage.style.transition = 'none';
+            githubPage.style.transform = '';
+            githubPage.classList.remove('translate-x-0');
+            githubPage.classList.add('translate-x-full', 'hidden');
+            if (!_isOverlayPageOpen()) document.body.classList.remove('overflow-hidden');
+            const profileTab = document.getElementById('tab-profile');
+            if (profileTab) profileTab.style.pointerEvents = '';
+            githubPage.style.transition = '';
+            _pageSwipeLock = false;
+        }, 300);
+    });
 });

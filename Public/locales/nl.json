@@ -241,6 +241,8 @@
   "haptics.dexDisabledHint": "Uitgeschakeld als knop haptics uit staat",
   "settings.deleteAccount": "Account verwijderen",
   "settings.signOut": "Uitloggen",
+  "settings.noResults": "Geen instellingen gevonden",
+  "settings.searchPlaceholder": "Instellingen zoeken…",
 
   "editProfile.featuredBadge": "Uitgelichte badge",
   "editProfile.none": "Geen",

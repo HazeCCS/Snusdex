@@ -250,6 +250,8 @@ const _EN = {
     'settings.helpCenter': 'Help Center & FAQ',
     'settings.deleteAccount': 'Delete Account',
     'settings.signOut': 'Sign Out',
+    'settings.noResults': 'No settings found',
+    'settings.searchPlaceholder': 'Search settings…',
 
     'haptics.globalLabel': 'Button Haptics',
     'haptics.globalDesc': 'Vibration for taps & interactions',
