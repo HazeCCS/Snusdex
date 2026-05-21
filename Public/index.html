@@ -2106,8 +2106,8 @@
     <!-- ═══════════════════════════════════════════════════ -->
     <!-- CONNECTIONS PAGE (Instagram-Style Follow System)   -->
     <!-- ═══════════════════════════════════════════════════ -->
-    <div id="connections-page"
-        class="fixed inset-0 z-[100] bg-[#000000] flex flex-col transition-transform duration-300 translate-x-full hidden">
+    <div id="connections-page" style="z-index: 100;"
+        class="fixed inset-0 bg-[#000000] flex flex-col transition-transform duration-300 translate-x-full hidden">
 
         <!-- Header -->
         <div class="px-5 pt-14 pb-3 flex justify-between items-center flex-shrink-0 border-b border-white/5">
@@ -2118,7 +2118,13 @@
                 </svg>
             </button>
             <h1 class="text-[20px] font-bold text-white tracking-tight" data-i18n="connections.title">Connections</h1>
-            <div class="w-10"></div>
+            <button onclick="triggerHapticFeedback(); openBlockedUsersPage()"
+                class="w-10 h-10 bg-[#1C1C1E] rounded-full flex items-center justify-center active:scale-95 transition-transform border border-white/10"
+                title="Blocked Users">
+                <svg class="w-5 h-5 text-[#FF3B30]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+            </button>
         </div>
 
         <!-- Search Bar -->
@@ -2233,6 +2239,153 @@
         <div id="followers-list" class="hidden"></div>
         <div id="following-list" class="hidden"></div>
 
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- FRIEND PROFILE PAGE                                 -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div id="friend-profile-page" style="z-index: 110;"
+        class="fixed inset-0 bg-[#000000] flex flex-col transition-transform duration-300 translate-x-full hidden">
+
+        <!-- Header -->
+        <div class="px-5 pt-14 pb-3 flex justify-between items-center flex-shrink-0 border-b border-white/5 bg-[#1C1C1E]/50 backdrop-blur-md">
+            <button onclick="triggerHapticFeedback(); closeFriendProfilePage()"
+                class="w-10 h-10 bg-[#1C1C1E] rounded-full flex items-center justify-center active:scale-95 transition-transform border border-white/10">
+                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <h1 id="friend-profile-title" class="text-[20px] font-bold text-white tracking-tight" data-i18n="connections.profileTitle">Profile</h1>
+            <div class="relative">
+                <button id="friend-profile-actions-btn" onclick="triggerHapticFeedback(); toggleFriendActionsMenu()"
+                    class="w-10 h-10 bg-[#1C1C1E] rounded-full flex items-center justify-center active:scale-95 transition-transform border border-white/10">
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                    </svg>
+                </button>
+                <!-- Friend Actions Dropdown Menu -->
+                <div id="friend-actions-menu" class="hidden absolute right-0 top-12 bg-[#1C1C1E] border border-white/10 rounded-2xl p-2 w-48 shadow-2xl z-[120] transition-all transform origin-top-right scale-95 opacity-0">
+                    <button id="friend-block-btn" onclick="handleFriendBlockAction()" class="w-full text-left px-4 py-3 text-[14px] font-semibold text-[#FF3B30] hover:bg-white/5 active:bg-white/10 rounded-xl transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                        <span data-i18n="connections.block">Block User</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scrollable Profile Content -->
+        <div id="friend-profile-content" class="flex-1 overflow-y-auto px-5 py-6 pb-24 overscroll-contain">
+            <!-- Loading spinner -->
+            <div id="friend-profile-spinner" class="py-20 flex justify-center items-center">
+                <svg class="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+
+            <!-- Blocked / Private State -->
+            <div id="friend-profile-blocked-state" class="hidden text-center py-20 px-6">
+                <div class="w-16 h-16 bg-[#FF3B30]/10 text-[#FF3B30] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#FF3B30]/20">
+                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h3 class="text-white text-[17px] font-bold mb-2" data-i18n="connections.profileUnavailable">Profile Unavailable</h3>
+                <p class="text-[#8E8E93] text-[14px]" data-i18n="connections.profileUnavailableDesc">You cannot view this profile because they have blocked you, or you have blocked them.</p>
+            </div>
+
+            <!-- Profile Info Card (Username, Avatar, Level, XP) -->
+            <div id="friend-profile-info-section" class="hidden flex flex-col items-center">
+                <!-- Avatar with Badge Overlay -->
+                <div class="relative w-24 h-24 mb-4">
+                    <img id="friend-avatar" src="" class="w-full h-full rounded-full object-cover border-2 border-white/10 bg-[#1C1C1E]">
+                    <div id="friend-avatar-placeholder" class="w-full h-full rounded-full flex items-center justify-center bg-[#1C1C1E] border-2 border-white/10 text-white text-[32px] font-bold">
+                        U
+                    </div>
+                    <!-- Badge Overlay -->
+                    <div id="friend-badge-overlay" class="absolute -bottom-1 -right-1 w-9 h-9 bg-black/60 rounded-full border border-white/10 backdrop-blur-sm p-1 hidden">
+                        <img id="friend-badge-img" src="" class="w-full h-full object-contain">
+                    </div>
+                </div>
+
+                <h2 id="friend-username" class="text-white text-[22px] font-extrabold tracking-tight mb-1">Username</h2>
+                
+                <!-- Follow Status and Button -->
+                <button id="friend-follow-btn" onclick="handleFriendProfileFollowToggle()" class="mt-2 px-6 py-2 rounded-xl text-[14px] font-bold transition-all shadow-md"></button>
+
+                <!-- Metal Collector Card for Friend -->
+                <div class="metal-card-container w-full" id="friend-metal-card-container" data-anim="sweep" style="padding: 20px 0;">
+                    <div class="metal-collector-card">
+                        <div class="metal-card-ambient"></div>
+                        <div class="metal-card-pattern" id="friend-metal-card-pattern"></div>
+                        <div class="metal-card-glow" id="friend-metal-card-glow"></div>
+                        <div class="metal-card-glow metal-card-glow-2"></div>
+                        <div class="flex justify-between items-start relative z-10">
+                            <span class="engraved-text font-medium uppercase tracking-widest" style="font-size: 13px;" data-i18n="home.collectorId">Collector ID</span>
+                            <span id="friend-card-level" class="engraved-text font-semibold" style="font-size: 14px;">LVL --</span>
+                        </div>
+                        <div class="relative z-10">
+                            <p id="friend-card-username" class="engraved-text uppercase tracking-wide"
+                                style="font-size: 13px; margin-bottom: 2px;">Loading...</p>
+                            <p id="friend-card-score" class="engraved-text font-semibold tracking-tight leading-none"
+                                style="font-size: 38px; margin: 0;">0
+                                <span class="font-medium" style="font-size: 20px;">XP</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats underneath the Card (XP & Found Cans) -->
+                <div class="grid grid-cols-2 gap-3 w-full mt-4">
+                    <!-- XP -->
+                    <div class="bg-[#1C1C1E] border border-white/5 rounded-2xl p-4 text-center shadow-lg">
+                        <span class="text-[11px] text-[#8E8E93] uppercase tracking-wider font-bold block mb-1">XP</span>
+                        <span id="friend-stat-xp" class="text-white text-[22px] font-extrabold leading-none">0</span>
+                    </div>
+                    <!-- FOUND CANS -->
+                    <div class="bg-[#1C1C1E] border border-white/5 rounded-2xl p-4 text-center shadow-lg">
+                        <span class="text-[11px] text-[#8E8E93] uppercase tracking-wider font-bold block mb-1" data-i18n="profile.cans">Cans</span>
+                        <span id="friend-stat-cans" class="text-white text-[22px] font-extrabold leading-none">0</span>
+                    </div>
+                </div>
+
+                <!-- Unlocked Snus Cans Grid -->
+                <div class="w-full mt-6">
+                    <span class="text-[11px] text-[#8E8E93] uppercase tracking-wider font-bold block mb-3 px-1" data-i18n="connections.unlockedCans">Unlocked Cans</span>
+                    <div id="friend-cans-grid" class="grid grid-cols-3 gap-3">
+                        <!-- Unlocked snus images generated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- BLOCKED USERS PAGE                                  -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div id="blocked-users-page" style="z-index: 120;"
+        class="fixed inset-0 bg-[#000000] flex flex-col transition-transform duration-300 translate-x-full hidden">
+        
+        <!-- Header -->
+        <div class="px-5 pt-14 pb-3 flex justify-between items-center flex-shrink-0 border-b border-white/5 bg-[#1C1C1E]/50 backdrop-blur-md">
+            <button onclick="triggerHapticFeedback(); closeBlockedUsersPage()"
+                class="w-10 h-10 bg-[#1C1C1E] rounded-full flex items-center justify-center active:scale-95 transition-transform border border-white/10">
+                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <h1 class="text-[20px] font-bold text-white tracking-tight" data-i18n="connections.blockedTitle">Blocked Users</h1>
+            <div class="w-10"></div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto px-5 py-4 pb-24 overscroll-contain">
+            <p class="text-[#8E8E93] text-[13px] mb-6 leading-relaxed" data-i18n="connections.blockedSubtitle">Users you block cannot see your profile, stats, or avatar. You can unblock them here.</p>
+            <div id="blocked-list-container" class="space-y-4">
+                <!-- Blocked rows will be loaded here -->
+            </div>
+        </div>
     </div>
 
     <nav id="main-nav"

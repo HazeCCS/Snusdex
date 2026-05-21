@@ -25,11 +25,24 @@ async function setupProfile(user) {
 
     // Vollständiges Profil im Hintergrund nachladen (featured badge + korrekter username aus DB)
     try {
-        const { data: profileData } = await supabaseClient
+        let profileData = null;
+        const res = await supabaseClient
             .from('profiles')
             .select('username, featured_badge_id')
             .eq('id', user.id)
             .single();
+
+        if (res.error && res.error.code === '42703') {
+            console.warn("Column featured_badge_id doesn't exist on profiles, retrying without it...");
+            const retryRes = await supabaseClient
+                .from('profiles')
+                .select('username')
+                .eq('id', user.id)
+                .single();
+            profileData = retryRes.data;
+        } else {
+            profileData = res.data;
+        }
 
         if (profileData?.username && profileData.username !== currentUsername) {
             currentUsername = profileData.username;

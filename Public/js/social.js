@@ -814,7 +814,7 @@ async function searchUsersConnections() {
 
             return `
                 <div class="flex items-center justify-between py-2.5">
-                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                    <div class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" onclick="triggerHapticFeedback(); openFriendProfile('${profile.id}')">
                         <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0">
                         <div class="min-w-0 flex-1">
                             <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
@@ -961,102 +961,131 @@ async function declineFollowRequest(requestId) {
 }
 
 async function loadConnectionsData() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return;
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
 
-    const friendsList = document.getElementById('friends-list-container');
-    const followersList = document.getElementById('followers-list-container');
-    const followingList = document.getElementById('following-list-container');
-    const requestsList = document.getElementById('requests-list-container');
+        const friendsList = document.getElementById('friends-list-container');
+        const followersList = document.getElementById('followers-list-container');
+        const followingList = document.getElementById('following-list-container');
+        const requestsList = document.getElementById('requests-list-container');
 
-    // 1. Lade eingehende Anfragen & Follower
-    const { data: incoming } = await supabaseClient
-        .from('user_follows')
-        .select(`
-            id, status,
-            follower:profiles!follower_id(id, username, avatar_url, xp)
-        `)
-        .eq('following_id', user.id);
+        // 1. Lade eingehende Anfragen & Follower
+        const { data: incoming, error: incomingError } = await supabaseClient
+            .from('user_follows')
+            .select(`
+                id, status,
+                follower:profiles!follower_id(id, username, avatar_url, xp)
+            `)
+            .eq('following_id', user.id);
 
-    // 2. Lade ausgehende Follows
-    const { data: outgoing } = await supabaseClient
-        .from('user_follows')
-        .select(`
-            id, status, following_id,
-            following:profiles!following_id(id, username, avatar_url, xp)
-        `)
-        .eq('follower_id', user.id);
+        if (incomingError) throw incomingError;
 
-    // Verarbeiten
-    const pendingRequests = (incoming || []).filter(c => c.status === 'pending');
-    const myFollowers = (incoming || []).filter(c => c.status === 'accepted');
-    const iAmFollowing = (outgoing || []).filter(c => c.status === 'accepted');
+        // 2. Lade ausgehende Follows
+        const { data: outgoing, error: outgoingError } = await supabaseClient
+            .from('user_follows')
+            .select(`
+                id, status, following_id,
+                following:profiles!following_id(id, username, avatar_url, xp)
+            `)
+            .eq('follower_id', user.id);
 
-    // Freunde (Mutuals) = Die, denen ich folge UND die mir folgen
-    const myFollowersIds = new Set(myFollowers.map(f => f.follower.id));
-    const friends = iAmFollowing.filter(f => myFollowersIds.has(f.following_id));
+        if (outgoingError) throw outgoingError;
 
-    // --- RENDER PENDING REQUESTS ---
-    const banner = document.getElementById('conn-pending-banner');
-    const badge = document.getElementById('conn-requests-badge');
-    const countText = document.getElementById('conn-pending-count-text');
+        // Filtere alle Einträge heraus, bei denen das verknüpfte Profil null ist (z.B. durch RLS/Block/Löschung)
+        const validIncoming = (incoming || []).filter(c => c && c.follower);
+        const validOutgoing = (outgoing || []).filter(c => c && c.following);
 
-    if (pendingRequests.length > 0) {
-        banner.classList.remove('hidden');
-        badge.classList.remove('hidden');
-        countText.innerText = pendingRequests.length === 1
-            ? t('connections.followerRequests', { n: pendingRequests.length })
-            : t('connections.followerRequestsPlural', { n: pendingRequests.length });
+        // Verarbeiten
+        const pendingRequests = validIncoming.filter(c => c.status === 'pending');
+        const myFollowers = validIncoming.filter(c => c.status === 'accepted');
+        const iAmFollowing = validOutgoing.filter(c => c.status === 'accepted');
 
-        const reqParts = pendingRequests.map(req => {
-            const profile = req.follower;
-            if (!profile) return '';
-            const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
-            return `
-                <div class="request-item-row flex items-center justify-between py-2.5">
-                    <div class="flex items-center gap-3 min-w-0 flex-1">
-                        <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0">
-                        <div class="min-w-0 flex-1">
-                            <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
-                            <p class="text-[13px] text-[#8E8E93] truncate">${t('connections.wantsToFollow')}</p>
+        // Freunde (Mutuals) = Die, denen ich folge UND die mir folgen
+        const myFollowersIds = new Set(myFollowers.map(f => f.follower.id));
+        const friends = iAmFollowing.filter(f => myFollowersIds.has(f.following_id));
+
+        // --- RENDER PENDING REQUESTS ---
+        const banner = document.getElementById('conn-pending-banner');
+        const badge = document.getElementById('conn-requests-badge');
+        const countText = document.getElementById('conn-pending-count-text');
+
+        if (pendingRequests.length > 0) {
+            if (banner) banner.classList.remove('hidden');
+            if (badge) badge.classList.remove('hidden');
+            if (countText) {
+                countText.innerText = pendingRequests.length === 1
+                    ? t('connections.followerRequests', { n: pendingRequests.length })
+                    : t('connections.followerRequestsPlural', { n: pendingRequests.length });
+            }
+
+            const reqParts = pendingRequests.map(req => {
+                const profile = req.follower;
+                if (!profile) return '';
+                const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
+                return `
+                    <div class="request-item-row flex items-center justify-between py-2.5">
+                        <div class="flex items-center gap-3 min-w-0 flex-1">
+                            <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff'">
+                            <div class="min-w-0 flex-1">
+                                <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                                <p class="text-[13px] text-[#8E8E93] truncate">${t('connections.wantsToFollow')}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0 pl-2">
+                            <button onclick="acceptFollowRequest('${req.id}', '${profile.id}')" class="px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-white text-black active:bg-white/90 transition-colors">
+                                ${t('connections.confirm')}
+                            </button>
+                            <button onclick="declineFollowRequest('${req.id}')" class="w-8 h-8 rounded-[10px] bg-[#2C2C2E] text-[#8E8E93] flex items-center justify-center active:bg-[#3A3A3C] transition-colors">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 flex-shrink-0 pl-2">
-                        <button onclick="acceptFollowRequest('${req.id}', '${profile.id}')" class="px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-white text-black active:bg-white/90 transition-colors">
-                            ${t('connections.confirm')}
-                        </button>
-                        <button onclick="declineFollowRequest('${req.id}')" class="w-8 h-8 rounded-[10px] bg-[#2C2C2E] text-[#8E8E93] flex items-center justify-center active:bg-[#3A3A3C] transition-colors">
-                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-        requestsList.innerHTML = reqParts.join('');
-    } else {
-        banner.classList.add('hidden');
-        badge.classList.add('hidden');
-        requestsList.innerHTML = `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noRequests')}</div>`;
+                `;
+            });
+            if (requestsList) requestsList.innerHTML = reqParts.join('');
+        } else {
+            if (banner) banner.classList.add('hidden');
+            if (badge) badge.classList.add('hidden');
+            if (requestsList) requestsList.innerHTML = `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noRequests')}</div>`;
+        }
+
+        // --- RENDER FRIENDS ---
+        if (friendsList) {
+            friendsList.innerHTML = friends.length > 0
+                ? friends.map(f => renderConnectionItem(f.following, 'accepted', f.following_id)).join('')
+                : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFriends')}</div>`;
+        }
+
+        // Erstelle ein Map mit Status der Leute, denen ich folge
+        const myOutgoingFollows = new Map();
+        validOutgoing.forEach(f => myOutgoingFollows.set(f.following_id, f.status));
+
+        // --- RENDER FOLLOWERS ---
+        if (followersList) {
+            followersList.innerHTML = myFollowers.length > 0
+                ? myFollowers.map(f => renderConnectionItem(f.follower, myOutgoingFollows.get(f.follower.id) || 'none', f.follower.id)).join('')
+                : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFollowers')}</div>`;
+        }
+
+        // --- RENDER FOLLOWING ---
+        if (followingList) {
+            followingList.innerHTML = iAmFollowing.length > 0
+                ? iAmFollowing.map(f => renderConnectionItem(f.following, 'accepted', f.following_id)).join('')
+                : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFollowing')}</div>`;
+        }
+    } catch (err) {
+        console.error("Error in loadConnectionsData:", err);
+        const errorHtml = `<div class="py-10 text-center text-[#FF3B30] text-[14px]">${t('social.errorLoad')}</div>`;
+        const friendsList = document.getElementById('friends-list-container');
+        const followersList = document.getElementById('followers-list-container');
+        const followingList = document.getElementById('following-list-container');
+        const requestsList = document.getElementById('requests-list-container');
+        if (friendsList) friendsList.innerHTML = errorHtml;
+        if (followersList) followersList.innerHTML = errorHtml;
+        if (followingList) followingList.innerHTML = errorHtml;
+        if (requestsList) requestsList.innerHTML = errorHtml;
     }
-
-    // --- RENDER FRIENDS ---
-    friendsList.innerHTML = friends.length > 0
-        ? friends.map(f => renderConnectionItem(f.following, 'accepted', f.following_id)).join('')
-        : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFriends')}</div>`;
-
-    // Erstelle ein Map mit Status der Leute, denen ich folge
-    const myOutgoingFollows = new Map();
-    (outgoing || []).forEach(f => myOutgoingFollows.set(f.following_id, f.status));
-
-    // --- RENDER FOLLOWERS ---
-    followersList.innerHTML = myFollowers.length > 0
-        ? myFollowers.map(f => renderConnectionItem(f.follower, myOutgoingFollows.get(f.follower.id) || 'none', f.follower.id)).join('')
-        : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFollowers')}</div>`;
-
-    // --- RENDER FOLLOWING ---
-    followingList.innerHTML = iAmFollowing.length > 0
-        ? iAmFollowing.map(f => renderConnectionItem(f.following, 'accepted', f.following_id)).join('')
-        : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFollowing')}</div>`;
 }
 
 // Helper zum Rendern von Profil-Reihen in den Listen
@@ -1087,7 +1116,7 @@ function renderConnectionItem(profile, followStatus, profileId) {
 
     return `
         <div class="flex items-center justify-between py-2.5">
-            <div class="flex items-center gap-3 min-w-0 flex-1">
+            <div class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" onclick="triggerHapticFeedback(); openFriendProfile('${profileId}')">
                 <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff'">
                 <div class="min-w-0 flex-1">
                     <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
@@ -1178,6 +1207,8 @@ function setupConnectionsSwipe() {
 
 // Einmal initialisieren
 setupConnectionsSwipe();
+setupFriendProfileSwipe();
+setupBlockedUsersSwipe();
 
 function openConnectionsPage() {
     const page = document.getElementById('connections-page');
@@ -1374,3 +1405,672 @@ window.loadActivityHeatmap = async function() {
         console.error("Heatmap error:", err);
     }
 };
+
+// ==========================================
+// 9.7. FRIEND PROFILE PAGE & BLOCK SYSTEM
+// ==========================================
+
+let currentFriendProfileId = null;
+
+async function openFriendProfile(friendId) {
+    currentFriendProfileId = friendId;
+
+    const spinner = document.getElementById('friend-profile-spinner');
+    const blockedState = document.getElementById('friend-profile-blocked-state');
+    const infoSection = document.getElementById('friend-profile-info-section');
+    const page = document.getElementById('friend-profile-page');
+    const actionsMenu = document.getElementById('friend-actions-menu');
+
+    if (!page) return;
+
+    // Show spinner, hide content
+    if (spinner) spinner.classList.remove('hidden');
+    if (blockedState) blockedState.classList.add('hidden');
+    if (infoSection) infoSection.classList.add('hidden');
+    if (actionsMenu) actionsMenu.classList.add('hidden');
+
+    // Slide in animation
+    page.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    page.style.transition = 'none';
+    page.style.transform = 'translateX(100%)';
+    page.offsetHeight;
+    page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+    page.style.transform = 'translateX(0)';
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        // Fetch profile
+        let profile = null;
+        let error = null;
+
+        const profileRes = await supabaseClient
+            .from('profiles')
+            .select('id, username, avatar_url, xp, featured_badge_id')
+            .eq('id', friendId)
+            .single();
+
+        profile = profileRes.data;
+        error = profileRes.error;
+
+        if (error && error.code === '42703') {
+            console.warn("Column featured_badge_id doesn't exist on profiles, retrying without it...");
+            const retryRes = await supabaseClient
+                .from('profiles')
+                .select('id, username, avatar_url, xp')
+                .eq('id', friendId)
+                .single();
+            profile = retryRes.data;
+            error = retryRes.error;
+        }
+
+        if (error) {
+            console.error("Error loading friend profile details:", error);
+        }
+
+        // Check block relationship
+        const { data: blockData } = await supabaseClient
+            .from('user_blocks')
+            .select('id')
+            .eq('blocker_id', user.id)
+            .eq('blocked_id', friendId)
+            .maybeSingle();
+
+        const weBlockedThem = !!blockData;
+
+        if (error || !profile) {
+            // Profile not accessible (e.g. because they blocked us)
+            if (spinner) spinner.classList.add('hidden');
+            if (blockedState) blockedState.classList.remove('hidden');
+            return;
+        }
+
+        // Hide spinner and show info
+        if (spinner) spinner.classList.add('hidden');
+        if (infoSection) infoSection.classList.remove('hidden');
+
+        // Username
+        const usernameEl = document.getElementById('friend-username');
+        if (usernameEl) usernameEl.innerText = profile.username || 'Unknown';
+
+        // Avatar fallback to UI Avatars if blocked/empty
+        const avatarImg = document.getElementById('friend-avatar');
+        const avatarPlaceholder = document.getElementById('friend-avatar-placeholder');
+
+        if (avatarImg && avatarPlaceholder) {
+            if (profile.avatar_url) {
+                avatarImg.src = profile.avatar_url;
+                avatarImg.classList.remove('hidden');
+                avatarPlaceholder.classList.add('hidden');
+            } else {
+                avatarImg.classList.add('hidden');
+                avatarPlaceholder.classList.remove('hidden');
+                avatarPlaceholder.innerText = (profile.username || 'U').substring(0, 1).toUpperCase();
+            }
+        }
+
+        // Featured Badge
+        const badgeOverlay = document.getElementById('friend-badge-overlay');
+        const badgeImg = document.getElementById('friend-badge-img');
+        if (badgeOverlay && badgeImg) {
+            if (profile.featured_badge_id && typeof globalBadges !== 'undefined') {
+                const badge = globalBadges.find(b => b.id === profile.featured_badge_id);
+                if (badge) {
+                    const base = typeof GITHUB_BASE !== 'undefined' ? GITHUB_BASE : '';
+                    const imgUrl = badge.image_url.startsWith('http') ? badge.image_url : base + badge.image_url;
+                    badgeImg.src = (window.badgeImageCache && window.badgeImageCache.get(imgUrl)) || imgUrl;
+                    badgeOverlay.classList.remove('hidden');
+                } else {
+                    badgeOverlay.classList.add('hidden');
+                }
+            } else {
+                badgeOverlay.classList.add('hidden');
+            }
+        }
+
+        // Stats & Collector Card Setup
+        const xpVal = weBlockedThem ? 0 : (profile.xp || 0);
+        const lvlVal = weBlockedThem ? 1 : (Math.floor(xpVal / 300) + 1);
+
+        // Collector Card fields
+        const cardLvlEl = document.getElementById('friend-card-level');
+        const cardUserEl = document.getElementById('friend-card-username');
+        const cardScoreEl = document.getElementById('friend-card-score');
+
+        if (cardLvlEl) cardLvlEl.innerText = weBlockedThem ? 'LVL --' : `LVL ${lvlVal}`;
+        if (cardUserEl) cardUserEl.innerHTML = `COLLECTOR, <span class="text-white font-semibold">${profile.username || 'Unknown'}</span>`;
+        if (cardScoreEl) cardScoreEl.innerHTML = weBlockedThem ? `- <span class="font-medium text-[20px] text-white/50">XP</span>` : `${xpVal} <span class="font-medium text-[20px] text-white/50">XP</span>`;
+
+        // Apply card animation and pattern from user preferences
+        const cardContainer = document.getElementById('friend-metal-card-container');
+        if (cardContainer) {
+            cardContainer.dataset.anim = localStorage.getItem('metalCardAnim') || 'sweep';
+        }
+        const patternEl = document.getElementById('friend-metal-card-pattern');
+        if (patternEl) {
+            patternEl.className = 'metal-card-pattern';
+            const savedPattern = localStorage.getItem('metalCardPattern') || 'none';
+            if (savedPattern !== 'none') {
+                patternEl.classList.add('p-' + savedPattern);
+            }
+        }
+
+        const xpEl = document.getElementById('friend-stat-xp');
+        if (xpEl) xpEl.innerText = weBlockedThem ? '-' : xpVal;
+
+        // Fetch follow status
+        let followStatus = 'none';
+        if (!weBlockedThem) {
+            const { data: followRel } = await supabaseClient
+                .from('user_follows')
+                .select('status')
+                .eq('follower_id', user.id)
+                .eq('following_id', friendId)
+                .maybeSingle();
+            followStatus = followRel ? followRel.status : 'none';
+        }
+
+        // Setup Follow/Unblock Button
+        const followBtn = document.getElementById('friend-follow-btn');
+        if (followBtn) {
+            followBtn.setAttribute('data-status', followStatus);
+            followBtn.disabled = false;
+            if (weBlockedThem) {
+                followBtn.innerText = t('connections.unblock');
+                followBtn.className = "mt-2 px-6 py-2 rounded-xl text-[14px] font-bold transition-all shadow-md bg-[#FF3B30] text-white active:bg-[#FF3B30]/90";
+                followBtn.onclick = () => { triggerHapticFeedback(); handleFriendBlockAction(); };
+            } else {
+                followBtn.onclick = () => { triggerHapticFeedback(); handleFriendProfileFollowToggle(); };
+                if (followStatus === 'accepted') {
+                    followBtn.innerText = t('connections.following_btn');
+                    followBtn.className = "mt-2 px-6 py-2 rounded-xl text-[14px] font-bold transition-all shadow-md bg-[#2C2C2E] text-white active:bg-[#3A3A3C]";
+                } else if (followStatus === 'pending') {
+                    followBtn.innerText = t('connections.requested');
+                    followBtn.className = "mt-2 px-6 py-2 rounded-xl text-[14px] font-bold transition-all shadow-md bg-[#2C2C2E] text-white active:bg-[#3A3A3C]";
+                } else {
+                    followBtn.innerText = t('connections.follow');
+                    followBtn.className = "mt-2 px-6 py-2 rounded-xl text-[14px] font-bold transition-all shadow-md bg-white text-black active:bg-white/90";
+                }
+            }
+        }
+
+        // Setup Dropdown Block Action Button
+        const blockBtn = document.getElementById('friend-block-btn');
+        if (blockBtn) {
+            if (weBlockedThem) {
+                blockBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <span>${t('connections.unblock')}</span>
+                `;
+                blockBtn.classList.remove('text-[#FF3B30]');
+                blockBtn.classList.add('text-white');
+            } else {
+                blockBtn.innerHTML = `
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                    <span>${t('connections.block')}</span>
+                `;
+                blockBtn.classList.remove('text-white');
+                blockBtn.classList.add('text-[#FF3B30]');
+            }
+        }
+
+        const cansCountEl = document.getElementById('friend-stat-cans');
+        const cansGrid = document.getElementById('friend-cans-grid');
+
+        if (weBlockedThem) {
+            if (cansCountEl) cansCountEl.innerText = '-';
+            if (cansGrid) {
+                cansGrid.innerHTML = `
+                    <div class="col-span-3 text-center text-[#8E8E93] text-[13px] py-6 px-4">
+                        ${t('connections.profileUnavailableDesc')}
+                    </div>
+                `;
+            }
+        } else {
+            // Unlocked cans grid
+            const { data: collections } = await supabaseClient
+                .from('user_collections')
+                .select('snus_id, collected_at')
+                .eq('user_id', friendId);
+
+            const cansCount = collections ? collections.length : 0;
+            if (cansCountEl) cansCountEl.innerText = cansCount;
+
+            if (cansGrid) {
+                if (typeof globalSnusData !== 'undefined' && globalSnusData.length > 0) {
+                    const friendCollection = {};
+                    if (collections) {
+                        collections.forEach(col => {
+                            friendCollection[col.snus_id] = true;
+                        });
+                    }
+
+                    const sortedSnus = globalSnusData.slice()
+                        .filter(snus => !!friendCollection[snus.id])
+                        .sort((a, b) => parseInt(a.id) - parseInt(b.id));
+                    const base = typeof GITHUB_BASE !== 'undefined' ? GITHUB_BASE : 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/main/assets/';
+                    const glowActive = localStorage.getItem('dexGlow') === 'true';
+
+                    if (sortedSnus.length > 0) {
+                        cansGrid.innerHTML = sortedSnus.map(snus => {
+                            const formattedId = '#' + String(snus.id).padStart(3, '0');
+                            const rarity = (snus.rarity || 'common').toLowerCase().trim();
+                            const boxShadow = glowActive ? `box-shadow: 0 0px 20px -8px var(--${rarity}, var(--common));` : '';
+                            const imgUrl = snus.image ? `${base}${snus.image}` : 'placeholder.png';
+
+                            const rarityIndicator = `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
+
+                            return `
+                                <div onclick="triggerHapticFeedback(); openSnusDetail(${snus.id})" class="dex-anim-card cursor-pointer group h-full w-full origin-center">
+                                    <div class="relative flex flex-col h-full bg-[#2A2A2E] rounded-[20px] transition-transform duration-200 group-active:scale-95 shadow-md overflow-hidden" style="border: 1px solid rgba(255,255,255,0.05); ${boxShadow}">
+                                        <div class="flex justify-between items-center w-full px-2.5 pt-2.5 z-10">
+                                            <span class="text-[10px] font-medium text-[#8E8E93] tracking-wide">${formattedId}</span>
+                                            ${rarityIndicator}
+                                        </div>
+                                        <div class="dex-image-container w-full aspect-square flex items-center justify-center relative mt-1 overflow-hidden">
+                                            <img src="${imgUrl}" class="w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 transition-opacity duration-300">
+                                        </div>
+                                        <div class="px-2 pt-1 pb-3 text-center flex-1 flex items-center justify-center z-10">
+                                            <h5 class="text-[12px] font-semibold leading-tight line-clamp-2 text-white">${snus.name}</h5>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        cansGrid.innerHTML = `<div class="col-span-3 text-center text-[#8E8E93] text-[13px] py-4">No cans found.</div>`;
+                    }
+                }
+            }
+        }
+
+    } catch (err) {
+        console.error("Error opening friend profile:", err);
+        if (spinner) spinner.classList.add('hidden');
+        if (blockedState) blockedState.classList.remove('hidden');
+    }
+}
+
+function closeFriendProfilePage() {
+    const page = document.getElementById('friend-profile-page');
+    if (!page) return;
+
+    page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+    page.style.transform = 'translateX(100%)';
+
+    setTimeout(() => {
+        page.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+        page.style.transform = '';
+        page.style.transition = '';
+    }, 350);
+}
+
+function toggleFriendActionsMenu() {
+    const menu = document.getElementById('friend-actions-menu');
+    if (!menu) return;
+
+    if (menu.classList.contains('hidden')) {
+        menu.classList.remove('hidden');
+        menu.offsetHeight; // force reflow
+        menu.classList.remove('scale-95', 'opacity-0');
+        menu.classList.add('scale-100', 'opacity-100');
+    } else {
+        menu.classList.remove('scale-100', 'opacity-100');
+        menu.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            menu.classList.add('hidden');
+        }, 200);
+    }
+}
+
+async function handleFriendBlockAction() {
+    const friendId = currentFriendProfileId;
+    if (!friendId) return;
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+
+    const { data: blockData } = await supabaseClient
+        .from('user_blocks')
+        .select('id')
+        .eq('blocker_id', user.id)
+        .eq('blocked_id', friendId)
+        .maybeSingle();
+
+    if (blockData) {
+        // Unblock
+        const { error } = await supabaseClient
+            .from('user_blocks')
+            .delete()
+            .eq('blocker_id', user.id)
+            .eq('blocked_id', friendId);
+
+        if (!error) {
+            alert(t('connections.unblockedSuccess'));
+            toggleFriendActionsMenu();
+            openFriendProfile(friendId);
+            loadConnectionsData();
+        } else {
+            alert("Error unblocking user: " + error.message);
+        }
+    } else {
+        // Block
+        const confirmBlock = confirm("Are you sure you want to block this user?");
+        if (!confirmBlock) return;
+
+        const { error } = await supabaseClient
+            .from('user_blocks')
+            .insert([{ blocker_id: user.id, blocked_id: friendId }]);
+
+        if (!error) {
+            alert(t('connections.blockedSuccess'));
+            toggleFriendActionsMenu();
+            openFriendProfile(friendId);
+            loadConnectionsData();
+        } else {
+            alert("Error blocking user: " + error.message);
+        }
+    }
+}
+
+async function handleFriendProfileFollowToggle() {
+    const friendId = currentFriendProfileId;
+    if (!friendId) return;
+
+    const btn = document.getElementById('friend-follow-btn');
+    if (!btn) return;
+
+    const currentStatus = btn.getAttribute('data-status');
+    btn.disabled = true;
+    btn.innerText = "...";
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        btn.disabled = false;
+        return;
+    }
+
+    if (currentStatus === 'accepted' || currentStatus === 'pending') {
+        const { error } = await supabaseClient
+            .from('user_follows')
+            .delete()
+            .eq('follower_id', user.id)
+            .eq('following_id', friendId);
+
+        if (!error) {
+            btn.setAttribute('data-status', 'none');
+            btn.className = "mt-2 px-6 py-2 rounded-xl text-[14px] font-bold transition-all shadow-md bg-white text-black active:bg-white/90";
+            btn.innerText = t('connections.follow');
+        } else {
+            openFriendProfile(friendId);
+        }
+    } else {
+        const { error } = await supabaseClient
+            .from('user_follows')
+            .insert([{
+                follower_id: user.id,
+                following_id: friendId,
+                status: 'pending'
+            }]);
+
+        if (!error) {
+            btn.setAttribute('data-status', 'pending');
+            btn.className = "mt-2 px-6 py-2 rounded-xl text-[14px] font-bold transition-all shadow-md bg-[#2C2C2E] text-white active:bg-[#3A3A3C]";
+            btn.innerText = t('connections.requested');
+        } else {
+            openFriendProfile(friendId);
+        }
+    }
+    btn.disabled = false;
+    loadConnectionsData();
+}
+
+
+function openBlockedUsersPage() {
+    const page = document.getElementById('blocked-users-page');
+    if (!page) return;
+
+    loadBlockedUsers();
+
+    page.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+
+    page.style.transition = 'none';
+    page.style.transform = 'translateX(100%)';
+    page.offsetHeight;
+    page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+    page.style.transform = 'translateX(0)';
+}
+
+function closeBlockedUsersPage() {
+    const page = document.getElementById('blocked-users-page');
+    if (!page) return;
+
+    page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+    page.style.transform = 'translateX(100%)';
+
+    setTimeout(() => {
+        page.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+        page.style.transform = '';
+        page.style.transition = '';
+    }, 350);
+}
+
+async function loadBlockedUsers() {
+    const container = document.getElementById('blocked-list-container');
+    if (!container) return;
+
+    container.innerHTML = `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.loading')}</div>`;
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        const { data: blocks, error } = await supabaseClient
+            .from('user_blocks')
+            .select(`
+                id, blocked_id,
+                blocked:profiles!blocked_id(id, username, avatar_url)
+            `)
+            .eq('blocker_id', user.id);
+
+        if (error || !blocks || blocks.length === 0) {
+            container.innerHTML = `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noBlocked')}</div>`;
+            return;
+        }
+
+        container.innerHTML = blocks.map(block => {
+            const profile = block.blocked;
+            if (!profile) return '';
+            const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
+
+            return `
+                <div class="flex items-center justify-between py-2.5 border-b border-white/5">
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff'">
+                        <div class="min-w-0 flex-1">
+                            <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                        </div>
+                    </div>
+                    <button onclick="triggerHapticFeedback(); quickUnblockUser('${profile.id}')"
+                            class="ml-3 px-4 py-1.5 rounded-[10px] text-[13px] font-semibold bg-[#2C2C2E] text-white active:bg-[#3A3A3C] transition-all flex-shrink-0">
+                        ${t('connections.unblock')}
+                    </button>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error("Error loading blocked users:", err);
+        container.innerHTML = `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noBlocked')}</div>`;
+    }
+}
+
+async function quickUnblockUser(userId) {
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+
+        const { error } = await supabaseClient
+            .from('user_blocks')
+            .delete()
+            .eq('blocker_id', user.id)
+            .eq('blocked_id', userId);
+
+        if (!error) {
+            alert(t('connections.unblockedSuccess'));
+            loadBlockedUsers();
+            loadConnectionsData();
+        } else {
+            alert("Error unblocking user: " + error.message);
+        }
+    } catch (err) {
+        console.error("Error quick unblocking user:", err);
+    }
+}
+
+function setupFriendProfileSwipe() {
+    const page = document.getElementById('friend-profile-page');
+    if (!page) return;
+
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let isDragging = false;
+    let isHorizontal = null;
+
+    page.addEventListener('touchstart', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            isDragging = false;
+            return;
+        }
+
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        currentX = startX;
+        isDragging = true;
+        isHorizontal = null;
+
+        page.style.transition = 'none';
+    }, { passive: true });
+
+    page.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+
+        currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+
+        const deltaX = currentX - startX;
+        const deltaY = currentY - startY;
+
+        if (isHorizontal === null) {
+            if (Math.abs(deltaY) > Math.abs(deltaX)) {
+                isHorizontal = false;
+                isDragging = false;
+                return;
+            } else {
+                isHorizontal = true;
+            }
+        }
+
+        if (isHorizontal && deltaX > 0) {
+            if (e.cancelable) e.preventDefault();
+            page.style.transform = `translateX(${deltaX}px)`;
+        }
+    }, { passive: false });
+
+    page.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+
+        const deltaX = currentX - startX;
+
+        page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+
+        if (deltaX > 100) {
+            closeFriendProfilePage();
+        } else {
+            page.style.transform = 'translateX(0px)';
+            setTimeout(() => {
+                page.style.transition = '';
+            }, 350);
+        }
+    });
+}
+
+function setupBlockedUsersSwipe() {
+    const page = document.getElementById('blocked-users-page');
+    if (!page) return;
+
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let isDragging = false;
+    let isHorizontal = null;
+
+    page.addEventListener('touchstart', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            isDragging = false;
+            return;
+        }
+
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        currentX = startX;
+        isDragging = true;
+        isHorizontal = null;
+
+        page.style.transition = 'none';
+    }, { passive: true });
+
+    page.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+
+        currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+
+        const deltaX = currentX - startX;
+        const deltaY = currentY - startY;
+
+        if (isHorizontal === null) {
+            if (Math.abs(deltaY) > Math.abs(deltaX)) {
+                isHorizontal = false;
+                isDragging = false;
+                return;
+            } else {
+                isHorizontal = true;
+            }
+        }
+
+        if (isHorizontal && deltaX > 0) {
+            if (e.cancelable) e.preventDefault();
+            page.style.transform = `translateX(${deltaX}px)`;
+        }
+    }, { passive: false });
+
+    page.addEventListener('touchend', () => {
+        if (!isDragging) return;
+        isDragging = false;
+
+        const deltaX = currentX - startX;
+
+        page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+
+        if (deltaX > 100) {
+            closeBlockedUsersPage();
+        } else {
+            page.style.transform = 'translateX(0px)';
+            setTimeout(() => {
+                page.style.transition = '';
+            }, 350);
+        }
+    });
+}
+
