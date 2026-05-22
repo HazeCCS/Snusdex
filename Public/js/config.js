@@ -80,6 +80,9 @@ const CardCanvasRenderer = {
             golIntensity: null,
             golLastPhysicsTime: 0,
             golStaticFramesCount: 0,
+            fireworkSparks: [],
+            fireworkGrid: null,
+            lastFireworkLaunch: 0,
             // Topography peaks
             topoPeaks: [
                 { x: 50, y: 50, tx: 50, ty: 50, speed: 0.008 },
@@ -117,6 +120,7 @@ const CardCanvasRenderer = {
         state.rows = rows;
         state.golGrid = new Uint8Array(cols * rows);
         state.golIntensity = new Float32Array(cols * rows);
+        state.fireworkGrid = new Float32Array(cols * rows);
 
         function reseedGol() {
             for (let i = 0; i < cols * rows; i++) {
@@ -126,6 +130,23 @@ const CardCanvasRenderer = {
         }
         reseedGol();
         state.reseedGol = reseedGol;
+
+        function spawnFireworkExplosion(state, cx, cy) {
+            const sparkCount = 20 + Math.floor(Math.random() * 15);
+            for (let i = 0; i < sparkCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 3 + Math.random() * 12;
+                state.fireworkSparks.push({
+                    x: cx,
+                    y: cy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 1.0,
+                    decay: 0.6 + Math.random() * 0.9
+                });
+            }
+        }
+        state.spawnFireworkExplosion = spawnFireworkExplosion;
 
         const onPointerMove = (e) => {
             state.pointerActive = true;
@@ -180,7 +201,17 @@ const CardCanvasRenderer = {
 
             const anim = appearance.anim || 'sweep';
             const pattern = appearance.pattern || 'none';
-            if (anim === 'ripple' || pattern === 'cubes') {
+            if (anim === 'firework' && pattern === 'cubes') {
+                const margin = 10;
+                const gap = 2;
+                const availW = state.width - 2 * margin;
+                const availH = state.height - 2 * margin;
+                const cellW = (availW - (cols - 1) * gap) / cols;
+                const cellH = (availH - (rows - 1) * gap) / rows;
+                const cx = Math.max(0, Math.min(cols - 1, Math.floor((state.px - margin) / (cellW + gap))));
+                const cy = Math.max(0, Math.min(rows - 1, Math.floor((state.py - margin) / (cellH + gap))));
+                spawnFireworkExplosion(state, cx, cy);
+            } else if (anim === 'ripple' || pattern === 'cubes') {
                 state.ripples.push({
                     x: state.px,
                     y: state.py,
@@ -299,6 +330,75 @@ const CardCanvasRenderer = {
                 }
             }
 
+            // --- FIREWORK ANIMATION PHYSICS ---
+            const fireworkActive = anim === 'firework' && pattern === 'cubes';
+            if (fireworkActive) {
+                // Decay the entire grid intensity
+                for (let i = 0; i < cols * rows; i++) {
+                    state.fireworkGrid[i] = Math.max(0.0, state.fireworkGrid[i] - dt * 2.5);
+                }
+
+                // Random firework launches
+                const now = time;
+                if (now - state.lastFireworkLaunch > 1200 + Math.random() * 800) {
+                    state.lastFireworkLaunch = now;
+                    const rx = Math.floor(Math.random() * cols);
+                    const ry = Math.floor(Math.random() * (rows - 4)) + 2; // avoid outer edges
+                    spawnFireworkExplosion(state, rx, ry);
+                }
+
+                // Update sparks
+                for (let i = state.fireworkSparks.length - 1; i >= 0; i--) {
+                    const spark = state.fireworkSparks[i];
+                    spark.vy += 4.5 * dt; // gravity
+                    spark.vx *= 0.95;    // friction
+                    spark.vy *= 0.95;
+                    spark.x += spark.vx * dt;
+                    spark.y += spark.vy * dt;
+                    spark.life -= spark.decay * dt;
+
+                    if (spark.life <= 0 || spark.x < 0 || spark.x >= cols || spark.y < 0 || spark.y >= rows) {
+                        state.fireworkSparks.splice(i, 1);
+                    } else {
+                        const cx = Math.floor(spark.x);
+                        const cy = Math.floor(spark.y);
+                        if (cx >= 0 && cx < cols && cy >= 0 && cy < rows) {
+                            const idx = cy * cols + cx;
+                            state.fireworkGrid[idx] = Math.min(1.0, state.fireworkGrid[idx] + spark.life * 0.95);
+                            
+                            // Light bleed to 4-way neighbors
+                            const bleed = spark.life * 0.35;
+                            const neighbors = [
+                                { x: cx - 1, y: cy },
+                                { x: cx + 1, y: cy },
+                                { x: cx, y: cy - 1 },
+                                { x: cx, y: cy + 1 }
+                            ];
+                            for (let n = 0; n < neighbors.length; n++) {
+                                const nx = neighbors[n].x;
+                                const ny = neighbors[n].y;
+                                if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
+                                    const nIdx = ny * cols + nx;
+                                    state.fireworkGrid[nIdx] = Math.min(1.0, state.fireworkGrid[nIdx] + bleed);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // If not active, quickly drain firework grid
+                if (state.fireworkGrid) {
+                    for (let i = 0; i < cols * rows; i++) {
+                        if (state.fireworkGrid[i] > 0) {
+                            state.fireworkGrid[i] = Math.max(0.0, state.fireworkGrid[i] - dt * 5.0);
+                        }
+                    }
+                }
+                if (state.fireworkSparks && state.fireworkSparks.length > 0) {
+                    state.fireworkSparks = [];
+                }
+            }
+
             for (let i = state.ripples.length - 1; i >= 0; i--) {
                 const rip = state.ripples[i];
                 rip.radius += rip.speed * dt;
@@ -308,7 +408,7 @@ const CardCanvasRenderer = {
                 }
             }
 
-            if ((anim === 'ripple' || pattern === 'cubes') && time - state.lastInteractionTime > 3000) {
+            if ((anim === 'ripple' || (pattern === 'cubes' && anim !== 'firework' && anim !== 'gol')) && time - state.lastInteractionTime > 3000) {
                 if (!state._lastBgRippleTime) state._lastBgRippleTime = time;
                 if (time - state._lastBgRippleTime > 1500) {
                     state._lastBgRippleTime = time;
@@ -342,8 +442,14 @@ const CardCanvasRenderer = {
                         const cy = margin + rIdx * (cellH + gap) + cellH/2;
 
                         let f = 0.0;
+                        let isSparkling = false;
                         if (anim === 'gol') {
                             f = state.golIntensity[rIdx * cols + cIdx];
+                        } else if (anim === 'firework') {
+                            f = state.fireworkGrid[rIdx * cols + cIdx];
+                            if (f > 0.04) {
+                                isSparkling = true;
+                            }
                         } else if (anim === 'ripple') {
                             let ripSum = 0;
                             for (let r = 0; r < state.ripples.length; r++) {
@@ -377,7 +483,14 @@ const CardCanvasRenderer = {
                         const x = margin + cIdx * (cellW + gap);
                         const y = margin + rIdx * (cellH + gap);
                         const baseOpacity = 0.06;
-                        const op = Math.min(0.95, baseOpacity + f * intensity * 0.22);
+                        let op = Math.min(0.95, baseOpacity + f * intensity * 0.22);
+                        if (isSparkling) {
+                            if (Math.random() < 0.45) {
+                                op = baseOpacity + (Math.random() < 0.2 ? 0.01 : 0.06);
+                            } else {
+                                op = Math.min(0.95, baseOpacity + f * intensity * 0.5);
+                            }
+                        }
                         ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${op})`;
                         drawRoundRect(ctx, x, y, cellW, cellH, 1.5);
                     }
@@ -566,7 +679,7 @@ function applyCardAppearance(container, appearance) {
     }
 
     // Canvas support check
-    const needsCanvas = (anim === 'ripple' || anim === 'gol' || pattern === 'cubes');
+    const needsCanvas = (anim === 'ripple' || anim === 'gol' || anim === 'firework' || pattern === 'cubes');
     if (needsCanvas) {
         CardCanvasRenderer.init(container, appearance);
     } else {

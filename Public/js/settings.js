@@ -208,7 +208,7 @@ function setMetalCardFont(fontId) {
 
 function setMetalCardAnim(type) {
     localStorage.setItem('metalCardAnim', type);
-    if (type === 'gol') {
+    if (type === 'gol' || type === 'firework') {
         localStorage.setItem('metalCardPattern', 'cubes');
     }
     applyCardAppearance('metal-card-container', getLocalCardAppearance());
@@ -228,7 +228,7 @@ function setMetalCardSaturation(val) {
 function setMetalCardPattern(id) {
     localStorage.setItem('metalCardPattern', id);
     const currentAnim = localStorage.getItem('metalCardAnim') || 'sweep';
-    if (currentAnim === 'gol' && id !== 'cubes') {
+    if ((currentAnim === 'gol' || currentAnim === 'firework') && id !== 'cubes') {
         localStorage.setItem('metalCardAnim', 'none');
     }
     applyCardAppearance('metal-card-container', getLocalCardAppearance());
@@ -791,6 +791,7 @@ function openSettingsSubpage(type, _pushHistory) {
                             { id: 'pulse', label: t('appearance.animPulse') },
                             { id: 'ripple', label: t('appearance.animRipple') },
                             { id: 'gol', label: t('appearance.animGol') },
+                            { id: 'firework', label: t('appearance.animFirework') },
                             { id: 'none',  label: t('appearance.animNone')  },
                         ].map(a => {
                             const active = (localStorage.getItem('metalCardAnim') || 'sweep') === a.id;

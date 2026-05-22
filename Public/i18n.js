@@ -290,6 +290,7 @@ const _EN = {
     'appearance.animPulse': 'Pulse',
     'appearance.animRipple': 'Ripple',
     'appearance.animGol': 'Game of Life',
+    'appearance.animFirework': 'Firework',
     'appearance.animTopography': 'Topography',
     'appearance.animNone': 'None',
     'appearance.saturation': 'Saturation',
