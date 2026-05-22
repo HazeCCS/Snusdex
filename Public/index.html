@@ -776,6 +776,72 @@
         .metal-card-container[data-pattern="cubes"] .metal-card-glow {
             display: none !important;
         }
+
+        /* ── Card Pin Button ───────────────────────────────────────────── */
+        #preview-metal-card-container { position: relative; }
+
+        /* margin-top: -1.5rem cancels the scroll container's pt-6, placing the
+           wrapper's top edge at 0px from the scroll container's border (= right
+           below the header). padding-top: 1.5rem restores the visual gap above
+           the card inside the wrapper, covered by background: #000.
+           sticky top: -1.5rem matches this exact position so that the element
+           is already AT the sticky threshold — no downward jump when pinning.   */
+        #preview-card-wrapper {
+            margin-top: -1.5rem;
+            padding-top: 1.5rem;
+            background: #000;
+        }
+
+        #card-pin-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #card-pin-btn:active { transform: scale(0.88); }
+
+        #pin-icon {
+            width: 16px;
+            height: 16px;
+            color: rgba(255,255,255,0.45);
+            transition: color 0.2s ease, fill 0.2s ease;
+        }
+
+        /* Pinned: stick to top, cover full width — no margin/padding changes
+           so content below stays exactly in place (no jump)                   */
+        #preview-card-wrapper[data-pinned="1"] {
+            position: sticky;
+            top: -1.5rem;
+            z-index: 20;
+            background: #000;
+            margin-left: -1.25rem;
+            margin-right: -1.25rem;
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
+            /* padding-top: 1.5rem inherited from base rule — covered by background */
+            /* margin-bottom: mb-6 class unchanged — no content jump */
+        }
+        #preview-card-wrapper[data-pinned="1"] #card-pin-btn {
+            background: rgba(255,255,255,0.18);
+            border-color: rgba(255,255,255,0.35);
+        }
+        #preview-card-wrapper[data-pinned="1"] #pin-icon {
+            fill: currentColor;
+            color: rgba(255,255,255,0.9);
+        }
     </style>
 </head>
 

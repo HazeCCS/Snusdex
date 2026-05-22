@@ -307,6 +307,12 @@ function setMetalCardIntensity(val) {
     if (valEl) valEl.innerText = parseFloat(val).toFixed(1) + 'x';
 }
 
+function toggleCardPin() {
+    const wrapper = document.getElementById('preview-card-wrapper');
+    if (!wrapper) return;
+    wrapper.dataset.pinned = wrapper.dataset.pinned === '1' ? '0' : '1';
+}
+
 // ── GitHub subpage helpers ─────────────────────────────────────────────────
 
 function _ghRelTime(isoStr) {
@@ -747,20 +753,28 @@ function openSettingsSubpage(type, _pushHistory) {
 
         html = `
             <!-- Live Preview Card -->
-            <div class="metal-card-container mb-6 animate-fade-in" id="preview-metal-card-container" data-anim="sweep" style="padding: 0 0 20px 0;">
-                <div class="metal-collector-card">
-                    <div class="metal-card-ambient"></div>
-                    <div class="metal-card-pattern"></div>
-                    <div class="metal-card-glow"></div>
-                    <div class="metal-card-glow metal-card-glow-2"></div>
-                    <div class="flex justify-between items-start relative z-10">
-                        <span class="engraved-text font-medium uppercase tracking-widest" style="font-size: 13px;">${t('home.collectorId')}</span>
-                        <span id="preview-home-level" class="engraved-text font-semibold" style="font-size: 14px;">${homeLevelVal}</span>
+            <div id="preview-card-wrapper" class="mb-6 animate-fade-in">
+                <div class="metal-card-container" id="preview-metal-card-container" data-anim="sweep" style="padding: 0 0 20px 0;">
+                    <div class="metal-collector-card">
+                        <div class="metal-card-ambient"></div>
+                        <div class="metal-card-pattern"></div>
+                        <div class="metal-card-glow"></div>
+                        <div class="metal-card-glow metal-card-glow-2"></div>
+                        <div class="flex justify-between items-start relative z-10">
+                            <span class="engraved-text font-medium uppercase tracking-widest" style="font-size: 13px;">${t('home.collectorId')}</span>
+                            <span id="preview-home-level" class="engraved-text font-semibold" style="font-size: 14px;">${homeLevelVal}</span>
+                        </div>
+                        <div class="relative z-10">
+                            <p id="preview-greeting" class="engraved-text uppercase tracking-wide" style="font-size: 13px; margin-bottom: 2px;">${greetingVal}</p>
+                            <p id="preview-score" class="engraved-text font-semibold tracking-tight leading-none" style="font-size: 38px; margin: 0;">${scoreVal}</p>
+                        </div>
                     </div>
-                    <div class="relative z-10">
-                        <p id="preview-greeting" class="engraved-text uppercase tracking-wide" style="font-size: 13px; margin-bottom: 2px;">${greetingVal}</p>
-                        <p id="preview-score" class="engraved-text font-semibold tracking-tight leading-none" style="font-size: 38px; margin: 0;">${scoreVal}</p>
-                    </div>
+                    <button id="card-pin-btn" onclick="triggerHapticFeedback(); toggleCardPin()">
+                        <svg id="pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="17" x2="12" y2="22"/>
+                            <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
