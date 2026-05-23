@@ -598,7 +598,12 @@ window.closeLegalityModal = function () {
 
 window.confirmLegalityRedirect = function () {
     if (pendingRedirectUrl) {
-        window.open(pendingRedirectUrl, '_blank');
+        // Fallback für iOS WKWebView Wrapper: Wenn ein JS-Bridge Handler registriert ist, diesen nutzen
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.openExternal) {
+            window.webkit.messageHandlers.openExternal.postMessage({ url: pendingRedirectUrl });
+        } else {
+            window.open(pendingRedirectUrl, '_blank');
+        }
     }
     closeLegalityModal();
 };
