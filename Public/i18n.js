@@ -59,6 +59,9 @@ const _EN = {
     'auth.openMailApp': 'Open Mail App',
     'auth.goToSignIn': 'Go to Sign In',
     'auth.noEmailReceived': "Didn't receive an email? Check your spam folder or try again.",
+    'auth.birthdateLabel': 'Birthdate',
+    'auth.birthdateRequired': 'Please select your birthdate.',
+    'auth.underage': 'You must be at least 18 years old.',
 
     'common.loading': 'Loading...',
     'common.unknownSnus': 'Unknown Snus',
@@ -116,6 +119,11 @@ const _EN = {
     'modal.openNewCan': 'Open New Can',
     'modal.yourRating': 'Your Rating',
     'modal.backToInfo': 'Back to Info',
+
+    'legality.title': 'Leaving Snusdex',
+    'legality.desc': 'You are now leaving Snusdex to visit an external shop. We do not assume liability for the contents or offers of third-party websites.',
+    'legality.cancel': 'Cancel',
+    'legality.continue': 'Continue',
 
     'rating.stepTitle': 'Rating',
     'rating.scale': 'Rating (1-10)',

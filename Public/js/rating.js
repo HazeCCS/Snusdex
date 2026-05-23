@@ -546,3 +546,59 @@ function editRating() {
     updateRatingStepUI();
     showRatingView();
 }
+
+// ==========================================
+// 7. LEGALITY REDIRECT POP-UP LOGIC
+// ==========================================
+
+let pendingRedirectUrl = null;
+
+window.handleOrderClick = function (url) {
+    pendingRedirectUrl = url;
+    const modal = document.getElementById('legality-modal');
+    const backdrop = document.getElementById('legality-backdrop');
+    const card = document.getElementById('legality-card');
+
+    if (modal && backdrop && card) {
+        document.body.classList.add('overflow-hidden');
+        modal.classList.remove('hidden');
+        // Force reflow
+        void modal.offsetWidth;
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100');
+        card.classList.remove('scale-95', 'opacity-0');
+        card.classList.add('scale-100', 'opacity-100');
+    }
+};
+
+window.closeLegalityModal = function () {
+    const modal = document.getElementById('legality-modal');
+    const backdrop = document.getElementById('legality-backdrop');
+    const card = document.getElementById('legality-card');
+
+    if (modal && backdrop && card) {
+        backdrop.classList.remove('opacity-100');
+        backdrop.classList.add('opacity-0');
+        card.classList.remove('scale-100', 'opacity-100');
+        card.classList.add('scale-95', 'opacity-0');
+
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            pendingRedirectUrl = null;
+            
+            // Restore scroll if snus modal is not open
+            const snusModal = document.getElementById('snus-modal');
+            const snusModalOpen = snusModal && !snusModal.classList.contains('hidden');
+            if (!snusModalOpen) {
+                document.body.classList.remove('overflow-hidden');
+            }
+        }, 300);
+    }
+};
+
+window.confirmLegalityRedirect = function () {
+    if (pendingRedirectUrl) {
+        window.open(pendingRedirectUrl, '_blank');
+    }
+    closeLegalityModal();
+};

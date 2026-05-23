@@ -48,6 +48,9 @@
   "auth.openMailApp": "Mail-app openen",
   "auth.goToSignIn": "Naar inloggen",
   "auth.noEmailReceived": "Geen e-mail ontvangen? Controleer je spammap of probeer het opnieuw.",
+  "auth.birthdateLabel": "Geboortedatum",
+  "auth.birthdateRequired": "Selecteer je geboortedatum.",
+  "auth.underage": "Je moet minimaal 18 jaar oud zijn.",
 
   "common.loading": "Laden...",
   "common.unknownSnus": "Onbekende snus",
@@ -105,6 +108,10 @@
   "modal.openNewCan": "Nieuw blik openen",
   "modal.yourRating": "Jouw beoordeling",
   "modal.backToInfo": "Terug naar info",
+  "legality.title": "Je verlaat Snusdex",
+  "legality.desc": "Je wordt nu doorverwezen naar een externe winkel. Wij aanvaarden geen aansprakelijkheid voor de inhoud of aanbiedingen van derden.",
+  "legality.cancel": "Annuleren",
+  "legality.continue": "Doorgaan",
 
   "rating.stepTitle": "Beoordeling",
   "rating.scale": "Beoordeling (1-10)",

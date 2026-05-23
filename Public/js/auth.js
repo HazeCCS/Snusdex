@@ -336,15 +336,59 @@ function checkAndHideAllFieldsError() {
     const username = !isLoginMode
         ? (document.getElementById('auth-username')?.value || '').trim()
         : 'ok';
-    if (email && password && username) hideAuthFieldError('auth-error');
+    const birthdate = !isLoginMode
+        ? (document.getElementById('auth-birthdate')?.value || '')
+        : 'ok';
+    if (email && password && username && birthdate) {
+        hideAuthFieldError('auth-error');
+        hideBirthdateError();
+    }
 }
 window.checkAndHideAllFieldsError = checkAndHideAllFieldsError;
+
+function showBirthdateError(msg) {
+    const group = document.getElementById('auth-birthdate-group');
+    if (group) group.style.borderColor = 'rgba(255,59,48,0.5)';
+    const el = document.getElementById('auth-birthdate-error');
+    if (!el) return;
+    el.textContent = msg;
+    if (!el.classList.contains('hidden')) return;
+    el.classList.remove('hidden');
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-4px)';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        });
+    });
+}
+
+function hideBirthdateError() {
+    const group = document.getElementById('auth-birthdate-group');
+    if (group) group.style.borderColor = '';
+    const el = document.getElementById('auth-birthdate-error');
+    if (!el || el.classList.contains('hidden')) return;
+    el.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-4px)';
+    setTimeout(() => el.classList.add('hidden'), 180);
+}
+window.hideBirthdateError = hideBirthdateError;
+
+function hideSetupBirthdateError() {
+    hideAuthFieldError('setup-username-error');
+}
+window.hideSetupBirthdateError = hideSetupBirthdateError;
 
 // ==========================================
 // NEU: USERNAME SETUP NACH GOOGLE LOGIN
 // ==========================================
 async function saveSetupUsername() {
     const usernameInput = document.getElementById('setup-username').value.trim();
+    const birthdateInput = document.getElementById('setup-birthdate').value;
     const btn = document.getElementById('setup-username-btn');
 
     if (!usernameInput) {
@@ -358,18 +402,40 @@ async function saveSetupUsername() {
         return;
     }
 
+    if (!birthdateInput) {
+        showAuthFieldError('setup-username-error', 'setup-username-error-msg', t('auth.birthdateRequired'));
+        return;
+    }
+
+    const birthDateObj = new Date(birthdateInput);
+    const today = new Date();
+    let age = today.getFullYear() - birthDateObj.getFullYear();
+    const m = today.getMonth() - birthDateObj.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+        age--;
+    }
+
+    if (age < 18) {
+        showAuthFieldError('setup-username-error', 'setup-username-error-msg', t('auth.underage'));
+        return;
+    }
+
     btn.disabled = true;
     btn.innerText = t('editProfile.saving');
 
     try {
         const { error: updateError } = await supabaseClient.auth.updateUser({
-            data: { username: usernameInput }
+            data: { 
+                username: usernameInput,
+                birthdate: birthdateInput
+            }
         });
         if (updateError) throw updateError;
 
         const { data: userData } = await supabaseClient.auth.getUser();
         if (userData?.user) {
             await supabaseClient.from('profiles').update({ username: usernameInput }).eq('id', userData.user.id);
+            await supabaseClient.from('user_ages').upsert({ user_id: userData.user.id, birthdate: birthdateInput });
         }
 
         hideAuthFieldError('setup-username-error');
@@ -475,6 +541,7 @@ async function handleLoginWrapper() {
         // --- REGISTER ---
         const username = document.getElementById('auth-username').value.trim();
         const passwordConfirm = document.getElementById('auth-password-confirm').value;
+        const birthdate = document.getElementById('auth-birthdate').value;
 
         // 1. Username must be present
         if (!username) {
@@ -489,6 +556,34 @@ async function handleLoginWrapper() {
             mainBtn.innerText = t('auth.register');
             return;
         }
+
+        // 1.5 Birthdate must be present and user must be at least 18
+        if (!birthdate) {
+            const birthGroup = document.getElementById('auth-birthdate-group');
+            if (birthGroup) birthGroup.style.borderColor = 'rgba(255,59,48,0.5)';
+            showBirthdateError(t('auth.birthdateRequired'));
+            mainBtn.disabled = false;
+            mainBtn.innerText = t('auth.register');
+            return;
+        }
+
+        const birthDateObj = new Date(birthdate);
+        const today = new Date();
+        let age = today.getFullYear() - birthDateObj.getFullYear();
+        const m = today.getMonth() - birthDateObj.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+            age--;
+        }
+
+        if (age < 18) {
+            const birthGroup = document.getElementById('auth-birthdate-group');
+            if (birthGroup) birthGroup.style.borderColor = 'rgba(255,59,48,0.5)';
+            showBirthdateError(t('auth.underage'));
+            mainBtn.disabled = false;
+            mainBtn.innerText = t('auth.register');
+            return;
+        }
+        hideBirthdateError();
 
         // 2. Password requirements must all be met
         const unmetReqs = _pwReqs.filter(req => !req.test(password));
@@ -521,7 +616,7 @@ async function handleLoginWrapper() {
         const { data, error } = await supabaseClient.auth.signUp({
             email: email,
             password: password,
-            options: { data: { username: username } }
+            options: { data: { username: username, birthdate: birthdate } }
         });
 
         if (error) {
