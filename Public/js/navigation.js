@@ -196,3 +196,61 @@ function switchTabWrapper(tabId) {
     triggerHapticFeedback();
     switchTab(tabId);
 }
+
+// ==========================================
+// DESKTOP & PC SHORTCUTS (ENTER & ESCAPE)
+// ==========================================
+
+document.addEventListener('keydown', (e) => {
+    // 1. Enter key in auth fields -> submit/sign in
+    if (e.key === 'Enter') {
+        const activeEl = document.activeElement;
+        const authOverlay = document.getElementById('auth-overlay');
+        if (activeEl && activeEl.tagName === 'INPUT' && authOverlay && authOverlay.contains(activeEl)) {
+            e.preventDefault();
+
+            const usernameView = document.getElementById('auth-username-view');
+            const verifyView = document.getElementById('auth-verify-view');
+            const mainView = document.getElementById('auth-main-view');
+
+            if (usernameView && !usernameView.classList.contains('hidden')) {
+                if (typeof saveSetupUsername === 'function') saveSetupUsername();
+            } else if (verifyView && !verifyView.classList.contains('hidden')) {
+                if (typeof handleCodeVerification === 'function') handleCodeVerification();
+            } else if (mainView && !mainView.classList.contains('hidden')) {
+                if (typeof handleLoginWrapper === 'function') handleLoginWrapper();
+            }
+        }
+    }
+
+    // 2. Escape key -> close active overlay/modal
+    if (e.key === 'Escape') {
+        const overlays = [
+            { id: 'badge-unlock-overlay', close: () => typeof closeBadgeUnlock === 'function' && closeBadgeUnlock() },
+            { id: 'legality-modal', close: () => typeof closeLegalityModal === 'function' && closeLegalityModal() },
+            { id: 'remove-favorite-modal', close: () => typeof closeRemoveFavoriteModal === 'function' && closeRemoveFavoriteModal() },
+            { id: 'not-found-modal', close: () => typeof closeNotFoundModal === 'function' && closeNotFoundModal() },
+            { id: 'scan-help-modal', close: () => typeof closeScanHelpModal === 'function' && closeScanHelpModal() },
+            { id: 'snus-modal', close: () => typeof closeSnusDetail === 'function' && closeSnusDetail() },
+            { id: 'scan-modal', close: () => typeof closeScanModal === 'function' && closeScanModal() },
+            { id: 'all-scans-modal', close: () => typeof closeAllScansModal === 'function' && closeAllScansModal() },
+            { id: 'badges-grid-page', close: () => typeof closeBadgesGrid === 'function' && closeBadgesGrid() },
+            { id: 'settings-subpage', close: () => typeof closeSettingsSubpage === 'function' && closeSettingsSubpage() },
+            { id: 'settings-page', close: () => typeof closeSettingsPage === 'function' && closeSettingsPage() },
+            { id: 'github-page', close: () => typeof closeGithubPage === 'function' && closeGithubPage() },
+            { id: 'blocked-users-page', close: () => typeof closeBlockedUsersPage === 'function' && closeBlockedUsersPage() },
+            { id: 'friend-profile-page', close: () => typeof closeFriendProfilePage === 'function' && closeFriendProfilePage() },
+            { id: 'connections-page', close: () => typeof closeConnectionsPage === 'function' && closeConnectionsPage() }
+        ];
+
+        for (const overlay of overlays) {
+            const el = document.getElementById(overlay.id);
+            if (el && !el.classList.contains('hidden')) {
+                e.preventDefault();
+                overlay.close();
+                break; // Only close the topmost active overlay
+            }
+        }
+    }
+});
+
