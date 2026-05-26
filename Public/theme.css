@@ -108,8 +108,14 @@ html.light {
 
 /* ============================================================================
    Element base — body color/background now follow the theme.
+   The `html.light` / `html.dark` form is needed (spec 0,1,1) so it beats
+   Tailwind's `.bg-black` rule that sits on the <html> element itself
+   (`<html class="bg-black text-white …">`). Without this boost, the html
+   keeps its compiled black background and shows through during overscroll /
+   rubber-band scrolling in light mode.
    ============================================================================ */
-html,
+html.dark,
+html.light,
 body {
     background-color: var(--app-bg);
     color: var(--app-fg);
