@@ -59,7 +59,7 @@
             meta.name = 'theme-color';
             document.head.appendChild(meta);
         }
-        meta.content = resolved === 'light' ? '#FFFFFF' : '#000000';
+        meta.content = resolved === 'light' ? '#F2F2F7' : '#000000';
 
         updateThemeBadge();
     }
