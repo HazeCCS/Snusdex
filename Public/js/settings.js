@@ -364,6 +364,7 @@ function openSettingsSubpage(type, _pushHistory) {
         'Edit Profile': 'settings.editProfile', 'Stats': 'settings.stats',
         'Notifications': 'settings.notifications', 'Privacy & Security': 'settings.privacy',
         'Language': 'settings.language', 'Darstellung': 'settings.appearance',
+        'Theme': 'settings.theme',
         'Tracking': 'settings.tracking', 'Help Center & FAQ': 'settings.helpCenter',
         'Delete Account': 'settings.deleteAccount',
         'README': 'README', 'Architecture Map': 'Architecture Map',
@@ -677,6 +678,38 @@ function openSettingsSubpage(type, _pushHistory) {
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 ${langRows}
             </div>
+        `;
+    } else if (type === 'Theme') {
+        // Light / Dark / System theme selector (moved out of Personalisierung
+        // so users find it under its own top-level "Darstellung" entry).
+        const currentTheme = (window.SnusTheme && window.SnusTheme.getTheme())
+            || localStorage.getItem('snusTheme') || 'system';
+        const themeOptions = [
+            { id: 'light',  labelKey: 'appearance.themeLight',  icon: 'sun'    },
+            { id: 'dark',   labelKey: 'appearance.themeDark',   icon: 'moon'   },
+            { id: 'system', labelKey: 'appearance.themeSystem', icon: 'system' },
+        ];
+        const themeIcon = (kind) => kind === 'sun'
+            ? `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`
+            : kind === 'moon'
+            ? `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>`
+            : `<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="13" rx="2" ry="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4"/></svg>`;
+        const themeButtonsHTML = themeOptions.map(o => {
+            const active = currentTheme === o.id;
+            return `<button onclick="triggerHapticFeedback(); setAppTheme('${o.id}')"
+                class="theme-opt-btn flex-1 flex flex-col items-center gap-2 px-2 py-5 rounded-[18px] transition-all active:scale-95 ${active ? 'bg-white text-black font-semibold' : 'bg-white/10 text-white/70'}"
+                data-theme-id="${o.id}">
+                ${themeIcon(o.icon)}
+                <span class="text-[14px]">${t(o.labelKey)}</span>
+            </button>`;
+        }).join('');
+
+        html = `
+            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">${t('appearance.themeSection')}</h3>
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 p-3 mb-3">
+                <div class="flex gap-2">${themeButtonsHTML}</div>
+            </div>
+            <p class="text-[13px] text-[#8E8E93] px-2 leading-relaxed">${t('appearance.themeDesc')}</p>
         `;
     } else if (type === 'Darstellung') {
         const cols = localStorage.getItem('dexColumns') || '3';
@@ -1054,6 +1087,27 @@ function refreshLangPage() {
     `;
 }
 window.refreshLangPage = refreshLangPage;
+
+// ── Theme switch handler ───────────────────────────────────────────────────
+// Called from the Light/Dark/System buttons in the Appearance subpage.
+// Updates the visual selection in-place to avoid a full re-render of the page
+// (the appearance page contains a canvas preview that would flicker).
+function setAppTheme(pref) {
+    if (window.SnusTheme && typeof window.SnusTheme.setTheme === 'function') {
+        window.SnusTheme.setTheme(pref);
+    } else {
+        try { localStorage.setItem('snusTheme', pref); } catch (_) {}
+    }
+    document.querySelectorAll('.theme-opt-btn').forEach(btn => {
+        const isActive = btn.getAttribute('data-theme-id') === pref;
+        btn.classList.toggle('bg-white', isActive);
+        btn.classList.toggle('text-black', isActive);
+        btn.classList.toggle('font-semibold', isActive);
+        btn.classList.toggle('bg-white/10', !isActive);
+        btn.classList.toggle('text-white/70', !isActive);
+    });
+}
+window.setAppTheme = setAppTheme;
 
 function closeSettingsSubpage() {
     if (window._subpageHistory && window._subpageHistory.length > 0) {

@@ -451,6 +451,7 @@ function applyTranslations() {
     });
     const badge = document.getElementById('settings-lang-badge');
     if (badge) badge.textContent = LANG_NAMES[currentLang] || currentLang;
+    document.dispatchEvent(new CustomEvent('i18n:applied', { detail: { lang: currentLang } }));
 }
 
 (async function _initLang() {
