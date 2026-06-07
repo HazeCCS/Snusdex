@@ -166,6 +166,7 @@
   "badges.unlocked": "Ontgrendeld",
   "badges.progress": "Voortgang",
   "badges.wasUnlocked": "werd ontgrendeld",
+  "badges.locked": "Vergrendeld",
 
   "connections.title": "Verbindingen",
   "connections.searchPlaceholder": "Gebruikersnaam zoeken...",
@@ -351,6 +352,8 @@
   "notFound.reportBarcode": "Barcode",
   "notFound.reportSubmit": "Verzenden",
   "notFound.reportBack": "Terug",
+  "notFound.successTitle": "Dank je wel!",
+  "notFound.successDesc": "Bedankt voor je hulp aan het Snusdex-project! Zodra je product is toegevoegd, ontvang je 1000 XP en een Supporters-badge.",
 
   "allScans.title": "Alle scans",
   "allScans.noScans": "Nog geen scans.",

@@ -178,6 +178,7 @@ const _EN = {
     'badges.unlocked': 'Unlocked',
     'badges.progress': 'Progress',
     'badges.wasUnlocked': 'was unlocked',
+    'badges.locked': 'Locked',
 
     'connections.title': 'Connections',
     'connections.searchPlaceholder': 'Search username...',
@@ -376,6 +377,8 @@ const _EN = {
     'notFound.reportBarcode': 'Barcode',
     'notFound.reportSubmit': 'Submit',
     'notFound.reportBack': 'Back',
+    'notFound.successTitle': 'Thank you!',
+    'notFound.successDesc': 'Thank you for your help on the Snusdex project! As soon as your product is added, you will receive 1000 XP and a Supporters Badge.',
 
     'allScans.title': 'All Scans',
     'allScans.noScans': 'No scans yet.',

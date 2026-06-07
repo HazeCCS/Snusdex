@@ -567,13 +567,19 @@ function openBadgesGrid() {
                     <p class="text-[#8E8E93]/70 text-[11px] text-center mb-3 line-clamp-2">${badge.description}</p>
 
                     <div class="w-full mt-auto">
-                        <div class="flex justify-between items-end mb-1">
-                            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-semibold">${t('badges.progress')}</span>
-                            <span class="text-[11px] font-bold text-white">${progressPercent}%</span>
-                        </div>
-                        <div class="h-1.5 w-full bg-black/50 rounded-full overflow-hidden">
-                            <div class="h-full bg-white/30 rounded-full" style="width: ${progressPercent}%"></div>
-                        </div>
+                        ${badge.category === 'collector' ? `
+                            <div class="flex justify-between items-end mb-1">
+                                <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-semibold">${t('badges.progress')}</span>
+                                <span class="text-[11px] font-bold text-white">${progressPercent}%</span>
+                            </div>
+                            <div class="h-1.5 w-full bg-black/50 rounded-full overflow-hidden">
+                                <div class="h-full bg-white/30 rounded-full" style="width: ${progressPercent}%"></div>
+                            </div>
+                        ` : `
+                            <div class="w-full bg-white/5 rounded-full py-1.5 flex items-center justify-center border border-white/10">
+                                <span class="text-[#8E8E93] text-[12px] font-bold uppercase tracking-wider">${t('badges.locked')}</span>
+                            </div>
+                        `}
                     </div>
                 </div>
             `;

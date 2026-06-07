@@ -232,6 +232,10 @@ function openNotFoundModal(barcode) {
     const nicotineInput = document.getElementById('missing-snus-nicotine');
     if (nicotineInput) nicotineInput.value = "";
 
+    // Hide success view
+    const successView = document.getElementById('not-found-success-view');
+    if (successView) successView.classList.add('hidden');
+
     // Show main view, hide report view
     showNotFoundMainView();
 
@@ -271,22 +275,45 @@ function retryScan() {
 function showNotFoundMainView() {
     const mainView = document.getElementById('not-found-main-view');
     const reportView = document.getElementById('not-found-report-view');
+    const successView = document.getElementById('not-found-success-view');
     if (mainView && reportView) {
         mainView.classList.remove('hidden');
         reportView.classList.add('hidden');
     }
+    if (successView) successView.classList.add('hidden');
 }
 window.showNotFoundMainView = showNotFoundMainView;
 
 function showNotFoundReportView() {
     const mainView = document.getElementById('not-found-main-view');
     const reportView = document.getElementById('not-found-report-view');
+    const successView = document.getElementById('not-found-success-view');
     if (mainView && reportView) {
         mainView.classList.add('hidden');
         reportView.classList.remove('hidden');
     }
+    if (successView) successView.classList.add('hidden');
 }
 window.showNotFoundReportView = showNotFoundReportView;
+
+function showNotFoundSuccessView() {
+    const mainView = document.getElementById('not-found-main-view');
+    const reportView = document.getElementById('not-found-report-view');
+    const successView = document.getElementById('not-found-success-view');
+    if (mainView && reportView && successView) {
+        mainView.classList.add('hidden');
+        reportView.classList.add('hidden');
+        successView.classList.remove('hidden');
+
+        // Restart SVG checkmark animation
+        const svg = successView.querySelector('.success-checkmark-svg');
+        if (svg) {
+            const newSvg = svg.cloneNode(true);
+            svg.parentNode.replaceChild(newSvg, svg);
+        }
+    }
+}
+window.showNotFoundSuccessView = showNotFoundSuccessView;
 
 async function submitMissingSnus() {
     const nameInput = document.getElementById('missing-snus-name');
@@ -328,8 +355,7 @@ async function submitMissingSnus() {
         if (error) throw error;
 
         // Success!
-        alert(t('notFound.reportSuccess'));
-        closeNotFoundModal();
+        showNotFoundSuccessView();
     } catch (err) {
         console.error("Error submitting product suggestion:", err);
         alert(t('error.saveFailed', { msg: err.message }));

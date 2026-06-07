@@ -645,6 +645,45 @@
             cursor: pointer;
         }
 
+        /* Success checkmark animation styles */
+        .success-checkmark-container {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto;
+        }
+        .success-checkmark-svg {
+            width: 80px;
+            height: 80px;
+            display: block;
+        }
+        .success-checkmark-circle {
+            stroke-width: 3;
+            stroke: #30D158; /* iOS System Green */
+            stroke-miterlimit: 10;
+            stroke-dasharray: 166;
+            stroke-dashoffset: 166;
+            animation: strokeCircle 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+        .success-checkmark-check {
+            transform-origin: 50% 50%;
+            stroke-width: 4;
+            stroke: #30D158; /* iOS System Green */
+            stroke-linecap: round;
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: strokeCheck 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
+        }
+        @keyframes strokeCircle {
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+        @keyframes strokeCheck {
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+
         .metal-card-container {
             padding: 20px;
         }
@@ -1903,6 +1942,26 @@
                 </div>
             </div>
 
+            <!-- SUCCESS VIEW (Hidden by default) -->
+            <div id="not-found-success-view" class="hidden w-full flex flex-col items-center">
+                <div class="success-checkmark-container mb-6">
+                    <svg class="success-checkmark-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                        <circle class="success-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                        <path class="success-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                    </svg>
+                </div>
+
+                <h2 class="text-white text-[22px] font-bold tracking-tight mb-3" data-i18n="notFound.successTitle">Vielen Dank!</h2>
+                <p class="text-[#8E8E93] text-[15px] mb-8 leading-relaxed px-2" data-i18n="notFound.successDesc">
+                    Vielen Dank für deine Hilfe am Snusdex-Projekt! Sobald dein Produkt hinzugefügt wird, erhältst du 1000 XP und ein Supporters-Badge.
+                </p>
+
+                <button onclick="triggerHapticFeedback(); closeNotFoundModal()"
+                    class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[16px] active:scale-95 transition-transform flex justify-center items-center gap-2 shadow-sm">
+                    <span data-i18n="notFound.close">Schließen</span>
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -2845,7 +2904,7 @@
             setTimeout(() => svg.classList.remove(animClass), 700);
         }
     </script>
-    <script src="i18n.js?v=181"></script>
+    <script src="i18n.js?v=182"></script>
     <script src="js/theme.js?v=1"></script>
     <script src="js/config.js?v=181"></script>
     <script src="js/auth.js?v=181"></script>
@@ -2855,7 +2914,7 @@
     <script src="js/admin.js?v=181"></script>
     <script src="js/social.js?v=181"></script>
     <script src="js/usage.js?v=181"></script>
-    <script src="js/scanner.js?v=181"></script>
+    <script src="js/scanner.js?v=182"></script>
     <script src="js/settings.js?v=181"></script>
     <script src="js/profile.js?v=181"></script>
     <script src="js/scans.js?v=181"></script>
