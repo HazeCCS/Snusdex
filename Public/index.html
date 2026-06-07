@@ -647,14 +647,15 @@
 
         /* Success checkmark animation styles */
         .success-checkmark-container {
-            width: 80px;
-            height: 80px;
+            width: 64px;
+            height: 64px;
             margin: 0 auto;
         }
         .success-checkmark-svg {
-            width: 80px;
-            height: 80px;
+            width: 64px;
+            height: 64px;
             display: block;
+            overflow: visible;
         }
         .success-checkmark-circle {
             stroke-width: 3;
@@ -1944,7 +1945,7 @@
 
             <!-- SUCCESS VIEW (Hidden by default) -->
             <div id="not-found-success-view" class="hidden w-full flex flex-col items-center">
-                <div class="success-checkmark-container mb-6">
+                <div class="success-checkmark-container mt-2 mb-9">
                     <svg class="success-checkmark-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
                         <circle class="success-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
                         <path class="success-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
