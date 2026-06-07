@@ -287,6 +287,7 @@ function loadMoreDexItems(chunkOverride, shouldClear = false) {
 
 let dexSortMode = localStorage.getItem('dexDefaultSort') || 'id';
 let dexFilterUnlocked = false;
+let dexFilterFavorites = false;
 
 function updateDexSortButtonUI() {
     const btn = document.getElementById('dex-sort-btn');
@@ -322,6 +323,102 @@ function toggleDexFilterUnlocked() {
     filterDex();
 }
 
+window.getFavoriteSnusList = function() {
+    try {
+        return JSON.parse(localStorage.getItem('dexFavoriteSnus') || '[]');
+    } catch (e) {
+        return [];
+    }
+};
+
+window.isFavoriteSnus = function(id) {
+    const list = window.getFavoriteSnusList();
+    return list.includes(parseInt(id));
+};
+
+window.toggleFavoriteSnus = function(id) {
+    const snusId = parseInt(id);
+    let list = window.getFavoriteSnusList();
+    if (list.includes(snusId)) {
+        list = list.filter(item => item !== snusId);
+    } else {
+        list.push(snusId);
+    }
+    localStorage.setItem('dexFavoriteSnus', JSON.stringify(list));
+    window.updateModalFavoriteBtnUI(snusId);
+    
+    // Refresh the Dex grid to reflect the change if active
+    if (typeof filterDex === 'function') {
+        filterDex();
+    }
+};
+
+window.updateModalFavoriteBtnUI = function(id) {
+    const btn = document.getElementById('modal-favorite-btn');
+    if (!btn) return;
+
+    const isFav = window.isFavoriteSnus(id);
+
+    // Nur visuelle Klassen wechseln — Positions-Klassen bleiben im HTML untouched
+    const favoriteClasses   = ['bg-[#FFD60A]/10', 'border-[#FFD60A]/20', 'text-[#FFD60A]', 'shadow-[0_0_14px_rgba(255,214,10,0.25)]'];
+    const defaultClasses    = ['bg-white/10', 'border-white/5', 'text-[#8E8E93]'];
+
+    if (isFav) {
+        btn.classList.remove(...defaultClasses);
+        btn.classList.add(...favoriteClasses);
+        btn.innerHTML = `
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            </svg>
+        `;
+    } else {
+        btn.classList.remove(...favoriteClasses);
+        btn.classList.add(...defaultClasses);
+        btn.innerHTML = `
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499c.195-.39.638-.39.832 0l2.673 5.418 5.978.868c.43.063.602.589.291.896l-4.325 4.215 1.021 5.952c.074.43-.377.757-.76.552L12 18.252l-5.353 2.923c-.383.205-.834-.122-.76-.552l1.021-5.952-4.325-4.215c-.311-.307-.139-.833.291-.896l5.978-.868 2.673-5.418z" />
+            </svg>
+        `;
+    }
+
+    // Pop-Animation re-triggern
+    btn.classList.remove('favorite-pop-anim');
+    void btn.offsetWidth;
+    btn.classList.add('favorite-pop-anim');
+};
+
+window.toggleFavoriteSnusWrapper = function() {
+    const globalId = window.currentSelectedSnusId || (typeof currentSelectedSnusId !== 'undefined' ? currentSelectedSnusId : null);
+    if (globalId) {
+        window.toggleFavoriteSnus(globalId);
+    }
+};
+
+window.toggleDexFilterFavorites = function() {
+    dexFilterFavorites = !dexFilterFavorites;
+    const btn = document.getElementById('dex-filter-favorites-btn');
+    if (!btn) return;
+    
+    if (dexFilterFavorites) {
+        btn.classList.add('bg-white', 'text-[#FFD60A]');
+        btn.classList.remove('text-[#8E8E93]', 'bg-white/10');
+        btn.innerHTML = `
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            </svg>
+        `;
+    } else {
+        btn.classList.remove('bg-white', 'text-[#FFD60A]');
+        btn.classList.add('text-[#8E8E93]', 'bg-white/10');
+        btn.innerHTML = `
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499c.195-.39.638-.39.832 0l2.673 5.418 5.978.868c.43.063.602.589.291.896l-4.325 4.215 1.021 5.952c.074.43-.377.757-.76.552L12 18.252l-5.353 2.923c-.383.205-.834-.122-.76-.552l1.021-5.952-4.325-4.215c-.311-.307-.139-.833.291-.896l5.978-.868 2.673-5.418z" />
+            </svg>
+        `;
+    }
+    filterDex();
+};
+
 // setupProfile: nur eine Definition weiter unten
 
 function triggerHapticFeedback() {
@@ -347,6 +444,7 @@ function filterDex() {
 
     let filtered = globalSnusData.filter(s => {
         if (dexFilterUnlocked && !globalUserCollection[s.id]) return false;
+        if (dexFilterFavorites && !window.isFavoriteSnus(s.id)) return false;
 
         if (searchWords.length > 0) {
             const searchableText = [

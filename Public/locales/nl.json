@@ -345,6 +345,12 @@
   "notFound.retryScan": "Opnieuw scannen",
   "notFound.report": "Welke snus is dit? Laat het ons weten",
   "notFound.close": "Sluiten",
+  "notFound.reportSuccess": "Vraag succesvol ingediend!",
+  "notFound.reportName": "Naam",
+  "notFound.reportNicotine": "Nicotine (mg/g)",
+  "notFound.reportBarcode": "Barcode",
+  "notFound.reportSubmit": "Verzenden",
+  "notFound.reportBack": "Terug",
 
   "allScans.title": "Alle scans",
   "allScans.noScans": "Nog geen scans.",

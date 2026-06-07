@@ -370,6 +370,12 @@ const _EN = {
     'notFound.retryScan': 'Scan again',
     'notFound.report': 'Which Snus is this? Let us know',
     'notFound.close': 'Close',
+    'notFound.reportSuccess': 'Suggestion submitted successfully!',
+    'notFound.reportName': 'Name',
+    'notFound.reportNicotine': 'Nicotine (mg/g)',
+    'notFound.reportBarcode': 'Barcode',
+    'notFound.reportSubmit': 'Submit',
+    'notFound.reportBack': 'Back',
 
     'allScans.title': 'All Scans',
     'allScans.noScans': 'No scans yet.',

@@ -4,7 +4,10 @@
   "main": "index.js",
   "scripts": {
     "build:css": "tailwindcss -i ./input.css -o ./Public/tailwind.css --minify",
-    "watch:css": "tailwindcss -i ./input.css -o ./Public/tailwind.css --watch"
+    "watch:css": "tailwindcss -i ./input.css -o ./Public/tailwind.css --watch",
+    "dash:dev": "npm run dev --prefix snusdash",
+    "dash:build": "npm run build --prefix snusdash",
+    "dash:start": "npm run start --prefix snusdash"
   },
   "repository": {
     "type": "git",

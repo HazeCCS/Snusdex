@@ -199,18 +199,40 @@ function prevRatingStep() {
 function showInfoView() {
     hideAllViews();
     document.getElementById('modal-view-info').classList.remove('hidden');
+
+    // Favorite- und Close-Button anzeigen + Pop-Animation triggern
+    ['modal-favorite-btn', 'modal-close-btn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.classList.remove('hidden');
+        btn.classList.remove('favorite-pop-anim');
+        void btn.offsetWidth;
+        btn.classList.add('favorite-pop-anim');
+    });
 }
 
 function showRatingView() {
     hideAllViews();
     document.getElementById('modal-view-rating').classList.remove('hidden');
     document.getElementById('modal-view-rating').classList.add('flex');
+
+    // Favorite- und Close-Button während der Bewertung ausblenden
+    ['modal-favorite-btn', 'modal-close-btn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.add('hidden');
+    });
 }
 
 function showSavedRating() {
     hideAllViews();
     document.getElementById('modal-view-saved-rating').classList.remove('hidden');
     document.getElementById('modal-view-saved-rating').classList.add('flex');
+
+    // Favorite- und Close-Button auch in der Bewertungs-Ansicht ausblenden
+    ['modal-favorite-btn', 'modal-close-btn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.add('hidden');
+    });
     let ratings = globalUserCollection[currentSelectedSnusId]?.ratings || {
         taste: 5,
         smell: 5,
@@ -273,6 +295,10 @@ function openSnusDetail(id, isFromScan = false) {
     }
 
     currentSelectedSnusId = snusId;
+    window.currentSelectedSnusId = snusId;
+    if (typeof window.updateModalFavoriteBtnUI === 'function') {
+        window.updateModalFavoriteBtnUI(snusId);
+    }
 
     // 2. ELEMENTE SICHER BEFÜLLEN (mit Fallbacks)
     const setText = (id, text) => {
@@ -493,8 +519,20 @@ async function collectCurrentSnus() {
         }]).select().single();
 
         error = response.error;
-        if (response.data && response.data.collected_at) {
-            savedDate = response.data.collected_at;
+        const inserted = response.data;
+        if (inserted && inserted.collected_at) {
+            savedDate = inserted.collected_at;
+        }
+
+        // IP-Geolocation für neue Bewertung asynchron ermitteln (fire-and-forget)
+        if (!error && inserted && inserted.id) {
+            try {
+                supabaseClient.functions.invoke('rating-geo-lookup', {
+                    body: { collection_id: inserted.id }
+                }).catch(err => console.warn('[geo-lookup] Edge Function Fehler (async):', err));
+            } catch (err) {
+                console.warn('[geo-lookup] Edge Function nicht verfügbar:', err);
+            }
         }
     }
 

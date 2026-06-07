@@ -1,7 +1,6 @@
 let html5QrCode = null;
 let isProcessingScan = false;
 let scanFlashlightOn = false;
-let scanCurrentTrack = null; // MediaStreamTrack for torch control
 let scanCameraIndex = 0;     // 0=normal, 1=wide, 2=tele
 const SCAN_CAMERA_MODES = [
     { label: 'Normal', labelKey: 'scan.cameraNormal', zoom: null, facingMode: 'environment' },
@@ -29,7 +28,6 @@ async function openScanModal() {
 
     isProcessingScan = false;
     scanFlashlightOn = false;
-    scanCurrentTrack = null;
     scanCameraIndex = 0;
 
     // Reset button states
@@ -67,13 +65,30 @@ async function openScanModal() {
     setTimeout(async () => {
         try {
             if (!html5QrCode) {
-                html5QrCode = new Html5Qrcode("scanner-reader");
+                html5QrCode = new Html5Qrcode("scanner-reader", {
+                    formatsToSupport: [
+                        Html5QrcodeSupportedFormats.EAN_13,
+                        Html5QrcodeSupportedFormats.EAN_8,
+                        Html5QrcodeSupportedFormats.UPC_A,
+                        Html5QrcodeSupportedFormats.UPC_E,
+                        Html5QrcodeSupportedFormats.CODE_128,
+                        Html5QrcodeSupportedFormats.CODE_39
+                    ],
+                    verbose: false,
+                    useBarCodeDetectorIfSupported: true
+                });
             }
 
             await html5QrCode.start({
                 facingMode: "environment"
             }, {
-                fps: 60,
+                fps: 15,
+                qrbox: (viewfinderWidth, viewfinderHeight) => {
+                    const width = Math.min(256, Math.floor(viewfinderWidth * 0.8));
+                    const height = Math.min(128, Math.floor(viewfinderHeight * 0.4));
+                    return { width, height };
+                },
+                disableFlip: true
             },
                 (decodedText, decodedResult) => {
                     if (isProcessingScan) return;
@@ -89,28 +104,27 @@ async function openScanModal() {
                         if (foundSnus) {
                             openSnusDetail(foundSnus.id, true);
                         } else {
-                            openNotFoundModal();
+                            openNotFoundModal(decodedText);
                         }
                     }, 400);
                 },
                 (errorMessage) => { }
             );
 
-            // Grab the active camera track for torch/zoom control
+            // Configure torch button visual state based on scanner capabilities
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                const tracks = stream.getVideoTracks();
-                if (tracks.length > 0) {
-                    scanCurrentTrack = tracks[0];
-                    // Hide flashlight button if torch not supported
-                    const capabilities = scanCurrentTrack.getCapabilities ? scanCurrentTrack.getCapabilities() : {};
-                    const flashBtn = document.getElementById('scan-flashlight-btn');
-                    if (flashBtn && !capabilities.torch) {
+                const capabilities = html5QrCode.getRunningTrackCapabilities();
+                const flashBtn = document.getElementById('scan-flashlight-btn');
+                if (flashBtn) {
+                    if (!capabilities.torch) {
                         flashBtn.style.opacity = '0.3';
                         flashBtn.style.pointerEvents = 'none';
+                    } else {
+                        flashBtn.style.opacity = '';
+                        flashBtn.style.pointerEvents = '';
                     }
                 }
-            } catch (e) { /* torch not available */ }
+            } catch (e) { /* Capabilities not available */ }
 
             document.getElementById('camera-loading').classList.add('opacity-0', 'pointer-events-none');
 
@@ -134,11 +148,10 @@ function closeScanModal(isDragging = false) {
     clearScanHelpTimer();
     dismissScanHelpPrompt();
     // Turn off flashlight when closing
-    if (scanFlashlightOn && scanCurrentTrack) {
-        try { scanCurrentTrack.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) { }
+    if (scanFlashlightOn && html5QrCode) {
+        try { html5QrCode.applyVideoConstraints({ advanced: [{ torch: false }] }); } catch (e) { }
         scanFlashlightOn = false;
     }
-    scanCurrentTrack = null;
 
     scanModalCard.classList.remove('translate-y-0');
     scanModalCard.classList.add('translate-y-full');
@@ -200,11 +213,27 @@ function closeScanModal(isDragging = false) {
 // ==========================================
 // NOT-FOUND MODAL
 // ==========================================
-function openNotFoundModal() {
+let lastScannedBarcode = "";
+
+function openNotFoundModal(barcode) {
+    lastScannedBarcode = barcode || "";
     const modal = document.getElementById('not-found-modal');
     const backdrop = document.getElementById('not-found-backdrop');
     const card = document.getElementById('not-found-card');
     if (!modal || !backdrop || !card) return;
+
+    // Prefill form
+    const barcodeInput = document.getElementById('missing-snus-barcode');
+    if (barcodeInput) barcodeInput.value = lastScannedBarcode;
+
+    const nameInput = document.getElementById('missing-snus-name');
+    if (nameInput) nameInput.value = "";
+
+    const nicotineInput = document.getElementById('missing-snus-nicotine');
+    if (nicotineInput) nicotineInput.value = "";
+
+    // Show main view, hide report view
+    showNotFoundMainView();
 
     modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
@@ -239,18 +268,88 @@ function retryScan() {
     setTimeout(() => openScanModal(), 350);
 }
 
-function reportMissingSnus() {
-    closeNotFoundModal();
+function showNotFoundMainView() {
+    const mainView = document.getElementById('not-found-main-view');
+    const reportView = document.getElementById('not-found-report-view');
+    if (mainView && reportView) {
+        mainView.classList.remove('hidden');
+        reportView.classList.add('hidden');
+    }
 }
+window.showNotFoundMainView = showNotFoundMainView;
+
+function showNotFoundReportView() {
+    const mainView = document.getElementById('not-found-main-view');
+    const reportView = document.getElementById('not-found-report-view');
+    if (mainView && reportView) {
+        mainView.classList.add('hidden');
+        reportView.classList.remove('hidden');
+    }
+}
+window.showNotFoundReportView = showNotFoundReportView;
+
+async function submitMissingSnus() {
+    const nameInput = document.getElementById('missing-snus-name');
+    const nicotineInput = document.getElementById('missing-snus-nicotine');
+    const barcodeInput = document.getElementById('missing-snus-barcode');
+    if (!nameInput || !nicotineInput || !barcodeInput) return;
+
+    const name = nameInput.value.trim();
+    const nicotineVal = nicotineInput.value.trim();
+    const barcode = barcodeInput.value.trim();
+
+    if (!name) {
+        alert(t('auth.fillAllFields'));
+        return;
+    }
+    if (!nicotineVal || isNaN(parseFloat(nicotineVal))) {
+        alert(t('auth.fillAllFields'));
+        return;
+    }
+
+    const nicotine = parseFloat(nicotineVal);
+
+    // Disable button to prevent double submit
+    const submitBtn = document.getElementById('missing-snus-submit-btn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = t('common.loading');
+    }
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        const { data, error } = await supabaseClient.from('product_suggestions').insert({
+            name,
+            nicotine,
+            barcode,
+            user_id: user ? user.id : null
+        });
+
+        if (error) throw error;
+
+        // Success!
+        alert(t('notFound.reportSuccess'));
+        closeNotFoundModal();
+    } catch (err) {
+        console.error("Error submitting product suggestion:", err);
+        alert(t('error.saveFailed', { msg: err.message }));
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = t('notFound.reportSubmit');
+        }
+    }
+}
+window.submitMissingSnus = submitMissingSnus;
 
 async function toggleScanFlashlight() {
-    if (!scanCurrentTrack) return;
+    if (!html5QrCode) return;
     try {
-        const capabilities = scanCurrentTrack.getCapabilities ? scanCurrentTrack.getCapabilities() : {};
+        const capabilities = html5QrCode.getRunningTrackCapabilities();
         if (!capabilities.torch) return;
 
         scanFlashlightOn = !scanFlashlightOn;
-        await scanCurrentTrack.applyConstraints({ advanced: [{ torch: scanFlashlightOn }] });
+        await html5QrCode.applyVideoConstraints({ advanced: [{ torch: scanFlashlightOn }] });
 
         const btn = document.getElementById('scan-flashlight-btn');
         const label = document.getElementById('scan-flashlight-label');
@@ -265,30 +364,29 @@ async function toggleScanFlashlight() {
         }
         if (label) label.textContent = scanFlashlightOn ? t('scan.flashlightOn') : t('scan.flashlight');
     } catch (e) {
-        console.error('Torch not supported:', e);
+        console.error('Torch error:', e);
     }
 }
 
 async function cycleScanCamera() {
+    if (!html5QrCode) return;
     scanCameraIndex = (scanCameraIndex + 1) % SCAN_CAMERA_MODES.length;
     const mode = SCAN_CAMERA_MODES[scanCameraIndex];
     const label = document.getElementById('scan-camera-label');
     if (label) label.textContent = t(mode.labelKey);
 
-    // If zoom is supported by the current track, use applyConstraints
-    if (scanCurrentTrack && typeof scanCurrentTrack.getCapabilities === 'function') {
-        const capabilities = scanCurrentTrack.getCapabilities();
+    // If zoom is supported by the current track, use applyVideoConstraints
+    try {
+        const capabilities = html5QrCode.getRunningTrackCapabilities();
         if (capabilities.zoom) {
-            try {
-                // null = Normal = 1.0x; always apply so switching Tele→Normal resets zoom
-                const targetZoom = mode.zoom !== null ? mode.zoom : 1.0;
-                const clampedZoom = Math.min(Math.max(targetZoom, capabilities.zoom.min), capabilities.zoom.max);
-                await scanCurrentTrack.applyConstraints({ advanced: [{ zoom: clampedZoom }] });
-                return;
-            } catch (e) {
-                console.warn('Zoom constraint failed, ignoring:', e);
-            }
+            // null = Normal = 1.0x; always apply so switching Tele→Normal resets zoom
+            const targetZoom = mode.zoom !== null ? mode.zoom : 1.0;
+            const clampedZoom = Math.min(Math.max(targetZoom, capabilities.zoom.min), capabilities.zoom.max);
+            await html5QrCode.applyVideoConstraints({ advanced: [{ zoom: clampedZoom }] });
+            return;
         }
+    } catch (e) {
+        console.warn('Zoom constraint failed, ignoring:', e);
     }
     console.log(`Camera mode set to: ${mode.labelKey} (hardware zoom not available on this device)`);
 }
