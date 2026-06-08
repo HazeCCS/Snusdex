@@ -712,10 +712,14 @@ window.submitProductRequest = submitProductRequest;
 // ==========================================
 
 function openDebugPortal() {
+    console.log("openDebugPortal called");
     const modal = document.getElementById('debug-portal-modal');
     const backdrop = document.getElementById('debug-portal-backdrop');
     const card = document.getElementById('debug-portal-card');
-    if (!modal || !backdrop || !card) return;
+    if (!modal || !backdrop || !card) {
+        console.error("Debug Portal elements missing from DOM:", { modal, backdrop, card });
+        return;
+    }
 
     modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
@@ -835,20 +839,20 @@ function debugClearCache() {
 window.debugClearCache = debugClearCache;
 
 // Setup console access keyword
-function debugportal() {
+const debugPortalFn = function() {
     openDebugPortal();
     return "Opening Debug Portal...";
-}
-window.debugportal = debugportal;
+};
 
 try {
     Object.defineProperty(window, 'debugportal', {
         get: function() {
             openDebugPortal();
-            return "Opening Debug Portal...";
+            return debugPortalFn;
         },
         configurable: true
     });
 } catch (e) {
+    window.debugportal = debugPortalFn;
     console.warn("Failed to define debugportal getter", e);
 }
