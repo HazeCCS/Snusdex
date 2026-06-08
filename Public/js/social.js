@@ -519,6 +519,23 @@ async function loadBadges() {
     updateBadgesStrip();
     renderFeaturedBadgeOverlay();
     preloadBadgeImages();
+
+    // Check if the user has the Supporter Badge and if the overlay has been shown
+    const supporterBadgeId = 'da77f766-3d23-41c3-ab0e-d716cf9bdf7b';
+    if (globalUserBadges.has(supporterBadgeId)) {
+        const shownKey = `supporter_badge_shown_${user.id}`;
+        if (localStorage.getItem(shownKey) !== 'true') {
+            const badge = globalBadges.find(b => b.id === supporterBadgeId);
+            if (badge) {
+                // Mark as shown first to avoid duplicate triggers
+                localStorage.setItem(shownKey, 'true');
+                // Wait slightly for the app UI/transitions to stabilize before popping the overlay
+                setTimeout(() => {
+                    showBadgeUnlock(badge, 1000);
+                }, 800);
+            }
+        }
+    }
 }
 
 function openBadgesGrid() {
@@ -714,12 +731,27 @@ function showBadgeUnlock(badge, xp) {
     const img = document.getElementById('badge-unlock-img');
     const nameText = document.getElementById('badge-unlock-name');
     const xpText = document.getElementById('badge-unlock-xp');
+    const statusText = document.getElementById('badge-unlock-status');
 
     if (!overlay || !img || !nameText) return;
 
     const imgUrl = badge.image_url.startsWith('http') ? badge.image_url : GITHUB_BASE + badge.image_url;
     img.src = imgUrl;
-    nameText.innerText = badge.name;
+
+    if (badge.id === 'da77f766-3d23-41c3-ab0e-d716cf9bdf7b') {
+        nameText.innerText = (typeof window.t === 'function') ? window.t('badges.supporterUnlockMsg') : "Vielen Dank für deinen Support am Snusdex-Projekt! Hier ist deine Supporter Badge.";
+        nameText.style.fontSize = '20px';
+        nameText.style.lineHeight = '1.4';
+        if (statusText) statusText.style.display = 'none';
+    } else {
+        nameText.innerText = badge.name;
+        nameText.style.fontSize = '';
+        nameText.style.lineHeight = '';
+        if (statusText) {
+            statusText.style.display = 'block';
+            statusText.innerText = (typeof window.t === 'function') ? window.t('badges.wasUnlocked') : 'was unlocked';
+        }
+    }
 
     if (xpText && xp) {
         xpText.style.display = 'block';
@@ -750,6 +782,17 @@ function closeBadgeUnlock() {
         overlay.style.transition = '';
         overlay.style.opacity = '';
         overlay.onclick = null;
+
+        // Reset styles we modified on close
+        const nameText = document.getElementById('badge-unlock-name');
+        const statusText = document.getElementById('badge-unlock-status');
+        if (nameText) {
+            nameText.style.fontSize = '';
+            nameText.style.lineHeight = '';
+        }
+        if (statusText) {
+            statusText.style.display = 'block';
+        }
     }, 400);
 
     if (typeof loadUserStats === 'function') {

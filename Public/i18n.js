@@ -178,6 +178,7 @@ const _EN = {
     'badges.unlocked': 'Unlocked',
     'badges.progress': 'Progress',
     'badges.wasUnlocked': 'was unlocked',
+    'badges.supporterUnlockMsg': 'Thank you for your support of the Snusdex project! Here is your Supporter Badge.',
     'badges.locked': 'Locked',
 
     'connections.title': 'Connections',

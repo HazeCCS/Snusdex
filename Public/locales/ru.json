@@ -152,6 +152,7 @@
   "badges.unlocked": "Разблокировано",
   "badges.progress": "Прогресс",
   "badges.wasUnlocked": "разблокировано",
+  "badges.supporterUnlockMsg": "Спасибо за поддержку проекта Snusdex! Вот ваш значок сторонника.",
   "badges.locked": "Заблокировано",
   "connections.title": "Контакты",
   "connections.searchPlaceholder": "Поиск пользователя...",

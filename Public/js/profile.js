@@ -94,6 +94,11 @@ async function setupProfile(user) {
                 validateAndRenderStreak();
             }
         }
+
+        // Load badges at startup to sync achievements and trigger new unlock animations
+        if (typeof loadBadges === 'function') {
+            loadBadges();
+        }
     } catch (e) { /* ignore */ }
 }
 

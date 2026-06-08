@@ -736,8 +736,115 @@ function openDebugPortal() {
     backdrop.classList.add('opacity-100');
     card.classList.remove('scale-95', 'opacity-0');
     card.classList.add('scale-100', 'opacity-100');
+
+    // Populate badges menu
+    populateDebugBadgesMenu();
 }
 window.openDebugPortal = openDebugPortal;
+
+async function populateDebugBadgesMenu() {
+    const container = document.getElementById('debug-badges-menu');
+    if (!container) return;
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) {
+            container.innerHTML = '<p class="text-[#FF3B30] text-[12px] text-center">No user logged in</p>';
+            return;
+        }
+
+        // Fetch badges if global list is not loaded yet
+        if (!globalBadges || globalBadges.length === 0) {
+            const { data: allBadges } = await supabaseClient.from('badges').select('*').order('level', { ascending: true });
+            if (allBadges) globalBadges = allBadges;
+        }
+
+        if (!globalBadges || globalBadges.length === 0) {
+            container.innerHTML = '<p class="text-[#8E8E93] text-[12px] text-center">No badges available</p>';
+            return;
+        }
+
+        let html = '';
+        globalBadges.forEach(badge => {
+            const hasBadge = globalUserBadges.has(badge.id);
+            const btnClass = hasBadge 
+                ? "bg-[#FF453A]/10 border border-[#FF453A]/20 text-[#FF453A] px-2.5 py-1 rounded-[8px] text-[11px] font-semibold"
+                : "bg-white text-black px-2.5 py-1 rounded-[8px] text-[11px] font-semibold";
+            const btnText = hasBadge ? "Remove" : "Unlock";
+            const badgeImg = badge.image_url.startsWith('http') ? badge.image_url : (typeof GITHUB_BASE !== 'undefined' ? GITHUB_BASE + badge.image_url : badge.image_url);
+
+            html += `
+                <div class="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <img src="${badgeImg}" class="w-6 h-6 object-contain flex-shrink-0" onerror="this.src='https://via.placeholder.com/50'">
+                        <div class="min-w-0">
+                            <p class="text-white text-[12px] font-medium truncate leading-tight">${badge.name}</p>
+                            <p class="text-[#8E8E93] text-[10px] truncate leading-none mt-0.5">${badge.category} (Lvl ${badge.level})</p>
+                        </div>
+                    </div>
+                    <button onclick="triggerHapticFeedback(); toggleDebugBadge('${badge.id}', ${hasBadge}, this)" 
+                        class="${btnClass} active:scale-95 transition-transform flex-shrink-0">
+                        ${btnText}
+                    </button>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html || '<p class="text-[#8E8E93] text-[12px] text-center">No badges found</p>';
+    } catch (err) {
+        console.error("Error populating debug badges:", err);
+        container.innerHTML = '<p class="text-[#FF3B30] text-[12px] text-center">Failed to load badges</p>';
+    }
+}
+window.populateDebugBadgesMenu = populateDebugBadgesMenu;
+
+async function toggleDebugBadge(badgeId, hasBadge, btn) {
+    btn.disabled = true;
+    btn.innerText = "...";
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return alert("No user session");
+
+        if (hasBadge) {
+            // Remove badge
+            const { error } = await supabaseClient
+                .from('user_badges')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('badge_id', badgeId);
+
+            if (error) throw error;
+
+            globalUserBadges.delete(badgeId);
+        } else {
+            // Unlock badge
+            const { error } = await supabaseClient
+                .from('user_badges')
+                .insert([{ user_id: user.id, badge_id: badgeId }]);
+
+            if (error) throw error;
+
+            globalUserBadges.add(badgeId);
+        }
+
+        // Save to cache
+        localStorage.setItem('cached_user_badges', JSON.stringify([...globalUserBadges]));
+
+        // Refresh Badge Strips and UI
+        if (typeof updateBadgesStrip === 'function') updateBadgesStrip();
+        if (typeof renderFeaturedBadgeOverlay === 'function') renderFeaturedBadgeOverlay();
+
+        // Repopulate menu to reflect updated state
+        await populateDebugBadgesMenu();
+    } catch (err) {
+        console.error("Error toggling badge:", err);
+        alert("Action failed: " + err.message);
+        btn.disabled = false;
+        btn.innerText = hasBadge ? "Remove" : "Unlock";
+    }
+}
+window.toggleDebugBadge = toggleDebugBadge;
 
 function closeDebugPortal() {
     const modal = document.getElementById('debug-portal-modal');

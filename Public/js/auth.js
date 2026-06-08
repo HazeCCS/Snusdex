@@ -456,6 +456,13 @@ async function handleLogout(btn) {
         error
     } = await supabaseClient.auth.signOut();
     if (!error) {
+        // Clean up supporter badge overlay shown keys from localStorage
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('supporter_badge_shown_')) {
+                localStorage.removeItem(key);
+            }
+        }
         localStorage.removeItem('cached_badges');
         localStorage.removeItem('cached_user_badges');
         localStorage.removeItem('cached_badge_progress');
