@@ -786,7 +786,7 @@ function openSettingsSubpage(type, _pushHistory) {
 
         html = `
             <!-- Live Preview Card -->
-            <div id="preview-card-wrapper" class="mb-6 animate-fade-in">
+            <div id="preview-card-wrapper" class="mb-6 animate-fade-in" data-theme-aware="1">
                 <div class="metal-card-container" id="preview-metal-card-container" data-anim="sweep" style="padding: 0 0 20px 0;">
                     <div class="metal-collector-card">
                         <div class="metal-card-ambient"></div>
