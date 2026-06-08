@@ -34,7 +34,7 @@ BEGIN
         FOR suggestion IN 
             SELECT id, user_id 
             FROM public.product_suggestions 
-            WHERE barcode = NEW.barcode AND user_id IS NOT NULL AND rewarded = FALSE
+            WHERE barcode = NEW.barcode::text AND user_id IS NOT NULL AND rewarded = FALSE
         LOOP
             -- Award Supporter badge to user
             INSERT INTO public.user_badges (user_id, badge_id)
