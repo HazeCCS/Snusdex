@@ -706,3 +706,149 @@ function submitProductRequest() {
     // TODO: implement submission feature
 }
 window.submitProductRequest = submitProductRequest;
+
+// ==========================================
+// DEBUG PORTAL (DEV MENU)
+// ==========================================
+
+function openDebugPortal() {
+    const modal = document.getElementById('debug-portal-modal');
+    const backdrop = document.getElementById('debug-portal-backdrop');
+    const card = document.getElementById('debug-portal-card');
+    if (!modal || !backdrop || !card) return;
+
+    modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+
+    // Reset inputs inside portal
+    ['debug-unlock-id', 'debug-unlock-ean', 'debug-raw-scan'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.value = '';
+    });
+
+    // Animate in
+    void modal.offsetWidth;
+    backdrop.classList.remove('opacity-0');
+    backdrop.classList.add('opacity-100');
+    card.classList.remove('scale-95', 'opacity-0');
+    card.classList.add('scale-100', 'opacity-100');
+}
+window.openDebugPortal = openDebugPortal;
+
+function closeDebugPortal() {
+    const modal = document.getElementById('debug-portal-modal');
+    const backdrop = document.getElementById('debug-portal-backdrop');
+    const card = document.getElementById('debug-portal-card');
+    if (!modal || !backdrop || !card) return;
+
+    backdrop.classList.remove('opacity-100');
+    backdrop.classList.add('opacity-0');
+    card.classList.remove('scale-100', 'opacity-100');
+    card.classList.add('scale-95', 'opacity-0');
+
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }, 300);
+}
+window.closeDebugPortal = closeDebugPortal;
+
+function debugUnlockByID() {
+    const val = document.getElementById('debug-unlock-id').value.trim();
+    if (!val) return alert("Please enter a valid Snus ID.");
+    const id = parseInt(val);
+    if (isNaN(id)) return alert("ID must be a number.");
+    
+    simulateScan('unlock ID ' + id);
+    closeDebugPortal();
+}
+window.debugUnlockByID = debugUnlockByID;
+
+function debugUnlockByEAN() {
+    const val = document.getElementById('debug-unlock-ean').value.trim();
+    if (!val) return alert("Please enter a valid EAN.");
+    
+    simulateScan('unlock EAN ' + val);
+    closeDebugPortal();
+}
+window.debugUnlockByEAN = debugUnlockByEAN;
+
+function debugRawScan() {
+    const val = document.getElementById('debug-raw-scan').value.trim();
+    if (!val) return alert("Please enter command text.");
+    
+    simulateScan(val);
+    closeDebugPortal();
+}
+window.debugRawScan = debugRawScan;
+
+async function debugAddXP() {
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return alert("No active user session. Please log in first.");
+        
+        const { error } = await supabaseClient.rpc('increment_badge_xp', { uid: user.id, xp_amount: 1000 });
+        if (error) throw error;
+        
+        // Refresh local stats if available
+        if (typeof loadUserStats === 'function') await loadUserStats(user.id);
+        if (typeof updateLivePerformance === 'function') updateLivePerformance();
+        
+        alert("Successfully added 1000 XP!");
+    } catch (err) {
+        console.error("Error adding debug XP:", err);
+        alert("XP Addition Failed: " + err.message);
+    }
+}
+window.debugAddXP = debugAddXP;
+
+async function debugResetUsernameChanges() {
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return alert("No active user session. Please log in first.");
+        
+        const { error } = await supabaseClient.from('profiles').update({ username_changes: 0 }).eq('id', user.id);
+        if (error) throw error;
+        
+        alert("Username changes successfully reset to 0!");
+    } catch (err) {
+        console.error("Error resetting username changes:", err);
+        alert("Reset failed: " + err.message);
+    }
+}
+window.debugResetUsernameChanges = debugResetUsernameChanges;
+
+function debugEvaluateBadges() {
+    if (typeof evaluateBadges === 'function') {
+        evaluateBadges();
+        alert("Badge threshold checks evaluated!");
+    } else {
+        alert("evaluateBadges() function is not available.");
+    }
+}
+window.debugEvaluateBadges = debugEvaluateBadges;
+
+function debugClearCache() {
+    localStorage.clear();
+    location.reload();
+}
+window.debugClearCache = debugClearCache;
+
+// Setup console access keyword
+function debugportal() {
+    openDebugPortal();
+    return "Opening Debug Portal...";
+}
+window.debugportal = debugportal;
+
+try {
+    Object.defineProperty(window, 'debugportal', {
+        get: function() {
+            openDebugPortal();
+            return "Opening Debug Portal...";
+        },
+        configurable: true
+    });
+} catch (e) {
+    console.warn("Failed to define debugportal getter", e);
+}

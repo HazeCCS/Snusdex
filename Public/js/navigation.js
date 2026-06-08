@@ -226,6 +226,7 @@ document.addEventListener('keydown', (e) => {
     // 2. Escape key -> close active overlay/modal
     if (e.key === 'Escape') {
         const overlays = [
+            { id: 'debug-portal-modal', close: () => typeof closeDebugPortal === 'function' && closeDebugPortal() },
             { id: 'badge-unlock-overlay', close: () => typeof closeBadgeUnlock === 'function' && closeBadgeUnlock() },
             { id: 'legality-modal', close: () => typeof closeLegalityModal === 'function' && closeLegalityModal() },
             { id: 'remove-favorite-modal', close: () => typeof closeRemoveFavoriteModal === 'function' && closeRemoveFavoriteModal() },
