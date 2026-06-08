@@ -473,6 +473,26 @@ const CardCanvasRenderer = {
                         } else if (anim === 'pulse') {
                             const centerDist = Math.sqrt((cx - state.width/2)**2 + (cy - state.height/2)**2);
                             f = Math.sin(time * 0.003 - centerDist * 0.015) * 0.45 + 0.55;
+                        } else if (anim === 'wave') {
+                            // PS4-style diagonal wave: multiple layered sine waves sweeping across
+                            const nCol = cIdx / cols;
+                            const nRow = rIdx / rows;
+                            // Primary diagonal wave (fast, sharp)
+                            const wave1 = Math.sin(nCol * 8.0 + nRow * 4.0 - time * 0.004) * 0.5 + 0.5;
+                            // Secondary diagonal wave (slower, wide) to add depth
+                            const wave2 = Math.sin(nCol * 4.0 - nRow * 3.0 - time * 0.0025) * 0.5 + 0.5;
+                            // Tertiary subtle shimmer
+                            const wave3 = Math.sin(nCol * 12.0 + nRow * 6.0 - time * 0.006) * 0.25 + 0.75;
+                            // Combine: primary drives brightness, others add shimmer
+                            f = Math.pow(wave1, 1.8) * 0.7 + wave2 * 0.2 + wave3 * 0.1;
+                            f = Math.max(0.0, Math.min(1.0, f));
+                            // Pointer interaction: pointer proximity boosts brightness locally
+                            if (state.pointerActive) {
+                                const dist = Math.sqrt((cx - state.px)**2 + (cy - state.py)**2);
+                                if (dist < 80) {
+                                    f = Math.min(1.0, f + (1.0 - dist / 80) * 0.6);
+                                }
+                            }
                         } else if (anim === 'none') {
                             if (state.pointerActive) {
                                 const dist = Math.sqrt((cx - state.px)**2 + (cy - state.py)**2);
@@ -707,8 +727,8 @@ function applyCardAppearance(container, appearance) {
     if (!appearance) appearance = {};
     const anim = appearance.anim || 'sweep';
 
-    // Force cubes pattern for gol, firework, and mountains animations to avoid mismatch
-    if (anim === 'gol' || anim === 'firework' || anim === 'mountains') {
+    // Force cubes pattern for gol, firework, mountains, and wave animations to avoid mismatch
+    if (anim === 'gol' || anim === 'firework' || anim === 'mountains' || anim === 'wave') {
         appearance.pattern = 'cubes';
     }
 

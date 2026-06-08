@@ -208,7 +208,7 @@ function setMetalCardFont(fontId) {
 
 function setMetalCardAnim(type) {
     localStorage.setItem('metalCardAnim', type);
-    if (type === 'gol' || type === 'firework' || type === 'mountains') {
+    if (type === 'gol' || type === 'firework' || type === 'mountains' || type === 'wave') {
         localStorage.setItem('metalCardPattern', 'cubes');
     }
     applyCardAppearance('metal-card-container', getLocalCardAppearance());
@@ -228,7 +228,7 @@ function setMetalCardSaturation(val) {
 function setMetalCardPattern(id) {
     localStorage.setItem('metalCardPattern', id);
     const currentAnim = localStorage.getItem('metalCardAnim') || 'sweep';
-    if ((currentAnim === 'gol' || currentAnim === 'firework' || currentAnim === 'mountains') && id !== 'cubes') {
+    if ((currentAnim === 'gol' || currentAnim === 'firework' || currentAnim === 'mountains' || currentAnim === 'wave') && id !== 'cubes') {
         localStorage.setItem('metalCardAnim', 'none');
     }
     applyCardAppearance('metal-card-container', getLocalCardAppearance());
@@ -823,6 +823,7 @@ function openSettingsSubpage(type, _pushHistory) {
                             { id: 'sweep', label: t('appearance.animSweep'), reqRarities: null },
                             { id: 'pulse', label: t('appearance.animPulse'), reqRarities: null },
                             { id: 'ripple', label: t('appearance.animRipple'), reqRarities: null },
+                            { id: 'wave', label: t('appearance.animWave') || 'Wave', reqRarities: null },
                             { id: 'mountains', label: t('appearance.animMountains') || 'Mountains', reqRarities: ['exotic', 'legendary'] },
                             { id: 'gol', label: t('appearance.animGol'), reqRarities: null },
                             { id: 'firework', label: t('appearance.animFirework'), reqRarities: null },

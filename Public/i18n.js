@@ -305,6 +305,7 @@ const _EN = {
     'appearance.animSweep': 'Sweep',
     'appearance.animPulse': 'Pulse',
     'appearance.animRipple': 'Ripple',
+    'appearance.animWave': 'Wave',
     'appearance.animMountains': 'Mountains',
     'appearance.animGol': 'Game of Life',
     'appearance.animFirework': 'Firework',
