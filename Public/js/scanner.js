@@ -100,6 +100,25 @@ async function openScanModal() {
                     closeScanModal();
 
                     setTimeout(() => {
+                        const trimmed = decodedText.trim();
+                        if (trimmed.startsWith('unlock ID ')) {
+                            const idStr = trimmed.replace('unlock ID ', '').trim();
+                            const id = parseInt(idStr);
+                            if (!isNaN(id)) {
+                                openSnusDetail(id, true);
+                                return;
+                            }
+                        } else if (trimmed.startsWith('unlock EAN ')) {
+                            const eanStr = trimmed.replace('unlock EAN ', '').trim();
+                            const foundSnus = globalSnusData.find(s => String(s.barcode) === eanStr);
+                            if (foundSnus) {
+                                openSnusDetail(foundSnus.id, true);
+                            } else {
+                                openNotFoundModal(eanStr);
+                            }
+                            return;
+                        }
+
                         const foundSnus = globalSnusData.find(s => String(s.barcode) === decodedText);
                         if (foundSnus) {
                             openSnusDetail(foundSnus.id, true);
