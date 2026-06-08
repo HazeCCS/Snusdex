@@ -820,18 +820,36 @@ function openSettingsSubpage(type, _pushHistory) {
                     <span class="text-white text-[15px] block mb-3">${t('appearance.animation')}</span>
                     <div class="flex gap-2 flex-wrap">
                         ${[
-                            { id: 'sweep', label: t('appearance.animSweep') },
-                            { id: 'pulse', label: t('appearance.animPulse') },
-                            { id: 'ripple', label: t('appearance.animRipple') },
-                            { id: 'gol', label: t('appearance.animGol') },
-                            { id: 'firework', label: t('appearance.animFirework') },
-                            { id: 'none',  label: t('appearance.animNone')  },
+                            { id: 'sweep', label: t('appearance.animSweep'), reqRarities: null },
+                            { id: 'pulse', label: t('appearance.animPulse'), reqRarities: null },
+                            { id: 'ripple', label: t('appearance.animRipple'), reqRarities: null },
+                            { id: 'landscape', label: t('appearance.animLandscape') || 'Landscape', reqRarities: ['uncommon', 'rare'] },
+                            { id: 'mountains', label: t('appearance.animMountains') || 'Mountains', reqRarities: ['exotic', 'legendary'] },
+                            { id: 'gol', label: t('appearance.animGol'), reqRarities: null },
+                            { id: 'firework', label: t('appearance.animFirework'), reqRarities: null },
+                            { id: 'none',  label: t('appearance.animNone'), reqRarities: null },
                         ].map(a => {
+                            let isUnlocked = true;
+                            if (a.reqRarities) {
+                                isUnlocked = a.reqRarities.every(req => {
+                                    return typeof globalSnusData !== 'undefined' && typeof globalUserCollection !== 'undefined' && globalSnusData.some(s => 
+                                        globalUserCollection[s.id] && 
+                                        (s.rarity || 'common').toLowerCase().trim() === req
+                                    );
+                                });
+                            }
                             const active = (localStorage.getItem('metalCardAnim') || 'sweep') === a.id;
-                            return `<button onclick="triggerHapticFeedback(); setMetalCardAnim('${a.id}')"
-                                class="px-4 py-2 rounded-[12px] text-[15px] font-medium transition-all active:scale-95 ${active ? 'bg-white text-black' : 'bg-white/10 text-white/70'}">
-                                ${a.label}
-                            </button>`;
+                            if (isUnlocked) {
+                                return `<button onclick="triggerHapticFeedback(); setMetalCardAnim('${a.id}')"
+                                    class="px-4 py-2 rounded-[12px] text-[15px] font-medium transition-all active:scale-95 ${active ? 'bg-white text-black' : 'bg-white/10 text-white/70'}">
+                                    ${a.label}
+                                </button>`;
+                            } else {
+                                return `<button class="px-4 py-2 rounded-[12px] text-[15px] font-medium bg-white/5 text-white/30 cursor-not-allowed opacity-50 flex items-center gap-1.5" disabled>
+                                    <svg class="w-3.5 h-3.5 text-white/40" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17a2 2 0 100-4 2 2 0 000 4zm6-9V7a6 6 0 10-12 0v1H5v14h14V8h-1zm-4 0H10V7a2 2 0 114 0v1z"/></svg>
+                                    ${a.label}
+                                </button>`;
+                            }
                         }).join('')}
                     </div>
                 </div>
