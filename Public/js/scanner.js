@@ -100,31 +100,7 @@ async function openScanModal() {
                     closeScanModal();
 
                     setTimeout(() => {
-                        const trimmed = decodedText.trim();
-                        if (trimmed.startsWith('unlock ID ')) {
-                            const idStr = trimmed.replace('unlock ID ', '').trim();
-                            const id = parseInt(idStr);
-                            if (!isNaN(id)) {
-                                openSnusDetail(id, true);
-                                return;
-                            }
-                        } else if (trimmed.startsWith('unlock EAN ')) {
-                            const eanStr = trimmed.replace('unlock EAN ', '').trim();
-                            const foundSnus = globalSnusData.find(s => String(s.barcode) === eanStr);
-                            if (foundSnus) {
-                                openSnusDetail(foundSnus.id, true);
-                            } else {
-                                openNotFoundModal(eanStr);
-                            }
-                            return;
-                        }
-
-                        const foundSnus = globalSnusData.find(s => String(s.barcode) === decodedText);
-                        if (foundSnus) {
-                            openSnusDetail(foundSnus.id, true);
-                        } else {
-                            openNotFoundModal(decodedText);
-                        }
+                        simulateScan(decodedText);
                     }, 400);
                 },
                 (errorMessage) => { }
@@ -386,6 +362,51 @@ async function submitMissingSnus() {
     }
 }
 window.submitMissingSnus = submitMissingSnus;
+
+function simulateScan(text) {
+    console.log("Simulating scan for:", text);
+    const trimmed = String(text).trim();
+    if (trimmed.startsWith('unlock ID ')) {
+        const idStr = trimmed.replace('unlock ID ', '').trim();
+        const id = parseInt(idStr);
+        if (!isNaN(id)) {
+            openSnusDetail(id, true);
+            return;
+        }
+    } else if (trimmed.startsWith('unlock EAN ')) {
+        const eanStr = trimmed.replace('unlock EAN ', '').trim();
+        const foundSnus = globalSnusData.find(s => String(s.barcode) === eanStr);
+        if (foundSnus) {
+            openSnusDetail(foundSnus.id, true);
+        } else {
+            openNotFoundModal(eanStr);
+        }
+        return;
+    }
+
+    const foundSnus = globalSnusData.find(s => String(s.barcode) === trimmed);
+    if (foundSnus) {
+        openSnusDetail(foundSnus.id, true);
+    } else {
+        openNotFoundModal(trimmed);
+    }
+}
+window.simulateScan = simulateScan;
+
+window.unlock = function(type, value) {
+    if (type === undefined || value === undefined) {
+        console.error("Usage: unlock('ID', <ID>) or unlock('EAN', '<EAN>')");
+        return;
+    }
+    const t = String(type).toUpperCase().trim();
+    if (t === 'ID') {
+        simulateScan('unlock ID ' + value);
+    } else if (t === 'EAN') {
+        simulateScan('unlock EAN ' + value);
+    } else {
+        console.error("Unknown type. Use 'ID' or 'EAN'.");
+    }
+};
 
 async function toggleScanFlashlight() {
     if (!html5QrCode) return;
