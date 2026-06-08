@@ -705,11 +705,17 @@ function applyCardAppearance(container, appearance) {
     if (!container) return;
 
     if (!appearance) appearance = {};
+    const anim = appearance.anim || 'sweep';
+
+    // Force cubes pattern for gol, firework, and mountains animations to avoid mismatch
+    if (anim === 'gol' || anim === 'firework' || anim === 'mountains') {
+        appearance.pattern = 'cubes';
+    }
+
     const colorHex = appearance.colorHex || '#ffffff';
     const intensity = appearance.intensity || '1';
     const font = appearance.font || 'system';
     const saturation = appearance.saturation || '1.3';
-    const anim = appearance.anim || 'sweep';
     const pattern = appearance.pattern || 'none';
 
     container.style.setProperty('--card-glow-color', colorHex);
