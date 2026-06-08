@@ -268,147 +268,7 @@ const CardCanvasRenderer = {
             ctx.roundRect(0, 0, state.width, state.height, 24);
             ctx.clip();
 
-            if (anim === 'landscape') {
-                // macOS Sonoma Wavy Gradient Landscape
-                const forceX = state.pointerActive ? (state.px - state.width / 2) * 0.12 : 0;
-                const forceY = state.pointerActive ? (state.py - state.height / 2) * 0.12 : 0;
-
-                // 1. Sky/Background Gradient (Blue-Purple)
-                const bgGrad = ctx.createLinearGradient(0, 0, state.width, state.height);
-                bgGrad.addColorStop(0, '#5A62FF');
-                bgGrad.addColorStop(0.5, '#A044FF');
-                bgGrad.addColorStop(1, '#FF3B30');
-                ctx.fillStyle = bgGrad;
-                ctx.fillRect(0, 0, state.width, state.height);
-
-                // 2. Wave Layer 1 (Red/Pink)
-                ctx.beginPath();
-                ctx.moveTo(0, state.height);
-                const y1 = state.height * 0.38 + Math.sin(time * 0.0006) * 15 + forceY * 0.5;
-                const cp1x = state.width * 0.4 + Math.cos(time * 0.0004) * 30 + forceX;
-                const cp1y = state.height * 0.28 + Math.sin(time * 0.0005) * 20 + forceY;
-                const cp2x = state.width * 0.7 + Math.sin(time * 0.0007) * 20 + forceX;
-                const cp2y = state.height * 0.78 + Math.cos(time * 0.0006) * 15 + forceY;
-                const end1y = state.height * 0.58 + Math.cos(time * 0.0005) * 10 + forceY * 0.5;
-                ctx.lineTo(0, y1);
-                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, state.width, end1y);
-                ctx.lineTo(state.width, state.height);
-                ctx.closePath();
-                const grad1 = ctx.createLinearGradient(0, y1, state.width, state.height);
-                grad1.addColorStop(0, '#FF4B72');
-                grad1.addColorStop(1, '#9C27B0');
-                ctx.fillStyle = grad1;
-                ctx.fill();
-
-                // 3. Wave Layer 2 (Green/Teal)
-                ctx.beginPath();
-                ctx.moveTo(0, state.height);
-                const y2 = state.height * 0.68 + Math.cos(time * 0.0005) * 12 + forceY * 0.6;
-                const cp3x = state.width * 0.3 + Math.sin(time * 0.0006) * 25 + forceX * 0.8;
-                const cp3y = state.height * 0.48 + Math.cos(time * 0.0007) * 15 + forceY * 0.8;
-                const cp4x = state.width * 0.65 + Math.cos(time * 0.0005) * 20 + forceX * 0.8;
-                const cp4y = state.height * 0.88 + Math.sin(time * 0.0004) * 10 + forceY * 0.8;
-                const end2y = state.height * 0.73 + Math.sin(time * 0.0006) * 12 + forceY * 0.6;
-                ctx.lineTo(0, y2);
-                ctx.bezierCurveTo(cp3x, cp3y, cp4x, cp4y, state.width, end2y);
-                ctx.lineTo(state.width, state.height);
-                ctx.closePath();
-                const grad2 = ctx.createLinearGradient(0, y2, state.width, state.height);
-                grad2.addColorStop(0, '#00CDAC');
-                grad2.addColorStop(1, '#02AAB0');
-                ctx.fillStyle = grad2;
-                ctx.fill();
-
-                // 4. Wave Layer 3 (Vibrant Lime Green/Yellow)
-                ctx.beginPath();
-                ctx.moveTo(0, state.height);
-                const y3 = state.height * 0.83 + Math.sin(time * 0.0007) * 10 + forceY * 0.7;
-                const cp5x = state.width * 0.25 + Math.cos(time * 0.0005) * 20 + forceX * 0.6;
-                const cp5y = state.height * 0.72 + Math.sin(time * 0.0006) * 12 + forceY * 0.7;
-                const cp6x = state.width * 0.65 + Math.sin(time * 0.0004) * 15 + forceX * 0.6;
-                const cp6y = state.height * 0.92 + Math.cos(time * 0.0007) * 8 + forceY * 0.7;
-                const end3y = state.height * 0.88 + Math.cos(time * 0.0005) * 8 + forceY * 0.7;
-                ctx.lineTo(0, y3);
-                ctx.bezierCurveTo(cp5x, cp5y, cp6x, cp6y, state.width, end3y);
-                ctx.lineTo(state.width, state.height);
-                ctx.closePath();
-                const grad3 = ctx.createLinearGradient(0, y3, state.width, state.height);
-                grad3.addColorStop(0, '#D4FC79');
-                grad3.addColorStop(1, '#96E6A1');
-                ctx.fillStyle = grad3;
-                ctx.fill();
-            } else if (anim === 'mountains') {
-                // macOS Big Sur Mountains Gradient Wallpaper
-                const forceX = state.pointerActive ? (state.px - state.width / 2) * 0.12 : 0;
-                const forceY = state.pointerActive ? (state.py - state.height / 2) * 0.12 : 0;
-
-                // 1. Sky/Sunset Background (Cyan/Blue to Pink)
-                const bgGrad = ctx.createLinearGradient(0, 0, state.width, state.height);
-                bgGrad.addColorStop(0, '#00C6FF');
-                bgGrad.addColorStop(0.5, '#0072FF');
-                bgGrad.addColorStop(1, '#FF758C');
-                ctx.fillStyle = bgGrad;
-                ctx.fillRect(0, 0, state.width, state.height);
-
-                // 2. Mountain Layer 1 (Orange/Yellow)
-                ctx.beginPath();
-                ctx.moveTo(0, state.height);
-                const y1 = state.height * 0.48 + Math.sin(time * 0.0005) * 15 + forceY * 0.5;
-                const cp1x = state.width * 0.35 + Math.cos(time * 0.0006) * 25 + forceX;
-                const cp1y = state.height * 0.38 + Math.sin(time * 0.0004) * 18 + forceY;
-                const cp2x = state.width * 0.7 + Math.sin(time * 0.0005) * 20 + forceX;
-                const cp2y = state.height * 0.73 + Math.cos(time * 0.0006) * 15 + forceY;
-                const end1y = state.height * 0.63 + Math.cos(time * 0.0004) * 10 + forceY * 0.5;
-                ctx.lineTo(0, y1);
-                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, state.width, end1y);
-                ctx.lineTo(state.width, state.height);
-                ctx.closePath();
-                const grad1 = ctx.createLinearGradient(0, y1, state.width, state.height);
-                grad1.addColorStop(0, '#FAD961');
-                grad1.addColorStop(1, '#F76B1C');
-                ctx.fillStyle = grad1;
-                ctx.fill();
-
-                // 3. Mountain Layer 2 (Vibrant Red/Pink)
-                ctx.beginPath();
-                ctx.moveTo(0, state.height);
-                const y2 = state.height * 0.63 + Math.cos(time * 0.0006) * 12 + forceY * 0.6;
-                const cp3x = state.width * 0.3 + Math.sin(time * 0.0005) * 20 + forceX * 0.8;
-                const cp3y = state.height * 0.53 + Math.cos(time * 0.0006) * 15 + forceY * 0.8;
-                const cp4x = state.width * 0.65 + Math.cos(time * 0.0004) * 15 + forceX * 0.8;
-                const cp4y = state.height * 0.83 + Math.sin(time * 0.0005) * 10 + forceY * 0.8;
-                const end2y = state.height * 0.73 + Math.sin(time * 0.0006) * 12 + forceY * 0.6;
-                ctx.lineTo(0, y2);
-                ctx.bezierCurveTo(cp3x, cp3y, cp4x, cp4y, state.width, end2y);
-                ctx.lineTo(state.width, state.height);
-                ctx.closePath();
-                const grad2 = ctx.createLinearGradient(0, y2, state.width, state.height);
-                grad2.addColorStop(0, '#FF3B30');
-                grad2.addColorStop(1, '#FF2D55');
-                ctx.fillStyle = grad2;
-                ctx.fill();
-
-                // 4. Mountain Layer 3 (Deep Purple/Lila/Blue)
-                ctx.beginPath();
-                ctx.moveTo(0, state.height);
-                const y3 = state.height * 0.78 + Math.sin(time * 0.0006) * 10 + forceY * 0.7;
-                const cp5x = state.width * 0.25 + Math.cos(time * 0.0005) * 15 + forceX * 0.6;
-                const cp5y = state.height * 0.7 + Math.sin(time * 0.0007) * 12 + forceY * 0.7;
-                const cp6x = state.width * 0.6 + Math.sin(time * 0.0004) * 15 + forceX * 0.6;
-                const cp6y = state.height * 0.93 + Math.cos(time * 0.0006) * 8 + forceY * 0.7;
-                const end3y = state.height * 0.85 + Math.cos(time * 0.0005) * 8 + forceY * 0.7;
-                ctx.lineTo(0, y3);
-                ctx.bezierCurveTo(cp5x, cp5y, cp6x, cp6y, state.width, end3y);
-                ctx.lineTo(state.width, state.height);
-                ctx.closePath();
-                const grad3 = ctx.createLinearGradient(0, y3, state.width, state.height);
-                grad3.addColorStop(0, '#B06AB3');
-                grad3.addColorStop(1, '#4568DC');
-                ctx.fillStyle = grad3;
-                ctx.fill();
-            }
-
-            if (pattern === 'cubes' && anim !== 'landscape' && anim !== 'mountains') {
+            if (pattern === 'cubes') {
                 ctx.fillStyle = '#000000';
                 ctx.fillRect(0, 0, state.width, state.height);
             }
@@ -624,16 +484,74 @@ const CardCanvasRenderer = {
 
                         const x = margin + cIdx * (cellW + gap);
                         const y = margin + rIdx * (cellH + gap);
-                        const baseOpacity = 0.06;
-                        let op = Math.min(0.95, baseOpacity + f * intensity * 0.22);
-                        if (isSparkling) {
-                            if (Math.random() < 0.45) {
-                                op = baseOpacity + (Math.random() < 0.2 ? 0.01 : 0.06);
+
+                        if (anim === 'mountains') {
+                            // Calculate macOS Big Sur base colors for this row index (stable vertical gradient)
+                            const ny = rIdx / rows;
+                            let baseHue;
+                            if (ny < 0.35) {
+                                // Top region: Blue / Cyan Sky (205 -> 230)
+                                const t = ny / 0.35;
+                                baseHue = 205 + t * 25;
+                            } else if (ny < 0.68) {
+                                // Mid region: Purple / Lila Mountains (230 -> 290)
+                                const t = (ny - 0.35) / 0.33;
+                                baseHue = 230 + t * 60;
+                            } else if (ny < 0.88) {
+                                // Lower region: Pink / Magenta / Red transition (290 -> 345)
+                                const t = (ny - 0.68) / 0.20;
+                                baseHue = 290 + t * 55;
                             } else {
-                                op = Math.min(0.95, baseOpacity + f * intensity * 0.5);
+                                // Bottom region: Warm Orange / Red-Orange base (345 -> 385, which wraps to 25)
+                                const t = (ny - 0.88) / 0.12;
+                                baseHue = 345 + t * 40;
                             }
+
+                            // Slow, subtle waving hue variation to add depth without shifting the general picture
+                            const hueOffset = Math.sin(cIdx * 0.18 + rIdx * 0.22 + time * 0.0006) * 6;
+                            let hue = (baseHue + hueOffset + 360) % 360;
+
+                            // Gentle shimmering lightness
+                            let lightness = 44 + Math.sin(cIdx * 0.22 - rIdx * 0.18 + time * 0.0008) * 3;
+
+                            // Add background ripples influence
+                            let ripSum = 0;
+                            for (let r = 0; r < state.ripples.length; r++) {
+                                const rip = state.ripples[r];
+                                const dist = Math.sqrt((cx - rip.x)**2 + (cy - rip.y)**2);
+                                const wHalf = 28;
+                                if (Math.abs(dist - rip.radius) < wHalf) {
+                                    ripSum += (1.0 - Math.abs(dist - rip.radius) / wHalf) * rip.opacity;
+                                }
+                            }
+                            // Boost lightness & hue shift slightly on ripples
+                            lightness += ripSum * 14;
+                            hue = (hue + ripSum * 15) % 360;
+
+                            // Pointer interaction highlights
+                            if (state.pointerActive) {
+                                const pointerDist = Math.sqrt((cx - state.px)**2 + (cy - state.py)**2);
+                                if (pointerDist < 75) {
+                                    const factor = 1.0 - pointerDist / 75;
+                                    lightness += factor * 22; // subtle glow boost
+                                    hue = (hue - factor * 12 + 360) % 360; // slight color shift on hover
+                                }
+                            }
+
+                            lightness = Math.max(15, Math.min(95, lightness));
+                            ctx.fillStyle = `hsl(${hue}, 95%, ${lightness}%)`;
+                        } else {
+                            const baseOpacity = 0.06;
+                            let op = Math.min(0.95, baseOpacity + f * intensity * 0.22);
+                            if (isSparkling) {
+                                if (Math.random() < 0.45) {
+                                    op = baseOpacity + (Math.random() < 0.2 ? 0.01 : 0.06);
+                                } else {
+                                    op = Math.min(0.95, baseOpacity + f * intensity * 0.5);
+                                }
+                            }
+                            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${op})`;
                         }
-                        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${op})`;
                         drawRoundRect(ctx, x, y, cellW, cellH, 1.5);
                     }
                 }
@@ -821,7 +739,7 @@ function applyCardAppearance(container, appearance) {
     }
 
     // Canvas support check
-    const needsCanvas = (anim === 'ripple' || anim === 'gol' || anim === 'firework' || anim === 'landscape' || anim === 'mountains' || pattern === 'cubes');
+    const needsCanvas = (anim === 'ripple' || anim === 'gol' || anim === 'firework' || anim === 'mountains' || pattern === 'cubes');
     if (needsCanvas) {
         CardCanvasRenderer.init(container, appearance);
     } else {
