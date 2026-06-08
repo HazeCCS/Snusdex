@@ -808,13 +808,17 @@ async function toggleDebugBadge(badgeId, hasBadge, btn) {
 
         if (hasBadge) {
             // Remove badge
-            const { error } = await supabaseClient
+            const { data, error } = await supabaseClient
                 .from('user_badges')
                 .delete()
                 .eq('user_id', user.id)
-                .eq('badge_id', badgeId);
+                .eq('badge_id', badgeId)
+                .select();
 
             if (error) throw error;
+            if (!data || data.length === 0) {
+                throw new Error("No rows deleted. Check if DELETE policy is missing on user_badges table in Supabase RLS.");
+            }
 
             globalUserBadges.delete(badgeId);
         } else {

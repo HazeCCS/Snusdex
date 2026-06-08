@@ -125,6 +125,12 @@ CREATE POLICY "user_badges_select_policy" ON public.user_badges
         )
     );
 
+-- User können ihre eigenen user_badges löschen
+DROP POLICY IF EXISTS "user_badges_own_delete" ON public.user_badges;
+DROP POLICY IF EXISTS "user_badges_delete_policy" ON public.user_badges;
+CREATE POLICY "user_badges_delete_policy" ON public.user_badges
+    FOR DELETE USING (auth.uid() = user_id);
+
 -- 9. Add featured_badge_id column to profiles if not exists
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS featured_badge_id UUID;
 

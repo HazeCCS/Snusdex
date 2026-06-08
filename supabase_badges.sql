@@ -42,6 +42,10 @@ CREATE POLICY "user_badges_own_read" ON user_badges
 CREATE POLICY "user_badges_own_insert" ON user_badges
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+-- User können ihre eigenen user_badges löschen
+CREATE POLICY "user_badges_own_delete" ON user_badges
+    FOR DELETE USING (auth.uid() = user_id);
+
 -- 4. Seed: Collector-Badges Lvl 1–10
 -- image_url: Trage hier deine eigenen Bild-URLs ein.
 -- Du kannst diese Einträge nach dem Ausführen in Supabase anpassen (z.B. image_url updaten).
