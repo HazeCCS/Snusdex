@@ -474,23 +474,45 @@ const CardCanvasRenderer = {
                             const centerDist = Math.sqrt((cx - state.width/2)**2 + (cy - state.height/2)**2);
                             f = Math.sin(time * 0.003 - centerDist * 0.015) * 0.45 + 0.55;
                         } else if (anim === 'wave') {
-                            // PS4-style diagonal wave: multiple layered sine waves sweeping across
-                            const nCol = cIdx / cols;
-                            const nRow = rIdx / rows;
-                            // Primary diagonal wave (fast, sharp)
-                            const wave1 = Math.sin(nCol * 8.0 + nRow * 4.0 - time * 0.004) * 0.5 + 0.5;
-                            // Secondary diagonal wave (slower, wide) to add depth
-                            const wave2 = Math.sin(nCol * 4.0 - nRow * 3.0 - time * 0.0025) * 0.5 + 0.5;
-                            // Tertiary subtle shimmer
-                            const wave3 = Math.sin(nCol * 12.0 + nRow * 6.0 - time * 0.006) * 0.25 + 0.75;
-                            // Combine: primary drives brightness, others add shimmer
-                            f = Math.pow(wave1, 1.8) * 0.7 + wave2 * 0.2 + wave3 * 0.1;
-                            f = Math.max(0.0, Math.min(1.0, f));
-                            // Pointer interaction: pointer proximity boosts brightness locally
+                            // Silk ribbon: compute the ribbon's Y position at this column
+                            // Amplitude and phase shift slowly over time like fabric fluttering
+                            const T = time * 0.001; // time in seconds
+                            const nx = cIdx / cols;  // 0..1 left to right
+                            const ny = rIdx / rows;  // 0..1 top to bottom
+
+                            // Amplitude slowly breathes between narrow and wide
+                            const amp1 = 0.18 + Math.sin(T * 0.28) * 0.10;
+                            const amp2 = 0.07 + Math.cos(T * 0.19) * 0.05;
+                            const amp3 = 0.04 + Math.sin(T * 0.41) * 0.03;
+
+                            // Primary ribbon Y: sweeps left-to-right with slow temporal drift
+                            const ribbonY1 = 0.5
+                                + amp1 * Math.sin(nx * 3.5 - T * 1.4)
+                                + amp2 * Math.sin(nx * 5.8 + T * 0.7)
+                                + amp3 * Math.cos(nx * 8.0 - T * 2.1);
+
+                            // Secondary ribbon Y: counter-phase for crossing-ribbon look
+                            const ribbonY2 = 0.5
+                                - amp1 * Math.sin(nx * 3.0 - T * 1.1 + 1.2)
+                                + amp2 * Math.cos(nx * 4.5 + T * 0.9)
+                                + amp3 * Math.sin(nx * 7.0 - T * 1.8 + 0.5);
+
+                            // Ribbon half-width in normalized Y units (how thick the glowing band is)
+                            const ribbonHalf = 0.10;
+                            const dist1 = Math.abs(ny - ribbonY1);
+                            const dist2 = Math.abs(ny - ribbonY2);
+
+                            // Soft quadratic falloff from ribbon center → bright core, dark edges
+                            const g1 = dist1 < ribbonHalf ? Math.pow(1.0 - dist1 / ribbonHalf, 1.8) : 0.0;
+                            const g2 = dist2 < ribbonHalf ? Math.pow(1.0 - dist2 / ribbonHalf, 1.8) : 0.0;
+
+                            f = Math.min(1.0, g1 + g2 * 0.7);
+
+                            // Pointer proximity: finger touch creates local bright spot on the ribbon
                             if (state.pointerActive) {
-                                const dist = Math.sqrt((cx - state.px)**2 + (cy - state.py)**2);
-                                if (dist < 80) {
-                                    f = Math.min(1.0, f + (1.0 - dist / 80) * 0.6);
+                                const pDist = Math.sqrt((cx - state.px)**2 + (cy - state.py)**2);
+                                if (pDist < 70) {
+                                    f = Math.min(1.0, f + (1.0 - pDist / 70) * 0.5);
                                 }
                             }
                         } else if (anim === 'none') {
@@ -506,35 +528,25 @@ const CardCanvasRenderer = {
                         const y = margin + rIdx * (cellH + gap);
 
                         if (anim === 'mountains') {
-                            // Calculate macOS Big Sur base colors for this row index (stable vertical gradient)
+                            // ... (unchanged mountains block continues below)
                             const ny = rIdx / rows;
                             let baseHue;
                             if (ny < 0.35) {
-                                // Top region: Blue / Cyan Sky (205 -> 230)
                                 const t = ny / 0.35;
                                 baseHue = 205 + t * 25;
                             } else if (ny < 0.68) {
-                                // Mid region: Purple / Lila Mountains (230 -> 290)
                                 const t = (ny - 0.35) / 0.33;
                                 baseHue = 230 + t * 60;
                             } else if (ny < 0.88) {
-                                // Lower region: Pink / Magenta / Red transition (290 -> 345)
                                 const t = (ny - 0.68) / 0.20;
                                 baseHue = 290 + t * 55;
                             } else {
-                                // Bottom region: Warm Orange / Red-Orange base (345 -> 385, which wraps to 25)
                                 const t = (ny - 0.88) / 0.12;
                                 baseHue = 345 + t * 40;
                             }
-
-                            // Slow, subtle waving hue variation to add depth without shifting the general picture
                             const hueOffset = Math.sin(cIdx * 0.18 + rIdx * 0.22 + time * 0.0006) * 6;
                             let hue = (baseHue + hueOffset + 360) % 360;
-
-                            // Gentle shimmering lightness
                             let lightness = 44 + Math.sin(cIdx * 0.22 - rIdx * 0.18 + time * 0.0008) * 3;
-
-                            // Add background ripples influence
                             let ripSum = 0;
                             for (let r = 0; r < state.ripples.length; r++) {
                                 const rip = state.ripples[r];
@@ -544,22 +556,24 @@ const CardCanvasRenderer = {
                                     ripSum += (1.0 - Math.abs(dist - rip.radius) / wHalf) * rip.opacity;
                                 }
                             }
-                            // Boost lightness & hue shift slightly on ripples
                             lightness += ripSum * 14;
                             hue = (hue + ripSum * 15) % 360;
-
-                            // Pointer interaction highlights
                             if (state.pointerActive) {
                                 const pointerDist = Math.sqrt((cx - state.px)**2 + (cy - state.py)**2);
                                 if (pointerDist < 75) {
                                     const factor = 1.0 - pointerDist / 75;
-                                    lightness += factor * 22; // subtle glow boost
-                                    hue = (hue - factor * 12 + 360) % 360; // slight color shift on hover
+                                    lightness += factor * 22;
+                                    hue = (hue - factor * 12 + 360) % 360;
                                 }
                             }
-
                             lightness = Math.max(15, Math.min(95, lightness));
                             ctx.fillStyle = `hsl(${hue}, 95%, ${lightness}%)`;
+                        } else if (anim === 'wave') {
+                            // Ribbon glow: very dark background, bright glowing ribbon using card color
+                            // f=0 → almost invisible cube, f=1 → near-full opacity bright ribbon center
+                            const baseOp = 0.04;
+                            const op = Math.min(0.95, baseOp + Math.pow(f, 0.75) * intensity * 0.88);
+                            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${op})`;
                         } else {
                             const baseOpacity = 0.06;
                             let op = Math.min(0.95, baseOpacity + f * intensity * 0.22);
