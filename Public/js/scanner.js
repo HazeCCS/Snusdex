@@ -26,6 +26,17 @@ if (scanModal) {
 async function openScanModal() {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
+    // Prime the scan sound so it can play asynchronously on iOS
+    const scanSound = document.getElementById('scan-sound');
+    if (scanSound) {
+        scanSound.play().then(() => {
+            scanSound.pause();
+            scanSound.currentTime = 0;
+        }).catch(e => {
+            console.log("Audio priming skipped or not allowed:", e);
+        });
+    }
+
     isProcessingScan = false;
     scanFlashlightOn = false;
     scanCameraIndex = 0;
@@ -95,6 +106,12 @@ async function openScanModal() {
                     isProcessingScan = true;
                     clearScanHelpTimer();
                     dismissScanHelpPrompt();
+
+                    const scanSound = document.getElementById('scan-sound');
+                    if (scanSound) {
+                        scanSound.currentTime = 0;
+                        scanSound.play().catch(e => console.error("Error playing scan sound:", e));
+                    }
 
                     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
                     closeScanModal();
