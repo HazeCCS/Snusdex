@@ -3029,6 +3029,19 @@
     <script src="js/suggestions.js?v=181"></script>
     <script src="js/version.js?v=181"></script>
     <script src="js/dex-scroll.js?v=181"></script>
+    <!-- TEMPORARY DEV POPUP FOR COMMERCIAL: CAN SAVED -->
+    <div id="can-saved-popup" class="can-saved-popup-overlay" onclick="triggerHapticFeedback(); closeCanSavedPopup()">
+        <div id="can-saved-backdrop" class="can-saved-popup-backdrop"></div>
+        <div id="can-saved-card" class="can-saved-popup-card">
+            <div class="can-saved-popup-icon-wrap">
+                <svg class="checkmark-svg w-10 h-10 text-[#30D158]" viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="4">
+                    <circle class="checkmark-circle" cx="26" cy="26" r="23" stroke="currentColor" fill="none" />
+                    <path class="checkmark-check" d="M14 27l7 7 16-16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </div>
+            <p class="can-saved-popup-text">Can Saved</p>
+        </div>
+    </div>
 </body>
 
 </html>

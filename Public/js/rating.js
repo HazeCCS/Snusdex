@@ -320,8 +320,13 @@ function openSnusDetail(id, isFromScan = false) {
     const rarityLower = rarity.toLowerCase();
     const nicotine = snus.nicotine || '??';
 
+    const isUnlocked = globalUserCollection[snusId];
+    const clickAttr = !isUnlocked ? `onclick="showCanSavedPopup(event)"` : '';
+    const hoverClass = !isUnlocked ? 'nicotine-mg-hoverable' : '';
+
+
     setHTML('modal-nicotine', `
-        <span class="px-3 py-1.5 bg-white/10 border border-white/5 rounded-full text-[13px] font-semibold text-white tracking-wide shadow-sm">${nicotine} ${t('unit.mgPerG')}</span>
+        <span ${clickAttr} class="px-3 py-1.5 bg-white/10 border border-white/5 rounded-full text-[13px] font-semibold text-white tracking-wide shadow-sm ${hoverClass}">${nicotine} ${t('unit.mgPerG')}</span>
         <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${tRarity(rarity)}</span>
     `);
 
@@ -353,7 +358,7 @@ function openSnusDetail(id, isFromScan = false) {
     if (orderBtnUncollected) orderBtnUncollected.href = affiliateLink;
 
     // 3. COLLECTION STATUS (Freigeschaltet oder nicht)
-    const isUnlocked = globalUserCollection[snusId];
+    // isUnlocked already defined above
     const uncollectedGroup = document.getElementById('uncollected-action-group');
     const scannedGroup = document.getElementById('scanned-action-group');
     const statusGroup = document.getElementById('modal-collected-status');
@@ -645,3 +650,35 @@ window.confirmLegalityRedirect = function () {
     }
     closeLegalityModal();
 };
+
+window.showCanSavedPopup = function (event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const popup = document.getElementById('can-saved-popup');
+    const card = document.getElementById('can-saved-card');
+
+    if (popup && card) {
+        // Reset checkmark animations by replacing SVG element with a clone
+        const checkmark = card.querySelector('.checkmark-svg');
+        if (checkmark) {
+            const newCheckmark = checkmark.cloneNode(true);
+            checkmark.parentNode.replaceChild(newCheckmark, checkmark);
+        }
+
+        if (typeof triggerHapticFeedback === 'function') {
+            triggerHapticFeedback();
+        }
+
+        popup.classList.add('active');
+    }
+};
+
+window.closeCanSavedPopup = function () {
+    const popup = document.getElementById('can-saved-popup');
+    if (popup) {
+        popup.classList.remove('active');
+    }
+};
+
