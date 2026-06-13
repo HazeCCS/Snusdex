@@ -390,57 +390,66 @@
             background-color: var(--ios-separator);
         }
 
+        /* ── Rating Number Buttons ── */
         .rating-row {
             display: flex;
             justify-content: space-between;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 14px;
-            padding: 4px;
+            gap: 5px;
+            padding: 2px 3px;
             position: relative;
             user-select: none;
-        }
-
-        .rating-pill {
-            position: absolute;
-            top: 4px;
-            bottom: 4px;
-            left: 4px;
-            width: calc((100% - 8px) / 10);
-            background: #FFFFFF;
-            border-radius: 10px;
-            transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
-            z-index: 0;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            overflow: visible;
         }
 
         .rating-btn {
-            width: 10%;
-            height: 36px;
+            flex: 1;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 14px;
-            font-weight: 600;
-            z-index: 10;
+            font-weight: 700;
+            border-radius: 10px;
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
             cursor: pointer;
-            transition: color 0.2s;
+            transition:
+                color 0.18s ease,
+                border-color 0.18s ease,
+                background 0.18s ease,
+                box-shadow 0.18s ease,
+                transform 0.12s ease;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
         }
 
-        .rating-btn.active {
-            color: #000000;
+        .rating-btn:active {
+            transform: scale(0.88);
         }
 
         .rating-btn.inactive {
-            color: var(--ios-gray);
+            color: rgba(255, 255, 255, 0.3);
         }
 
         .rating-btn.active {
-            color: #000000;
+            /* Color set via inline style by JS */
+            font-weight: 800;
+            transform: scale(1.05);
         }
 
-        .rating-btn.inactive {
-            color: var(--ios-gray);
+        /* Warn shake: subtle horizontal wiggle when no rating selected */
+        @keyframes ratingWarn {
+            0%   { transform: translateX(0);    }
+            15%  { transform: translateX(-5px); }
+            35%  { transform: translateX(5px);  }
+            55%  { transform: translateX(-4px); }
+            75%  { transform: translateX(3px);  }
+            90%  { transform: translateX(-2px); }
+            100% { transform: translateX(0);   }
+        }
+
+        .rating-row--warn {
+            animation: ratingWarn 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
         }
 
         @keyframes loadingBar {
@@ -1623,7 +1632,7 @@
 
             <div id="modal-views-wrapper" class="w-full pt-2 px-6">
                 <div id="modal-view-info" class="fade-view">
-                    <div class="w-full flex justify-center mb-4 h-60 relative overflow-hidden rounded-2xl">
+                    <div class="w-full flex justify-center mb-4 h-60 relative rounded-2xl bg-[#1C1C1E]">
                         <div id="modal-img-skeleton" class="sk absolute inset-0 rounded-2xl z-10" style="transition:opacity 0.3s ease"></div>
                         <img id="modal-image" src="" alt="Snus"
                             class="h-full w-full object-contain scale-110 drop-shadow-2xl z-20">
@@ -2366,6 +2375,51 @@
     <!-- ========================================== -->
     <!-- BADGES GRID PAGE                           -->
     <!-- ========================================== -->
+
+    <!-- ========================================== -->
+    <!-- RATING SUMMARY POPUP                        -->
+    <!-- ========================================== -->
+    <div id="rating-summary-overlay"
+        class="fixed inset-0 z-[2500] hidden flex-col items-end justify-end"
+        style="background: rgba(0,0,0,0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);">
+        <div id="rating-summary-card"
+            class="w-full bg-[#1C1C1E] rounded-t-[32px] border-t border-white/10 shadow-2xl flex flex-col items-center"
+            style="transform: translateY(100%); transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1); padding-bottom: env(safe-area-inset-bottom, 24px);">
+
+            <!-- Drag handle -->
+            <div class="w-10 h-1.5 bg-[#3A3A3C] rounded-full mt-4 mb-5 flex-shrink-0"></div>
+
+            <!-- Product image -->
+            <div class="relative mb-4 flex-shrink-0">
+                <div id="rating-summary-glow" class="absolute rounded-full blur-2xl opacity-30 pointer-events-none" style="inset:-20px"></div>
+                <div class="w-28 h-28 flex items-center justify-center relative z-10">
+                    <img id="rating-summary-img" src="" alt="" class="w-full h-full object-contain drop-shadow-2xl">
+                </div>
+            </div>
+
+            <!-- Name & meta -->
+            <h2 id="rating-summary-name" class="text-[22px] font-bold text-white tracking-tight text-center px-6 leading-tight mb-1"></h2>
+            <p id="rating-summary-meta" class="text-[13px] text-[#8E8E93] font-medium mb-5"></p>
+
+            <!-- Overall score -->
+            <div class="flex items-end gap-1.5 mb-5">
+                <span id="rating-summary-overall" class="text-[44px] font-bold leading-none"></span>
+                <span class="text-[16px] text-[#8E8E93] font-medium pb-1.5">/ 10</span>
+            </div>
+
+            <!-- 6 score circles -->
+            <div id="rating-summary-circles" class="grid grid-cols-6 gap-2 px-6 mb-7 w-full"></div>
+
+            <!-- Continue button -->
+            <div class="px-6 w-full mb-2">
+                <button onclick="closeRatingSummary()"
+                    class="w-full py-4 rounded-2xl bg-white text-black text-[17px] font-bold tracking-tight active:scale-[0.97] transition-transform shadow-lg">
+                    Super! 🎉
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="badges-grid-page"
         class="fixed inset-0 z-[200] bg-[#000000] flex flex-col transition-transform duration-300 translate-x-full hidden">
         <div
@@ -3018,7 +3072,7 @@
     <script src="js/auth.js?v=181"></script>
     <script src="js/navigation.js?v=183"></script>
     <script src="js/dex.js?v=181"></script>
-    <script src="js/rating.js?v=181"></script>
+    <script src="js/rating.js?v=183"></script>
     <script src="js/admin.js?v=181"></script>
     <script src="js/social.js?v=183"></script>
     <script src="js/usage.js?v=181"></script>

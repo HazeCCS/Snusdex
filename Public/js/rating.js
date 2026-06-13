@@ -51,17 +51,17 @@ function setupGlobalSwipe() {
 setupGlobalSwipe();
 
 let tempRatings = {
-    taste: 5,
+    taste: null,
     taste_text: '',
-    smell: 5,
+    smell: null,
     smell_text: '',
-    bite: 5,
+    bite: null,
     bite_text: '',
-    drip: 5,
+    drip: null,
     drip_text: '',
-    visuals: 5,
+    visuals: null,
     visuals_text: '',
-    strength: 5,
+    strength: null,
     strength_text: ''
 };
 let currentSelectedSnusId = null;
@@ -69,26 +69,46 @@ let currentSelectedSnusId = null;
 const RATING_STEPS = ['visuals', 'smell', 'taste', 'bite', 'drip', 'strength'];
 let currentRatingStepIndex = 0;
 
+function getRatingColor(val) {
+    // Returns a CSS color string transitioning red(1)→yellow(5)→green(7)→blue(10)
+    const stops = [
+        { v: 1,  r: 255, g: 59,  b: 48  }, // iOS red
+        { v: 4,  r: 255, g: 159, b: 10  }, // iOS orange
+        { v: 6,  r: 255, g: 214, b: 10  }, // iOS yellow
+        { v: 8,  r: 52,  g: 199, b: 89  }, // iOS green
+        { v: 10, r: 10,  g: 132, b: 255 }  // iOS blue
+    ];
+    let lo = stops[0], hi = stops[stops.length - 1];
+    for (let i = 0; i < stops.length - 1; i++) {
+        if (val >= stops[i].v && val <= stops[i + 1].v) { lo = stops[i]; hi = stops[i + 1]; break; }
+    }
+    const t = (val - lo.v) / (hi.v - lo.v);
+    const r = Math.round(lo.r + t * (hi.r - lo.r));
+    const g = Math.round(lo.g + t * (hi.g - lo.g));
+    const b = Math.round(lo.b + t * (hi.b - lo.b));
+    return `rgb(${r},${g},${b})`;
+}
+
 function initRatingWizard() {
     currentRatingStepIndex = 0;
 
     RATING_STEPS.forEach(cat => {
-        tempRatings[cat] = 5;
+        tempRatings[cat] = null;
         tempRatings[`${cat}_text`] = '';
 
         const row = document.getElementById(`row-${cat}`);
         if (!row) return;
-        row.innerHTML = `<div class="rating-pill" id="pill-${cat}"></div>`;
+        row.innerHTML = '';
         for (let i = 1; i <= 10; i++) {
-            const btn = document.createElement('div');
-            btn.className = `rating-btn ${i === 5 ? 'active' : 'inactive'}`;
+            const btn = document.createElement('button');
+            btn.className = 'rating-btn inactive';
+            btn.setAttribute('data-val', i);
             btn.innerText = i;
             btn.onclick = () => setRating(cat, i);
             row.appendChild(btn);
         }
-        updatePill(cat, 5);
         const valIndicator = row.parentElement.querySelector('.rating-val');
-        if (valIndicator) valIndicator.innerText = `5/10`;
+        if (valIndicator) valIndicator.innerText = '';
 
         const textEl = document.getElementById(`text-${cat}`);
         if (textEl) textEl.value = '';
@@ -99,19 +119,33 @@ function initRatingWizard() {
 
 function setRating(category, value) {
     tempRatings[category] = value;
-    updatePill(category, value);
+    const color = getRatingColor(value);
     const row = document.getElementById(`row-${category}`);
-    row.querySelectorAll('.rating-btn').forEach((btn, idx) => {
-        btn.className = `rating-btn ${idx + 1 === value ? 'active' : 'inactive'}`;
+    row.querySelectorAll('.rating-btn').forEach((btn) => {
+        const btnVal = parseInt(btn.getAttribute('data-val'));
+        if (btnVal === value) {
+            btn.className = 'rating-btn active';
+            btn.style.setProperty('--accent-color', color);
+            btn.style.color = color;
+            btn.style.borderColor = color;
+            btn.style.background = color + '22';
+            btn.style.boxShadow = `0 0 10px ${color}55`;
+        } else {
+            btn.className = 'rating-btn inactive';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+            btn.style.background = '';
+            btn.style.boxShadow = '';
+        }
     });
     const valIndicator = row.parentElement.querySelector('.rating-val');
-    if (valIndicator) valIndicator.innerText = `${value}/10`;
+    if (valIndicator) {
+        valIndicator.innerText = `${value}/10`;
+        valIndicator.style.color = color;
+    }
+    // Remove warning state if it was shown
+    row.classList.remove('rating-row--warn');
     triggerHapticFeedback();
-}
-
-function updatePill(cat, val) {
-    const pill = document.getElementById(`pill-${cat}`);
-    if (pill) pill.style.transform = `translateX(${(val - 1) * 100}%)`;
 }
 
 function updateRatingStepUI() {
@@ -174,6 +208,18 @@ function updateRatingStepUI() {
 
 function nextRatingStep() {
     const currentStep = RATING_STEPS[currentRatingStepIndex];
+
+    // Guard: require a rating selection before proceeding
+    if (tempRatings[currentStep] === null) {
+        const row = document.getElementById(`row-${currentStep}`);
+        if (row) {
+            row.classList.remove('rating-row--warn');
+            void row.offsetWidth; // reflow to restart animation
+            row.classList.add('rating-row--warn');
+        }
+        return;
+    }
+
     const textEl = document.getElementById(`text-${currentStep}`);
     if (textEl) tempRatings[`${currentStep}_text`] = textEl.value;
 
@@ -556,10 +602,12 @@ async function collectCurrentSnus() {
             }
         }
         renderDexGrid(globalSnusData);
-        closeSnusDetail();
         // Social Cache invalidieren, da neue Kollektion hinzugekommen ist
         _socialCacheData = null;
         _socialCacheTime = 0;
+
+        // Show rating summary popup instead of closing directly
+        showRatingSummary(currentSelectedSnusId, { ...tempRatings });
     } else {
         alert(t('error.saveFailed', { msg: error.message }));
     }
@@ -574,7 +622,8 @@ function editRating() {
     if (globalUserCollection[currentSelectedSnusId]) {
         const currentRatings = globalUserCollection[currentSelectedSnusId].ratings;
         RATING_STEPS.forEach(cat => {
-            setRating(cat, currentRatings[cat] || 5);
+            const val = currentRatings[cat];
+            if (val != null) setRating(cat, val);
             const textEl = document.getElementById(`text-${cat}`);
             if (textEl) {
                 textEl.value = currentRatings[`${cat}_text`] || '';
@@ -585,6 +634,114 @@ function editRating() {
     currentRatingStepIndex = 0;
     updateRatingStepUI();
     showRatingView();
+}
+
+// ==========================================
+// RATING SUMMARY POPUP
+// ==========================================
+
+function getScoreColorClass(val) {
+    const n = parseFloat(val);
+    if (n <= 3.9) return '#FF3B30';
+    if (n <= 6.9) return '#FFCC00';
+    if (n <= 8.9) return '#34C759';
+    return '#0A84FF';
+}
+
+function getScoreRingStyle(val) {
+    const color = getScoreColorClass(val);
+    return `border-color: ${color}40; color: ${color};`;
+}
+
+function showRatingSummary(snusId, ratings) {
+    const snus = globalSnusData.find(s => parseInt(s.id) === parseInt(snusId));
+    if (!snus) return;
+
+    // Populate image
+    const img = document.getElementById('rating-summary-img');
+    const glow = document.getElementById('rating-summary-glow');
+    if (img) {
+        img.src = snus.image ? `${GITHUB_BASE}${snus.image}` : '';
+        img.alt = snus.name || '';
+    }
+
+    // Rarity glow color
+    const rarity = (snus.rarity || 'common').toLowerCase().trim();
+    if (glow) {
+        const colorMap = { common: '#8E8E93', uncommon: '#34C759', rare: '#0A84FF', epic: '#BF5AF2', legendary: '#FF9F0A', exotic: '#FF375F', mythic: '#64D2FF' };
+        const glowColor = colorMap[rarity] || '#8E8E93';
+        glow.style.background = glowColor;
+    }
+
+    // Name & meta
+    const nameEl = document.getElementById('rating-summary-name');
+    const metaEl = document.getElementById('rating-summary-meta');
+    if (nameEl) nameEl.innerText = snus.name || '';
+    if (metaEl) metaEl.innerText = `${snus.nicotine || '??'} mg/g`;
+
+    // Overall score (average of all 6)
+    const vals = RATING_STEPS.map(cat => ratings[cat]).filter(v => v !== null && v !== undefined);
+    const overall = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+    const overallEl = document.getElementById('rating-summary-overall');
+    if (overallEl) {
+        overallEl.innerText = overall.toFixed(1);
+        overallEl.style.color = getScoreColorClass(overall);
+    }
+
+    // Circles
+    const circlesEl = document.getElementById('rating-summary-circles');
+    if (circlesEl) {
+        const labels = {
+            visuals:  t('rating.vis')   || 'Vis.',
+            smell:    t('rating.smell') || 'Smell',
+            taste:    t('rating.taste') || 'Taste',
+            bite:     t('rating.bite')  || 'Bite',
+            drip:     t('rating.drip')  || 'Drip',
+            strength: t('rating.str')   || 'Str.'
+        };
+        circlesEl.innerHTML = RATING_STEPS.map(cat => {
+            const val = ratings[cat];
+            const display = (val !== null && val !== undefined) ? Number(val).toFixed(1) : '—';
+            const ringStyle = getScoreRingStyle(val);
+            return `
+                <div class="flex flex-col items-center">
+                    <div class="w-10 h-10 rounded-full border-2 flex items-center justify-center bg-black/30 mb-1.5 shadow-inner" style="${ringStyle}">
+                        <span class="text-[13px] font-bold" style="color: ${getScoreColorClass(val)}">${display}</span>
+                    </div>
+                    <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-semibold">${labels[cat]}</span>
+                </div>`;
+        }).join('');
+    }
+
+    // Show overlay
+    const overlay = document.getElementById('rating-summary-overlay');
+    const card = document.getElementById('rating-summary-card');
+    if (!overlay || !card) return;
+
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            card.style.transform = 'translateY(0)';
+        });
+    });
+
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('success');
+}
+
+function closeRatingSummary() {
+    const overlay = document.getElementById('rating-summary-overlay');
+    const card = document.getElementById('rating-summary-card');
+    if (!overlay || !card) return;
+
+    card.style.transform = 'translateY(100%)';
+    setTimeout(() => {
+        overlay.classList.remove('flex');
+        overlay.classList.add('hidden');
+        card.style.transform = 'translateY(100%)';
+        // Now close the snus detail modal
+        closeSnusDetail();
+    }, 420);
 }
 
 // ==========================================
