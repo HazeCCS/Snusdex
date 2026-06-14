@@ -25,14 +25,66 @@ const CARD_FONT_MAP = {
     mono:        'Menlo, monospace',
 };
 
+function checkAnimationUnlocked(animId) {
+    if (animId === 'none') return true;
+    if (typeof actualXp !== 'number') return true; // fallback while loading
+    const currentXp = actualXp;
+    if (animId === 'sweep') return currentXp >= 300;
+    if (animId === 'pulse') return currentXp >= 500;
+    if (animId === 'ripple') return currentXp >= 750;
+    if (animId === 'gol') return currentXp >= 1000;
+    if (animId === 'firework') return currentXp >= 1200;
+    if (animId === 'wave') return currentXp >= 2000;
+    if (animId === 'mountains') {
+        const supporterBadgeId = 'da77f766-3d23-41c3-ab0e-d716cf9bdf7b';
+        return typeof globalUserBadges !== 'undefined' && globalUserBadges.has(supporterBadgeId);
+    }
+    return true;
+}
+
+function checkPatternUnlocked(patternId) {
+    if (patternId === 'none') return true;
+    if (typeof globalSnusData === 'undefined' || typeof globalUserCollection === 'undefined' || !globalSnusData.length) return true; // fallback
+    
+    // Count collected snus of each rarity
+    const countRarity = (rarity) => {
+        return globalSnusData.filter(s => 
+            globalUserCollection[s.id] && 
+            (s.rarity || 'common').toLowerCase().trim() === rarity
+        ).length;
+    };
+    
+    if (patternId === 'dots') return countRarity('common') >= 1;
+    if (patternId === 'grid') return countRarity('uncommon') >= 1;
+    if (patternId === 'lines') return countRarity('rare') >= 1;
+    if (patternId === 'carbon') return countRarity('epic') >= 1;
+    if (patternId === 'hex') return countRarity('exotic') >= 1;
+    if (patternId === 'rings') return countRarity('legendary') >= 1;
+    if (patternId === 'cubes') {
+        const totalCollected = globalSnusData.filter(s => globalUserCollection[s.id]).length;
+        return countRarity('legendary') >= 3 && totalCollected >= 6;
+    }
+    return true;
+}
+
 function getLocalCardAppearance() {
+    let anim = localStorage.getItem('metalCardAnim') || 'sweep';
+    let pattern = localStorage.getItem('metalCardPattern') || 'none';
+    
+    if (typeof checkAnimationUnlocked === 'function' && !checkAnimationUnlocked(anim)) {
+        anim = 'sweep';
+    }
+    if (typeof checkPatternUnlocked === 'function' && !checkPatternUnlocked(pattern)) {
+        pattern = 'none';
+    }
+
     return {
         colorId: localStorage.getItem('metalCardColorId') || 'white',
         colorHex: localStorage.getItem('metalCardColorHex') || '#ffffff',
         font: localStorage.getItem('metalCardFont') || 'system',
-        anim: localStorage.getItem('metalCardAnim') || 'sweep',
+        anim: anim,
         saturation: localStorage.getItem('metalCardSaturation') || '1.3',
-        pattern: localStorage.getItem('metalCardPattern') || 'none',
+        pattern: pattern,
         intensity: localStorage.getItem('metalCardIntensity') || '1'
     };
 }
@@ -108,22 +160,35 @@ const CardCanvasRenderer = {
                     peak.tx = Math.random() * rect.width;
                     peak.ty = Math.random() * rect.height;
                 });
+
+                // Compute dynamic columns and rows for cubes pattern
+                const cellSize = 8;
+                const gap = 2;
+                const margin = 10;
+                const availW = state.width - 2 * margin;
+                const availH = state.height - 2 * margin;
+                const newCols = Math.max(4, Math.floor((availW + gap) / (cellSize + gap)));
+                const newRows = Math.max(4, Math.floor((availH + gap) / (cellSize + gap)));
+
+                if (newCols !== state.cols || newRows !== state.rows) {
+                    state.cols = newCols;
+                    state.rows = newRows;
+                    state.golGrid = new Uint8Array(newCols * newRows);
+                    state.golIntensity = new Float32Array(newCols * newRows);
+                    state.fireworkGrid = new Float32Array(newCols * newRows);
+                    if (state.reseedGol) {
+                        state.reseedGol();
+                    }
+                }
             }
         };
 
         state.resize();
         window.addEventListener('resize', state.resize);
 
-        const cols = 36;
-        const rows = 18;
-        state.cols = cols;
-        state.rows = rows;
-        state.golGrid = new Uint8Array(cols * rows);
-        state.golIntensity = new Float32Array(cols * rows);
-        state.fireworkGrid = new Float32Array(cols * rows);
-
         function reseedGol() {
-            for (let i = 0; i < cols * rows; i++) {
+            const size = state.cols * state.rows;
+            for (let i = 0; i < size; i++) {
                 state.golGrid[i] = Math.random() < 0.22 ? 1 : 0;
             }
             state.golStaticFramesCount = 0;
@@ -202,14 +267,17 @@ const CardCanvasRenderer = {
             const anim = appearance.anim || 'sweep';
             const pattern = appearance.pattern || 'none';
             if (anim === 'firework' && pattern === 'cubes') {
-                const margin = 10;
+                const cellSize = 8;
                 const gap = 2;
+                const margin = 10;
                 const availW = state.width - 2 * margin;
                 const availH = state.height - 2 * margin;
-                const cellW = (availW - (cols - 1) * gap) / cols;
-                const cellH = (availH - (rows - 1) * gap) / rows;
-                const cx = Math.max(0, Math.min(cols - 1, Math.floor((state.px - margin) / (cellW + gap))));
-                const cy = Math.max(0, Math.min(rows - 1, Math.floor((state.py - margin) / (cellH + gap))));
+                const gridW = state.cols * cellSize + (state.cols - 1) * gap;
+                const gridH = state.rows * cellSize + (state.rows - 1) * gap;
+                const marginX = margin + (availW - gridW) / 2;
+                const marginY = margin + (availH - gridH) / 2;
+                const cx = Math.max(0, Math.min(state.cols - 1, Math.floor((state.px - marginX) / (cellSize + gap))));
+                const cy = Math.max(0, Math.min(state.rows - 1, Math.floor((state.py - marginY) / (cellSize + gap))));
                 spawnFireworkExplosion(state, cx, cy);
             } else if (anim === 'ripple' || pattern === 'cubes') {
                 state.ripples.push({
@@ -278,14 +346,14 @@ const CardCanvasRenderer = {
                 if (time - state.golLastPhysicsTime > 100) {
                     state.golLastPhysicsTime = time;
 
-                    const nextGrid = new Uint8Array(cols * rows);
+                    const nextGrid = new Uint8Array(state.cols * state.rows);
                     let aliveCount = 0;
                     let changes = 0;
 
-                    for (let y = 0; y < rows; y++) {
-                        for (let x = 0; x < cols; x++) {
-                            const neighbors = getNeighbors(state.golGrid, x, y, cols, rows);
-                            const idx = y * cols + x;
+                    for (let y = 0; y < state.rows; y++) {
+                        for (let x = 0; x < state.cols; x++) {
+                            const neighbors = getNeighbors(state.golGrid, x, y, state.cols, state.rows);
+                            const idx = y * state.cols + x;
                             const isAlive = state.golGrid[idx] > 0;
                             if (isAlive) {
                                 if (neighbors === 2 || neighbors === 3) {
@@ -321,7 +389,7 @@ const CardCanvasRenderer = {
                 }
             }
 
-            for (let i = 0; i < cols * rows; i++) {
+            for (let i = 0; i < state.cols * state.rows; i++) {
                 const target = state.golGrid[i];
                 if (target > 0) {
                     state.golIntensity[i] = Math.min(1.0, state.golIntensity[i] + dt * 4.0);
@@ -334,7 +402,7 @@ const CardCanvasRenderer = {
             const fireworkActive = anim === 'firework' && pattern === 'cubes';
             if (fireworkActive) {
                 // Decay the entire grid intensity
-                for (let i = 0; i < cols * rows; i++) {
+                for (let i = 0; i < state.cols * state.rows; i++) {
                     state.fireworkGrid[i] = Math.max(0.0, state.fireworkGrid[i] - dt * 2.5);
                 }
 
@@ -342,8 +410,8 @@ const CardCanvasRenderer = {
                 const now = time;
                 if (now - state.lastFireworkLaunch > 1200 + Math.random() * 800) {
                     state.lastFireworkLaunch = now;
-                    const rx = Math.floor(Math.random() * cols);
-                    const ry = Math.floor(Math.random() * (rows - 4)) + 2; // avoid outer edges
+                    const rx = Math.floor(Math.random() * state.cols);
+                    const ry = Math.floor(Math.random() * (state.rows - 4)) + 2; // avoid outer edges
                     spawnFireworkExplosion(state, rx, ry);
                 }
 
@@ -357,13 +425,13 @@ const CardCanvasRenderer = {
                     spark.y += spark.vy * dt;
                     spark.life -= spark.decay * dt;
 
-                    if (spark.life <= 0 || spark.x < 0 || spark.x >= cols || spark.y < 0 || spark.y >= rows) {
+                    if (spark.life <= 0 || spark.x < 0 || spark.x >= state.cols || spark.y < 0 || spark.y >= state.rows) {
                         state.fireworkSparks.splice(i, 1);
                     } else {
                         const cx = Math.floor(spark.x);
                         const cy = Math.floor(spark.y);
-                        if (cx >= 0 && cx < cols && cy >= 0 && cy < rows) {
-                            const idx = cy * cols + cx;
+                        if (cx >= 0 && cx < state.cols && cy >= 0 && cy < state.rows) {
+                            const idx = cy * state.cols + cx;
                             state.fireworkGrid[idx] = Math.min(1.0, state.fireworkGrid[idx] + spark.life * 0.95);
                             
                             // Light bleed to 4-way neighbors
@@ -377,8 +445,8 @@ const CardCanvasRenderer = {
                             for (let n = 0; n < neighbors.length; n++) {
                                 const nx = neighbors[n].x;
                                 const ny = neighbors[n].y;
-                                if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
-                                    const nIdx = ny * cols + nx;
+                                if (nx >= 0 && nx < state.cols && ny >= 0 && ny < state.rows) {
+                                    const nIdx = ny * state.cols + nx;
                                     state.fireworkGrid[nIdx] = Math.min(1.0, state.fireworkGrid[nIdx] + bleed);
                                 }
                             }
@@ -388,7 +456,7 @@ const CardCanvasRenderer = {
             } else {
                 // If not active, quickly drain firework grid
                 if (state.fireworkGrid) {
-                    for (let i = 0; i < cols * rows; i++) {
+                    for (let i = 0; i < state.cols * state.rows; i++) {
                         if (state.fireworkGrid[i] > 0) {
                             state.fireworkGrid[i] = Math.max(0.0, state.fireworkGrid[i] - dt * 5.0);
                         }
@@ -426,29 +494,32 @@ const CardCanvasRenderer = {
             }
 
             if (pattern === 'cubes') {
-                const margin = 10;
+                const cellSize = 8;
                 const gap = 2;
+                const margin = 10;
                 const availW = state.width - 2 * margin;
                 const availH = state.height - 2 * margin;
-                const cellW = (availW - (cols - 1) * gap) / cols;
-                const cellH = (availH - (rows - 1) * gap) / rows;
+                const gridW = state.cols * cellSize + (state.cols - 1) * gap;
+                const gridH = state.rows * cellSize + (state.rows - 1) * gap;
+                const marginX = margin + (availW - gridW) / 2;
+                const marginY = margin + (availH - gridH) / 2;
 
-                for (let rIdx = 0; rIdx < rows; rIdx++) {
-                    for (let cIdx = 0; cIdx < cols; cIdx++) {
+                for (let rIdx = 0; rIdx < state.rows; rIdx++) {
+                    for (let cIdx = 0; cIdx < state.cols; cIdx++) {
                         // Skip the 4 corner cubes
-                        if ((rIdx === 0 || rIdx === rows - 1) && (cIdx === 0 || cIdx === cols - 1)) {
+                        if ((rIdx === 0 || rIdx === state.rows - 1) && (cIdx === 0 || cIdx === state.cols - 1)) {
                             continue;
                         }
 
-                        const cx = margin + cIdx * (cellW + gap) + cellW/2;
-                        const cy = margin + rIdx * (cellH + gap) + cellH/2;
+                        const cx = marginX + cIdx * (cellSize + gap) + cellSize/2;
+                        const cy = marginY + rIdx * (cellSize + gap) + cellSize/2;
 
                         let f = 0.0;
                         let isSparkling = false;
                         if (anim === 'gol') {
-                            f = state.golIntensity[rIdx * cols + cIdx];
+                            f = state.golIntensity[rIdx * state.cols + cIdx];
                         } else if (anim === 'firework') {
-                            f = state.fireworkGrid[rIdx * cols + cIdx];
+                            f = state.fireworkGrid[rIdx * state.cols + cIdx];
                             if (f > 0.04) {
                                 isSparkling = true;
                             }
@@ -477,8 +548,8 @@ const CardCanvasRenderer = {
                             // Silk ribbon: compute the ribbon's Y position at this column
                             // Amplitude and phase shift slowly over time like fabric fluttering
                             const T = time * 0.001; // time in seconds
-                            const nx = cIdx / cols;  // 0..1 left to right
-                            const ny = rIdx / rows;  // 0..1 top to bottom
+                            const nx = cIdx / state.cols;  // 0..1 left to right
+                            const ny = rIdx / state.rows;  // 0..1 top to bottom
 
                             // Amplitude slowly breathes between narrow and wide
                             const amp1 = 0.18 + Math.sin(T * 0.28) * 0.10;
@@ -524,12 +595,12 @@ const CardCanvasRenderer = {
                             }
                         }
 
-                        const x = margin + cIdx * (cellW + gap);
-                        const y = margin + rIdx * (cellH + gap);
+                        const x = marginX + cIdx * (cellSize + gap);
+                        const y = marginY + rIdx * (cellSize + gap);
 
                         if (anim === 'mountains') {
                             // ... (unchanged mountains block continues below)
-                            const ny = rIdx / rows;
+                            const ny = rIdx / state.rows;
                             let baseHue;
                             if (ny < 0.35) {
                                 const t = ny / 0.35;
@@ -586,7 +657,7 @@ const CardCanvasRenderer = {
                             }
                             ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${op})`;
                         }
-                        drawRoundRect(ctx, x, y, cellW, cellH, 1.5);
+                        drawRoundRect(ctx, x, y, cellSize, cellSize, 1.5);
                     }
                 }
             } else {

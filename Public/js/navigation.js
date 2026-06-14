@@ -230,6 +230,7 @@ document.addEventListener('keydown', (e) => {
             { id: 'badge-unlock-overlay', close: () => typeof closeBadgeUnlock === 'function' && closeBadgeUnlock() },
             { id: 'legality-modal', close: () => typeof closeLegalityModal === 'function' && closeLegalityModal() },
             { id: 'remove-favorite-modal', close: () => typeof closeRemoveFavoriteModal === 'function' && closeRemoveFavoriteModal() },
+            { id: 'card-requirements-modal', close: () => typeof closeCardRequirementsModal === 'function' && closeCardRequirementsModal() },
             { id: 'not-found-modal', close: () => typeof closeNotFoundModal === 'function' && closeNotFoundModal() },
             { id: 'scan-help-modal', close: () => typeof closeScanHelpModal === 'function' && closeScanHelpModal() },
             { id: 'snus-modal', close: () => typeof closeSnusDetail === 'function' && closeSnusDetail() },

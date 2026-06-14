@@ -8,12 +8,55 @@ let globalInactiveLogs = []; // Array für alle geschlossenen Dosen
 // --- STREAK LOGIC ---
 let currentStreakCount = 0;
 
+function getStreakMilestoneXP(day) {
+    if (day === 5) return 50;
+    if (day === 10) return 75;
+    if (day === 15) return 100;
+    if (day === 30) return 200;
+    if (day === 45) return 200;
+    if (day === 60) return 500;
+    if (day > 60 && (day - 60) % 15 === 0) return 200;
+    return 0;
+}
+
+function getNextStreakMilestone(currentStreak) {
+    const milestones = [
+        { day: 5, xp: 50 },
+        { day: 10, xp: 75 },
+        { day: 15, xp: 100 },
+        { day: 30, xp: 200 },
+        { day: 45, xp: 200 },
+        { day: 60, xp: 500 }
+    ];
+    
+    for (let m of milestones) {
+        if (currentStreak < m.day) {
+            return m;
+        }
+    }
+    
+    // Beyond day 60, milestones are every 15 days starting at 75
+    let nextDay = 60 + 15;
+    while (currentStreak >= nextDay) {
+        nextDay += 15;
+    }
+    return { day: nextDay, xp: 200 };
+}
+
 function renderStreakUI() {
+    const title = document.getElementById('streak-header-title');
     const text = document.getElementById('streak-counter-text');
     const container = document.getElementById('streak-tiles');
     if (!text || !container) return;
 
     text.innerText = currentStreakCount + " 🔥";
+
+    if (title) {
+        const nextMilestone = getNextStreakMilestone(currentStreakCount);
+        title.innerText = (typeof t === 'function') 
+            ? t('streak.nextReward', { day: nextMilestone.day, xp: nextMilestone.xp }) 
+            : `Next Reward: Day ${nextMilestone.day} - ${nextMilestone.xp}XP`;
+    }
 
     let startDay = Math.floor((currentStreakCount > 0 ? currentStreakCount - 1 : 0) / 5) * 5 + 1;
     if (currentStreakCount === 0) startDay = 1;
@@ -22,10 +65,13 @@ function renderStreakUI() {
     for (let i = 0; i < 5; i++) {
         let dayNum = startDay + i;
         let isBurned = dayNum <= currentStreakCount;
+        let xpVal = getStreakMilestoneXP(dayNum);
+        let xpLabel = xpVal ? `+${xpVal}` : '';
 
         if (isBurned) {
             html += `
                 <div class="flex-1 flex flex-col items-center gap-0.5 opacity-100 transition-all duration-300">
+                    <span class="text-[9px] font-bold text-[#FFD60A] h-3.5 flex items-center justify-center drop-shadow-[0_0_4px_rgba(255,214,10,0.4)]">${xpLabel}</span>
                     <svg class="w-4 h-4 text-[#FF9500] drop-shadow-[0_0_6px_rgba(255,149,0,0.5)]" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
                     </svg>
@@ -33,11 +79,22 @@ function renderStreakUI() {
                 </div>
             `;
         } else {
+            let iconHtml = `
+                <div class="w-4 h-4 flex items-center justify-center">
+                    <div class="w-1.5 h-1.5 rounded-full bg-[#8E8E93]"></div>
+                </div>
+            `;
+            if (xpVal > 0) {
+                iconHtml = `
+                    <svg class="w-4 h-4 text-[#FFD60A] opacity-60 drop-shadow-[0_0_4px_rgba(255,214,10,0.3)]" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
+                    </svg>
+                `;
+            }
             html += `
-                <div class="flex-1 flex flex-col items-center gap-0.5 opacity-30 transition-all duration-300">
-                    <div class="w-4 h-4 flex items-center justify-center">
-                        <div class="w-1.5 h-1.5 rounded-full bg-[#8E8E93]"></div>
-                    </div>
+                <div class="flex-1 flex flex-col items-center gap-0.5 ${xpVal > 0 ? 'opacity-60' : 'opacity-30'} transition-all duration-300">
+                    <span class="text-[9px] font-bold text-[#FFD60A] h-3.5 flex items-center justify-center">${xpLabel}</span>
+                    ${iconHtml}
                     <span class="text-[10px] font-medium text-[#8E8E93]">${dayNum}</span>
                 </div>
             `;
@@ -125,15 +182,58 @@ async function incrementStreak() {
         
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (user) {
+            const xpVal = getStreakMilestoneXP(activeStreak);
+            
             supabaseClient.from('profiles').update({
                 streak_count: activeStreak,
                 last_tracked_date: todayStr
-            }).eq('id', user.id).then(({error}) => {
-                if (error) console.log("SQL Columns streak_count/last_tracked_date may not exist yet.");
+            }).eq('id', user.id).then(async ({error}) => {
+                if (error) {
+                    console.log("SQL Columns streak_count/last_tracked_date may not exist yet.");
+                } else {
+                    if (xpVal > 0) {
+                        try {
+                            if (typeof loadUserStats === 'function') await loadUserStats(user.id);
+                            if (typeof updateLivePerformance === 'function') updateLivePerformance();
+                            showStreakMilestoneOverlay(activeStreak, xpVal);
+                        } catch (e) {
+                            console.error("Failed to update user stats / show streak overlay:", e);
+                        }
+                    }
+                }
             });
         }
     }
 }
+
+function showStreakMilestoneOverlay(streak, xp) {
+    const overlay = document.getElementById('streak-milestone-overlay');
+    const descText = document.getElementById('streak-milestone-desc');
+    const xpText = document.getElementById('streak-milestone-xp');
+    
+    if (!overlay || !descText || !xpText) return;
+    
+    descText.innerText = (typeof t === 'function') ? t('streak.milestoneDay', { day: streak }) : `Tag ${streak}`;
+    xpText.innerText = `+${xp} XP`;
+    
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+    
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('success');
+    
+    overlay.onclick = () => {
+        overlay.style.transition = 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.classList.remove('flex');
+            overlay.classList.add('hidden');
+            overlay.style.transition = '';
+            overlay.style.opacity = '';
+            overlay.onclick = null;
+        }, 400);
+    };
+}
+window.showStreakMilestoneOverlay = showStreakMilestoneOverlay;
 // ----------------------
 
 async function startNewCan(snusId) {
@@ -605,3 +705,7 @@ function calculateUsageStats(allLogs) {
 }
 
 window.renderActiveCansUI = renderActiveCansUI;
+
+document.addEventListener('i18n:applied', () => {
+    renderStreakUI();
+});

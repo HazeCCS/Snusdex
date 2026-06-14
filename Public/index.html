@@ -410,8 +410,9 @@
             font-size: 14px;
             font-weight: 700;
             border-radius: 10px;
-            border: 1.5px solid rgba(255, 255, 255, 0.12);
-            background: rgba(255, 255, 255, 0.05);
+            border: 1.5px solid var(--fg-a15);
+            background: var(--fg-a05);
+            color: var(--app-fg);
             cursor: pointer;
             transition:
                 color 0.18s ease,
@@ -428,7 +429,7 @@
         }
 
         .rating-btn.inactive {
-            color: rgba(255, 255, 255, 0.3);
+            color: var(--fg-a40);
         }
 
         .rating-btn.active {
@@ -1227,7 +1228,7 @@
         <div class="px-5 mb-4 mt-2" id="streak-module">
             <div class="bg-[#1C1C1E] rounded-[16px] p-3 border border-white/5 shadow-sm">
                 <div class="flex items-center justify-between mb-2 px-1">
-                    <span class="text-[12px] text-[#8E8E93] font-medium tracking-wider uppercase" data-i18n="home.dailyStreak">Daily Streak</span>
+                    <span id="streak-header-title" class="text-[12px] text-[#8E8E93] font-medium tracking-wider uppercase">Daily Streak</span>
                     <span id="streak-counter-text" class="text-[14px] font-bold text-white tracking-tight">0 🔥</span>
                 </div>
                 <div id="streak-tiles" class="flex justify-between items-center px-1">
@@ -2082,6 +2083,35 @@
         </div>
     </div>
 
+    <div id="card-requirements-modal" class="fixed inset-0 z-[1005] hidden flex items-center justify-center p-6">
+        <div id="card-requirements-backdrop" class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-300"
+            onclick="triggerHapticFeedback(); closeCardRequirementsModal()"></div>
+
+        <div id="card-requirements-card"
+            class="relative w-full max-w-sm bg-[#1C1C1E] border border-white/10 rounded-[32px] p-8 shadow-2xl flex flex-col items-center text-center transform scale-95 opacity-0 transition-all duration-300 z-[1010]"
+            style="box-shadow: 0 10px 30px -10px rgba(0,0,0,0.7);">
+
+            <!-- Top circular icon container -->
+            <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-5 border border-white/10 shadow-inner">
+                <svg class="w-8 h-8 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+
+            <h2 id="card-requirements-title" class="text-white text-[22px] font-bold tracking-tight mb-4" data-i18n="appearance.unlock.title">Unlock Requirements</h2>
+
+            <div id="card-requirements-content" class="w-full flex-1 overflow-y-auto pr-1 space-y-4 max-h-[300px] text-left" style="overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;">
+                <!-- Dynamically populated rows of requirements -->
+            </div>
+
+            <button onclick="triggerHapticFeedback(); closeCardRequirementsModal()"
+                class="w-full bg-white/10 hover:bg-white/20 border border-white/10 text-white font-semibold text-[17px] py-4 rounded-[16px] active:scale-95 transition-all flex justify-center items-center mt-6"
+                data-i18n="appearance.unlock.close">
+                Close
+            </button>
+        </div>
+    </div>
+
     <div id="remove-favorite-modal" class="fixed inset-0 z-[1005] hidden flex items-center justify-center p-6">
         <div id="remove-favorite-backdrop"
             class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-300"
@@ -2369,6 +2399,27 @@
             <p id="badge-unlock-xp"
                 class="text-[20px] font-bold text-[#FFD60A] text-center tracking-tight mt-3 badge-text-anim"
                 style="animation-delay: 0.7s; display:none;"></p>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- STREAK MILESTONE CELEBRATION OVERLAY       -->
+    <!-- ========================================== -->
+    <div id="streak-milestone-overlay"
+        class="fixed inset-0 z-[3000] hidden flex-col items-center justify-center badge-unlock-bg"
+        style="transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);">
+        <div id="streak-milestone-content" class="flex flex-col items-center justify-center px-8">
+            <div class="w-32 h-32 flex items-center justify-center mb-6 relative">
+                <!-- Premium flame circle animation -->
+                <div class="absolute inset-0 bg-[#FF9500]/25 rounded-full blur-2xl animate-pulse"></div>
+                <svg class="w-24 h-24 text-[#FF9500] drop-shadow-[0_0_20px_rgba(255,149,0,0.7)] badge-pop-anim" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
+                </svg>
+            </div>
+            <h2 class="text-[26px] font-bold text-white text-center tracking-tight mb-2 uppercase badge-text-anim" data-i18n="streak.milestoneTitle">Daily Streak Milestone!</h2>
+            <p id="streak-milestone-desc" class="text-[20px] text-[#FF9500] text-center font-bold tracking-tight mb-1 badge-text-anim" style="animation-delay: 0.15s;"></p>
+            <p class="text-[15px] text-[#8E8E93] text-center badge-text-anim" style="animation-delay: 0.3s;" data-i18n="streak.wasReached">was reached</p>
+            <p id="streak-milestone-xp" class="text-[22px] font-bold text-[#FFD60A] text-center tracking-tight mt-4 drop-shadow-[0_0_8px_rgba(255,214,10,0.4)] badge-text-anim" style="animation-delay: 0.45s;"></p>
         </div>
     </div>
 

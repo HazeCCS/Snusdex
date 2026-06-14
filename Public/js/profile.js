@@ -223,7 +223,21 @@ async function loadUserStats(userId) {
         head: true
     }).eq('user_id', userId);
 
-    const xp = (count || 0) * 100;
+    let badgeXp = 0;
+    try {
+        const { data } = await supabaseClient
+            .from('profiles')
+            .select('badge_xp')
+            .eq('id', userId)
+            .single();
+        if (data) {
+            badgeXp = data.badge_xp || 0;
+        }
+    } catch (e) {
+        console.error("Error loading badge_xp:", e);
+    }
+
+    const xp = ((count || 0) * 100) + badgeXp;
     const level = Math.floor(xp / 300) + 1;
 
     actualXp = xp;
@@ -239,7 +253,7 @@ async function loadUserStats(userId) {
         displayedXp = xp;
         const scoreEl = document.getElementById('score');
         const homeLevelEl = document.getElementById('home-level');
-        if (scoreEl) scoreEl.innerHTML = `${xp} <span class="font-medium text-[20px] text-white/50">XP</span>`;
+        if (scoreEl) scoreEl.innerHTML = `${xp} <span style="font-weight:500;font-size:20px;color:rgba(255,255,255,0.55);">XP</span>`;
         if (homeLevelEl) homeLevelEl.innerText = `${t('profile.level').toUpperCase()} ${level}`;
     } else if (displayedXp !== actualXp) {
         const homeTab = document.getElementById('tab-home');
@@ -266,7 +280,7 @@ function animateXp(startValue, endValue, newLevel) {
 
         const currentVal = Math.floor(startValue + (endValue - startValue) * easeProgress);
 
-        scoreEl.innerHTML = `${currentVal} <span class="font-medium text-[20px] text-white/50">XP</span>`;
+        scoreEl.innerHTML = `${currentVal} <span style="font-weight:500;font-size:20px;color:rgba(255,255,255,0.55);">XP</span>`;
 
         if (progress < 1) {
             requestAnimationFrame(updateCounter);

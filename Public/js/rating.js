@@ -300,11 +300,12 @@ function showSavedRating() {
         const hasText = text && String(text).trim() !== '';
         return `
             <div class="mb-4">
-                <div class="flex justify-between text-[13px] text-[#8E8E93] mb-1"><span>${label}</span><span class="text-white">${val}/10</span></div>
-                <div class="w-full bg-black rounded-full h-1.5 mb-2"><div class="bg-white h-1.5 rounded-full" style="width: ${val * 10}%"></div></div>
-                ${hasText ? `<div class="bg-black/40 border border-white/10 rounded-xl p-3 text-[14px] text-white/90 italic shadow-sm mt-2 leading-relaxed">"${escapeHTML(text)}"</div>` : ''}
+                <div class="flex justify-between text-[13px] text-[#8E8E93] mb-1"><span>${label}</span><span style="color: var(--app-fg); font-weight: 600;">${val}/10</span></div>
+                <div class="w-full rounded-full h-1.5 mb-2" style="background: var(--fg-a15);"><div class="h-1.5 rounded-full" style="width: ${val * 10}%; background: var(--app-fg);"></div></div>
+                ${hasText ? `<div class="rounded-xl p-3 text-[14px] italic shadow-sm mt-2 leading-relaxed" style="background: var(--fg-a08); border: 1px solid var(--fg-a10); color: var(--fg-a90);">"${escapeHTML(text)}"</div>` : ''}
             </div>`;
     };
+
 
     document.getElementById('saved-rating-bars').innerHTML =
         createBar(t('rating.visuals'), ratings.visuals, ratings.visuals_text) +

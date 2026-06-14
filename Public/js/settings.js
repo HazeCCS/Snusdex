@@ -733,7 +733,7 @@ function openSettingsSubpage(type, _pushHistory) {
 
         // Get actual user credentials for the preview card
         const homeLevelVal = document.getElementById('home-level')?.innerText || 'LVL 1';
-        const scoreVal = document.getElementById('score')?.innerHTML || '0 <span class="font-medium text-[20px] text-white/50">XP</span>';
+        const scoreVal = document.getElementById('score')?.innerHTML || '0 <span style="font-weight:500;font-size:20px;color:rgba(255,255,255,0.55);">XP</span>';
         const greetingVal = document.getElementById('greeting')?.innerHTML || 'COLLECTOR';
 
         // --- NEW ---
@@ -811,7 +811,12 @@ function openSettingsSubpage(type, _pushHistory) {
                 </div>
             </div>
 
-            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">${t('appearance.cardGlow')}</h3>
+            <div class="flex items-center justify-between mb-2 px-2">
+                <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium">${t('appearance.cardGlow')}</h3>
+                <button onclick="triggerHapticFeedback(); showCardRequirementsModal('animations')" class="text-[#8E8E93] hover:text-white transition-all active:scale-90 flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </button>
+            </div>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 p-5 mb-6">
                 <div class="flex flex-wrap gap-4 pb-2">
                     ${colorOptionsHTML}
@@ -820,24 +825,16 @@ function openSettingsSubpage(type, _pushHistory) {
                     <span class="text-white text-[15px] block mb-3">${t('appearance.animation')}</span>
                     <div class="flex gap-2 flex-wrap">
                         ${[
-                            { id: 'sweep', label: t('appearance.animSweep'), reqRarities: null },
-                            { id: 'pulse', label: t('appearance.animPulse'), reqRarities: null },
-                            { id: 'ripple', label: t('appearance.animRipple'), reqRarities: null },
-                            { id: 'wave', label: t('appearance.animWave') || 'Wave', reqRarities: null },
-                            { id: 'mountains', label: t('appearance.animMountains') || 'Mountains', reqRarities: ['exotic', 'legendary'] },
-                            { id: 'gol', label: t('appearance.animGol'), reqRarities: null },
-                            { id: 'firework', label: t('appearance.animFirework'), reqRarities: null },
-                            { id: 'none',  label: t('appearance.animNone'), reqRarities: null },
+                            { id: 'sweep', label: t('appearance.animSweep') },
+                            { id: 'pulse', label: t('appearance.animPulse') },
+                            { id: 'ripple', label: t('appearance.animRipple') },
+                            { id: 'wave', label: t('appearance.animWave') || 'Wave' },
+                            { id: 'mountains', label: t('appearance.animMountains') || 'Mountains' },
+                            { id: 'gol', label: t('appearance.animGol') },
+                            { id: 'firework', label: t('appearance.animFirework') },
+                            { id: 'none',  label: t('appearance.animNone') },
                         ].map(a => {
-                            let isUnlocked = true;
-                            if (a.reqRarities) {
-                                isUnlocked = a.reqRarities.every(req => {
-                                    return typeof globalSnusData !== 'undefined' && typeof globalUserCollection !== 'undefined' && globalSnusData.some(s => 
-                                        globalUserCollection[s.id] && 
-                                        (s.rarity || 'common').toLowerCase().trim() === req
-                                    );
-                                });
-                            }
+                            const isUnlocked = checkAnimationUnlocked(a.id);
                             const active = (localStorage.getItem('metalCardAnim') || 'sweep') === a.id;
                             if (isUnlocked) {
                                 return `<button onclick="triggerHapticFeedback(); setMetalCardAnim('${a.id}')"
@@ -893,7 +890,12 @@ function openSettingsSubpage(type, _pushHistory) {
                 </div>
             </div>
 
-            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">${t('appearance.pattern')}</h3>
+            <div class="flex items-center justify-between mb-2 px-2">
+                <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium">${t('appearance.pattern')}</h3>
+                <button onclick="triggerHapticFeedback(); showCardRequirementsModal('patterns')" class="text-[#8E8E93] hover:text-white transition-all active:scale-90 flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </button>
+            </div>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 p-5 mb-6">
                 <div class="flex gap-2 flex-wrap">
                     ${[
@@ -906,11 +908,19 @@ function openSettingsSubpage(type, _pushHistory) {
                         { id: 'rings',  label: t('appearance.patternRings')  },
                         { id: 'cubes',  label: t('appearance.patternCubes')  },
                     ].map(p => {
+                        const isUnlocked = checkPatternUnlocked(p.id);
                         const active = (localStorage.getItem('metalCardPattern') || 'none') === p.id;
-                        return `<button onclick="triggerHapticFeedback(); setMetalCardPattern('${p.id}')"
-                            class="px-4 py-2 rounded-[12px] text-[15px] font-medium transition-all active:scale-95 ${active ? 'bg-white text-black' : 'bg-white/10 text-white/70'}">
-                            ${p.label}
-                        </button>`;
+                        if (isUnlocked) {
+                            return `<button onclick="triggerHapticFeedback(); setMetalCardPattern('${p.id}')"
+                                class="px-4 py-2 rounded-[12px] text-[15px] font-medium transition-all active:scale-95 ${active ? 'bg-white text-black' : 'bg-white/10 text-white/70'}">
+                                ${p.label}
+                            </button>`;
+                        } else {
+                            return `<button class="px-4 py-2 rounded-[12px] text-[15px] font-medium bg-white/5 text-white/30 cursor-not-allowed opacity-50 flex items-center gap-1.5" disabled>
+                                <svg class="w-3.5 h-3.5 text-white/40" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17a2 2 0 100-4 2 2 0 000 4zm6-9V7a6 6 0 10-12 0v1H5v14h14V8h-1zm-4 0H10V7a2 2 0 114 0v1z"/></svg>
+                                ${p.label}
+                            </button>`;
+                        }
                     }).join('')}
                 </div>
             </div>
@@ -1125,6 +1135,130 @@ function setAppTheme(pref) {
         btn.classList.toggle('text-white/70', !isActive);
     });
 }
+window.setAppTheme = setAppTheme;
+
+function showCardRequirementsModal(type) {
+    const modal = document.getElementById('card-requirements-modal');
+    const backdrop = document.getElementById('card-requirements-backdrop');
+    const card = document.getElementById('card-requirements-card');
+    const titleEl = document.getElementById('card-requirements-title');
+    const contentEl = document.getElementById('card-requirements-content');
+
+    if (!modal || !backdrop || !card || !titleEl || !contentEl) return;
+
+    // Helper counts
+    const getCollectedCount = () => {
+        if (typeof globalSnusData === 'undefined' || typeof globalUserCollection === 'undefined') return 0;
+        return globalSnusData.filter(s => globalUserCollection[s.id]).length;
+    };
+    
+    const getRarityCount = (rarity) => {
+        if (typeof globalSnusData === 'undefined' || typeof globalUserCollection === 'undefined') return 0;
+        return globalSnusData.filter(s => 
+            globalUserCollection[s.id] && 
+            (s.rarity || 'common').toLowerCase().trim() === rarity
+        ).length;
+    };
+
+    const currentXp = typeof actualXp === 'number' ? actualXp : 0;
+    const totalCollected = getCollectedCount();
+
+    let titleText = "";
+    let items = [];
+
+    if (type === 'animations') {
+        titleText = t('appearance.unlock.title_anim') || (currentLang === 'de' ? 'Animationen freischalten' : 'Unlock Animations');
+        items = [
+            { id: 'sweep', name: t('appearance.animSweep'), desc: t('appearance.unlock.sweep'), unlocked: checkAnimationUnlocked('sweep'), status: `${currentXp}/300 XP` },
+            { id: 'pulse', name: t('appearance.animPulse'), desc: t('appearance.unlock.pulse'), unlocked: checkAnimationUnlocked('pulse'), status: `${currentXp}/500 XP` },
+            { id: 'ripple', name: t('appearance.animRipple'), desc: t('appearance.unlock.ripple'), unlocked: checkAnimationUnlocked('ripple'), status: `${currentXp}/750 XP` },
+            { id: 'gol', name: t('appearance.animGol'), desc: t('appearance.unlock.gol'), unlocked: checkAnimationUnlocked('gol'), status: `${currentXp}/1000 XP` },
+            { id: 'firework', name: t('appearance.animFirework'), desc: t('appearance.unlock.firework'), unlocked: checkAnimationUnlocked('firework'), status: `${currentXp}/1200 XP` },
+            { id: 'mountains', name: t('appearance.animMountains'), desc: t('appearance.unlock.mountains'), unlocked: checkAnimationUnlocked('mountains'), status: checkAnimationUnlocked('mountains') ? (currentLang === 'de' ? 'Ja' : 'Yes') : (currentLang === 'de' ? 'Nein' : 'No') },
+            { id: 'wave', name: t('appearance.animWave'), desc: t('appearance.unlock.wave'), unlocked: checkAnimationUnlocked('wave'), status: `${currentXp}/2000 XP` }
+        ];
+    } else {
+        titleText = t('appearance.unlock.title_pattern') || (currentLang === 'de' ? 'Muster freischalten' : 'Unlock Patterns');
+        items = [
+            { id: 'dots', name: t('appearance.patternDots'), desc: t('appearance.unlock.dots'), unlocked: checkPatternUnlocked('dots'), status: `${getRarityCount('common')}/1` },
+            { id: 'grid', name: t('appearance.patternGrid'), desc: t('appearance.unlock.grid'), unlocked: checkPatternUnlocked('grid'), status: `${getRarityCount('uncommon')}/1` },
+            { id: 'lines', name: t('appearance.patternLines'), desc: t('appearance.unlock.lines'), unlocked: checkPatternUnlocked('lines'), status: `${getRarityCount('rare')}/1` },
+            { id: 'carbon', name: t('appearance.patternCarbon'), desc: t('appearance.unlock.carbon'), unlocked: checkPatternUnlocked('carbon'), status: `${getRarityCount('epic')}/1` },
+            { id: 'hex', name: t('appearance.patternHex'), desc: t('appearance.unlock.hex'), unlocked: checkPatternUnlocked('hex'), status: `${getRarityCount('exotic')}/1` },
+            { id: 'rings', name: t('appearance.patternRings'), desc: t('appearance.unlock.rings'), unlocked: checkPatternUnlocked('rings'), status: `${getRarityCount('legendary')}/1` },
+            { id: 'cubes', name: t('appearance.patternCubes'), desc: t('appearance.unlock.cubes'), unlocked: checkPatternUnlocked('cubes'), status: `${getRarityCount('legendary')}/3 L • ${totalCollected}/6 S` }
+        ];
+    }
+
+    titleEl.innerText = titleText;
+    
+    let html = "";
+    items.forEach(item => {
+        const checkIcon = `
+            <div class="w-8 h-8 rounded-full bg-[#34C759]/15 border border-[#34C759]/30 flex items-center justify-center text-[#34C759] flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+        `;
+        const lockIcon = `
+            <div class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#8E8E93] flex-shrink-0">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 17a2 2 0 100-4 2 2 0 000 4zm6-9V7a6 6 0 10-12 0v1H5v14h14V8h-1zm-4 0H10V7a2 2 0 114 0v1z"/>
+                </svg>
+            </div>
+        `;
+        
+        html += `
+            <div class="flex items-center gap-3 py-1 ${item.unlocked ? 'opacity-100' : 'opacity-60'}">
+                ${item.unlocked ? checkIcon : lockIcon}
+                <div class="flex-1 min-w-0">
+                    <h4 class="text-white text-[15px] font-bold leading-tight truncate">${item.name}</h4>
+                    <p class="text-[#8E8E93] text-[12px] mt-0.5 leading-snug">${item.desc}</p>
+                </div>
+                <span class="text-[12px] font-bold ${item.unlocked ? 'text-[#34C759]' : 'text-[#8E8E93]'} whitespace-nowrap ml-2">${item.unlocked ? (t('badges.unlocked') || 'Unlocked') : item.status}</span>
+            </div>
+        `;
+    });
+
+    contentEl.innerHTML = html;
+
+    // Open Modal animations
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    // Trigger animations in next frame
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            backdrop.classList.remove('opacity-0');
+            backdrop.classList.add('opacity-100');
+            card.classList.remove('scale-95', 'opacity-0');
+            card.classList.add('scale-100', 'opacity-100');
+        });
+    });
+}
+
+function closeCardRequirementsModal() {
+    const modal = document.getElementById('card-requirements-modal');
+    const backdrop = document.getElementById('card-requirements-backdrop');
+    const card = document.getElementById('card-requirements-card');
+
+    if (!modal || !backdrop || !card) return;
+
+    backdrop.classList.remove('opacity-100');
+    backdrop.classList.add('opacity-0');
+    card.classList.remove('scale-100', 'opacity-100');
+    card.classList.add('scale-95', 'opacity-0');
+
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }, 300);
+}
+
+window.showCardRequirementsModal = showCardRequirementsModal;
+window.closeCardRequirementsModal = closeCardRequirementsModal;
+
 window.setAppTheme = setAppTheme;
 
 function closeSettingsSubpage() {
