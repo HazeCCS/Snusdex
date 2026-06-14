@@ -40,6 +40,38 @@ function skeletonHTML(type, count) {
     return Array(count || 1).fill(tpl).join('');
 }
 
+// ==========================================
+// ROBUSTES LADEN: Retry gegen Netzaussetzer
+// ==========================================
+// Lädt den kompletten Katalog in EINEM Request (Katalog liegt unter dem
+// Supabase-1000-Zeilen-Limit, daher ist keine Paginierung nötig).
+async function fetchSnusProducts() {
+    const { data, error } = await supabaseClient
+        .from('snus_products')
+        .select('*')
+        .order('id', { ascending: true });
+    if (error) throw error;
+    return data || [];
+}
+
+// Wiederholt eine async-Funktion bei Fehlern (z.B. kurze Netzaussetzer) mit
+// ansteigender Wartezeit. Wirft erst, wenn alle Versuche gescheitert sind.
+async function fetchWithRetry(fn, attempts = 3, baseDelayMs = 800) {
+    let lastErr;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            return await fn();
+        } catch (err) {
+            lastErr = err;
+            console.warn(`Ladeversuch ${attempt}/${attempts} fehlgeschlagen:`, err);
+            if (attempt < attempts) {
+                await new Promise(r => setTimeout(r, baseDelayMs * attempt));
+            }
+        }
+    }
+    throw lastErr;
+}
+
 async function loadDex() {
     const grid = document.getElementById('dex-grid');
     if (grid && !globalSnusData.length) {
@@ -49,20 +81,33 @@ async function loadDex() {
 
     const { data: { user } } = await supabaseClient.auth.getUser();
 
-    const queries = [
-        supabaseClient.from('snus_products').select('*').order('id', { ascending: true })
-    ];
-    if (user) {
-        queries.push(supabaseClient.from('user_collections').select('*').eq('user_id', user.id));
+    // Produkte (mit Retry) und Collection parallel laden. Beide so gekapselt,
+    // dass ein Fehler des einen die Daten des anderen nicht blockiert.
+    const productsPromise = fetchWithRetry(fetchSnusProducts).catch(err => {
+        console.error("Snus-Katalog konnte nicht geladen werden:", err);
+        return null;
+    });
+    const collectionPromise = user
+        ? supabaseClient.from('user_collections').select('*').eq('user_id', user.id)
+            .then(res => { if (res.error) throw res.error; return res.data; })
+            .catch(err => { console.error("user_collections konnte nicht geladen werden:", err); return null; })
+        : Promise.resolve(null);
+
+    const [products, collectionData] = await Promise.all([productsPromise, collectionPromise]);
+
+    // Bestehende Daten NICHT überschreiben, wenn das Laden fehlschlug – sonst
+    // würde ein einzelner Aussetzer den ganzen Katalog leeren.
+    if (products && products.length) {
+        globalSnusData = products;
+    } else if (!globalSnusData.length) {
+        globalSnusData = products || [];
     }
 
-    const results = await Promise.all(queries);
-
-    globalSnusData = results[0].data || [];
-    globalUserCollection = {};
-
-    if (user && results[1]?.data) {
-        results[1].data.forEach(item => {
+    if (!user) {
+        globalUserCollection = {};
+    } else if (collectionData) {
+        globalUserCollection = {};
+        collectionData.forEach(item => {
             globalUserCollection[item.snus_id] = {
                 date: item.collected_at,
                 ratings: {

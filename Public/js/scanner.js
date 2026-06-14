@@ -423,9 +423,30 @@ function openScanFoundResult() {
 window.openScanFoundResult = openScanFoundResult;
 window.closeScanFoundToast = closeScanFoundToast;
 
-function simulateScan(text) {
+// Normalisiert einen Barcode auf reine Ziffern ohne führende Nullen, damit
+// UPC-A (12 Stellen) und EAN-13 (13 Stellen mit führender 0) sowie numerisch
+// gespeicherte Codes (führende Nullen verloren) zuverlässig zusammenpassen.
+function normalizeBarcode(code) {
+    if (code === null || code === undefined) return '';
+    const digits = String(code).replace(/\D/g, '');
+    return digits.replace(/^0+/, '');
+}
+
+// Sucht ein Produkt zum gescannten Code: erst exakt, dann normalisiert.
+function findSnusByBarcode(code) {
+    const raw = String(code == null ? '' : code).trim();
+    if (!raw) return null;
+    const exact = globalSnusData.find(s => String(s.barcode).trim() === raw);
+    if (exact) return exact;
+    const norm = normalizeBarcode(raw);
+    if (!norm) return null;
+    return globalSnusData.find(s => normalizeBarcode(s.barcode) === norm) || null;
+}
+
+async function simulateScan(text) {
     console.log("Simulating scan for:", text);
     const trimmed = String(text).trim();
+
     if (trimmed.startsWith('unlock ID ')) {
         const idStr = trimmed.replace('unlock ID ', '').trim();
         const id = parseInt(idStr);
@@ -433,9 +454,17 @@ function simulateScan(text) {
             openSnusDetail(id, true);
             return;
         }
-    } else if (trimmed.startsWith('unlock EAN ')) {
+    }
+
+    // Falls der Katalog leer ist (z.B. Netzproblem beim App-Start), erst
+    // nachladen, bevor wir "nicht gefunden" entscheiden.
+    if (!globalSnusData.length && typeof loadDex === 'function') {
+        try { await loadDex(); } catch (e) { console.error("Katalog-Reload vor Scan fehlgeschlagen:", e); }
+    }
+
+    if (trimmed.startsWith('unlock EAN ')) {
         const eanStr = trimmed.replace('unlock EAN ', '').trim();
-        const foundSnus = globalSnusData.find(s => String(s.barcode) === eanStr);
+        const foundSnus = findSnusByBarcode(eanStr);
         if (foundSnus) {
             _openOrToast(foundSnus);
         } else {
@@ -444,7 +473,7 @@ function simulateScan(text) {
         return;
     }
 
-    const foundSnus = globalSnusData.find(s => String(s.barcode) === trimmed);
+    const foundSnus = findSnusByBarcode(trimmed);
     if (foundSnus) {
         _openOrToast(foundSnus);
     } else {

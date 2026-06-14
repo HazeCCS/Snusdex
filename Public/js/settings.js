@@ -591,21 +591,21 @@ function openSettingsSubpage(type, _pushHistory) {
         `;
     } else if (type === 'Privacy & Security') {
         html = `
-            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">${t('privacy.profileVisibility')}</p>
-            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 mb-8">
+            <p class="text-[#8E8E93] text-[13px] mb-2 pl-4 uppercase tracking-wider font-normal">${t('privacy.profileVisibility')}</p>
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 mb-6">
                 <div class="flex items-center justify-between p-5">
                     <span class="text-white text-[17px]">${t('privacy.privateProfile')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-[#3A3A3C] rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm"></div></div>
                 </div>
             </div>
-            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">${t('privacy.data')}</p>
-            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 mb-8">
+            <p class="text-[#8E8E93] text-[13px] mb-2 pl-4 uppercase tracking-wider font-normal">${t('privacy.data')}</p>
+            <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 mb-6">
                 <div class="flex items-center justify-between p-5">
                     <span class="text-white text-[17px]">${t('privacy.shareAnalytics')}</span>
                     <div onclick="triggerHapticFeedback(); toggleSetting(this)" class="w-12 h-7 bg-white rounded-full relative cursor-pointer transition-colors duration-300"><div class="absolute left-1 top-1 w-5 h-5 bg-black rounded-full transition-transform duration-300 translate-x-5 shadow-sm"></div></div>
                 </div>
             </div>
-            <p class="text-[#8E8E93] text-[13px] mb-2 pl-2 uppercase tracking-wider font-medium">${t('privacy.exportSection')}</p>
+            <p class="text-[#8E8E93] text-[13px] mb-2 pl-4 uppercase tracking-wider font-normal">${t('privacy.exportSection')}</p>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="p-5">
                     <p class="text-[#8E8E93] text-[14px] leading-relaxed mb-4">${t('privacy.exportDesc')}</p>
@@ -725,7 +725,7 @@ function openSettingsSubpage(type, _pushHistory) {
         }).join('');
 
         html = `
-            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">${t('appearance.themeSection')}</h3>
+            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-normal mb-2 pl-4">${t('appearance.themeSection')}</h3>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 p-3 mb-3">
                 <div class="flex gap-2">${themeButtonsHTML}</div>
             </div>
@@ -831,8 +831,8 @@ function openSettingsSubpage(type, _pushHistory) {
                 </div>
             </div>
 
-            <div class="flex items-center justify-between mb-2 px-2">
-                <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium">${t('appearance.cardGlow')}</h3>
+            <div class="flex items-center justify-between mb-2 px-4">
+                <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-normal">${t('appearance.cardGlow')}</h3>
                 <button onclick="triggerHapticFeedback(); showCardRequirementsModal('animations')" class="text-[#8E8E93] hover:text-white transition-all active:scale-90 flex items-center justify-center">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </button>
@@ -887,7 +887,7 @@ function openSettingsSubpage(type, _pushHistory) {
                 <p class="text-[12px] text-[#8E8E93] mt-4">${t('appearance.cardGlowDesc')}</p>
             </div>
 
-            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">${t('appearance.cardFont')}</h3>
+            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-normal mb-2 pl-4">${t('appearance.cardFont')}</h3>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10 p-5 mb-6">
                 <div class="flex gap-3 flex-wrap">
                     ${[
@@ -910,8 +910,8 @@ function openSettingsSubpage(type, _pushHistory) {
                 </div>
             </div>
 
-            <div class="flex items-center justify-between mb-2 px-2">
-                <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium">${t('appearance.pattern')}</h3>
+            <div class="flex items-center justify-between mb-2 px-4">
+                <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-normal">${t('appearance.pattern')}</h3>
                 <button onclick="triggerHapticFeedback(); showCardRequirementsModal('patterns')" class="text-[#8E8E93] hover:text-white transition-all active:scale-90 flex items-center justify-center">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </button>
@@ -945,7 +945,7 @@ function openSettingsSubpage(type, _pushHistory) {
                 </div>
             </div>
 
-            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-medium mb-2 pl-2">${t('appearance.dexSettings')}</h3>
+            <h3 class="text-[#8E8E93] text-[13px] uppercase tracking-wider font-normal mb-2 pl-4">${t('appearance.dexSettings')}</h3>
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex flex-col p-5">
                     <div class="flex items-center justify-between mb-3">
