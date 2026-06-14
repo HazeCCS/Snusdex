@@ -3134,6 +3134,13 @@
     <script src="js/suggestions.js?v=181"></script>
     <script src="js/version.js?v=181"></script>
     <script src="js/dex-scroll.js?v=181"></script>
+    <div id="scan-found-toast"
+         class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-3 px-4 py-3 bg-[#2C2C2E] border border-white/10 rounded-2xl shadow-xl transition-all duration-300 translate-y-full opacity-0 pointer-events-auto"
+         style="min-width:220px;max-width:calc(100vw - 48px)">
+        <svg class="w-5 h-5 flex-shrink-0 text-[#30D158]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span id="scan-found-toast-name" class="text-white text-[15px] font-medium flex-1 truncate"></span>
+        <button onclick="triggerHapticFeedback(); openScanFoundResult()" class="text-[#0A84FF] text-[15px] font-semibold flex-shrink-0" data-i18n="scan.foundToastOpen">Open</button>
+    </div>
 </body>
 
 </html>

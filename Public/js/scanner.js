@@ -26,15 +26,19 @@ if (scanModal) {
 async function openScanModal() {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
-    // Prime the scan sound so it can play asynchronously on iOS
-    const scanSound = document.getElementById('scan-sound');
-    if (scanSound) {
-        scanSound.play().then(() => {
-            scanSound.pause();
-            scanSound.currentTime = 0;
-        }).catch(e => {
-            console.log("Audio priming skipped or not allowed:", e);
-        });
+    // Prime the scan sound for the browser fallback so it can play asynchronously.
+    // On native iOS the soundHandler bridge handles playback, no priming needed.
+    const hasNativeSound = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.soundHandler;
+    if (!hasNativeSound) {
+        const scanSound = document.getElementById('scan-sound');
+        if (scanSound) {
+            scanSound.play().then(() => {
+                scanSound.pause();
+                scanSound.currentTime = 0;
+            }).catch(e => {
+                console.log("Audio priming skipped or not allowed:", e);
+            });
+        }
     }
 
     isProcessingScan = false;
@@ -107,11 +111,7 @@ async function openScanModal() {
                     clearScanHelpTimer();
                     dismissScanHelpPrompt();
 
-                    const scanSound = document.getElementById('scan-sound');
-                    if (scanSound) {
-                        scanSound.currentTime = 0;
-                        scanSound.play().catch(e => console.error("Error playing scan sound:", e));
-                    }
+                    playAppSound('scan');
 
                     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
                     closeScanModal();
@@ -380,6 +380,49 @@ async function submitMissingSnus() {
 }
 window.submitMissingSnus = submitMissingSnus;
 
+function _shouldAutoOpen() {
+    const val = localStorage.getItem('scanAutoOpen');
+    return val === null ? true : val === 'on';
+}
+
+function _openOrToast(snus) {
+    if (_shouldAutoOpen()) {
+        openSnusDetail(snus.id, true);
+    } else {
+        showScanFoundToast(snus);
+    }
+}
+
+let _scanFoundToastTimer = null;
+let _scanFoundSnusId = null;
+
+function showScanFoundToast(snus) {
+    _scanFoundSnusId = snus.id;
+    const toast = document.getElementById('scan-found-toast');
+    const nameEl = document.getElementById('scan-found-toast-name');
+    if (!toast || !nameEl) return;
+    if (_scanFoundToastTimer) clearTimeout(_scanFoundToastTimer);
+    nameEl.textContent = snus.name || '';
+    toast.classList.remove('translate-y-full', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+    _scanFoundToastTimer = setTimeout(closeScanFoundToast, 3500);
+}
+
+function closeScanFoundToast() {
+    const toast = document.getElementById('scan-found-toast');
+    if (!toast) return;
+    toast.classList.remove('translate-y-0', 'opacity-100');
+    toast.classList.add('translate-y-full', 'opacity-0');
+    if (_scanFoundToastTimer) { clearTimeout(_scanFoundToastTimer); _scanFoundToastTimer = null; }
+}
+
+function openScanFoundResult() {
+    closeScanFoundToast();
+    if (_scanFoundSnusId !== null) openSnusDetail(_scanFoundSnusId, true);
+}
+window.openScanFoundResult = openScanFoundResult;
+window.closeScanFoundToast = closeScanFoundToast;
+
 function simulateScan(text) {
     console.log("Simulating scan for:", text);
     const trimmed = String(text).trim();
@@ -394,7 +437,7 @@ function simulateScan(text) {
         const eanStr = trimmed.replace('unlock EAN ', '').trim();
         const foundSnus = globalSnusData.find(s => String(s.barcode) === eanStr);
         if (foundSnus) {
-            openSnusDetail(foundSnus.id, true);
+            _openOrToast(foundSnus);
         } else {
             openNotFoundModal(eanStr);
         }
@@ -403,7 +446,7 @@ function simulateScan(text) {
 
     const foundSnus = globalSnusData.find(s => String(s.barcode) === trimmed);
     if (foundSnus) {
-        openSnusDetail(foundSnus.id, true);
+        _openOrToast(foundSnus);
     } else {
         openNotFoundModal(trimmed);
     }

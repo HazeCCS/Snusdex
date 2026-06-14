@@ -275,6 +275,9 @@
   "tracking.desc": "Houd elke pouch afzonderlijk bij in plaats van alleen het hele blik aan het einde.",
   "tracking.modeIndividual": "Individueel",
   "tracking.modeFull": "Volledig bijhouden",
+  "tracking.autoOpenTitle": "Automatisch openen bij scan",
+  "tracking.autoOpenDesc": "Opent automatisch de detailweergave wanneer een blik wordt gescand.",
+  "scan.foundToastOpen": "Openen",
 
   "appearance.themeSection": "Thema",
   "appearance.themeLight": "Licht",

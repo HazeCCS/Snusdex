@@ -293,6 +293,10 @@ const _EN = {
     'tracking.desc': 'Track every single pouch instead of just the whole can at the end.',
     'tracking.modeIndividual': 'Individual',
     'tracking.modeFull': 'Full Tracking',
+    'tracking.autoOpenTitle': 'Auto-Open on Scan',
+    'tracking.autoOpenDesc': 'Automatically open the detail view when a can is scanned.',
+
+    'scan.foundToastOpen': 'Open',
 
     'appearance.themeSection': 'Theme',
     'appearance.themeLight': 'Light',

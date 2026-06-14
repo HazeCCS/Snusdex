@@ -427,6 +427,22 @@ function triggerHapticFeedback() {
     else if (navigator.vibrate) navigator.vibrate(15);
 }
 
+// Spielt einen App-Sound. Auf iOS übernimmt die native Swift-App das Abspielen
+// (respektiert Stumm-Schalter, unterbricht keine laufende Musik). Im Browser
+// fallen wir auf die <audio>-Elemente zurück.
+// name: 'scan' | 'splash'
+function playAppSound(name) {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.soundHandler) {
+        window.webkit.messageHandlers.soundHandler.postMessage(name);
+        return;
+    }
+    const el = document.getElementById(name === 'scan' ? 'scan-sound' : 'splash-sound');
+    if (el) {
+        el.currentTime = 0;
+        el.play().catch(() => {});
+    }
+}
+
 // ==========================================
 // FILTER DEX — Lag-freie Version
 // ==========================================

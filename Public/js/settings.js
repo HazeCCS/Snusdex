@@ -125,6 +125,12 @@ async function exportUserData() {
     }
 }
 
+function toggleAutoOpenOnScan(element) {
+    toggleSetting(element);
+    const isOn = element.classList.contains('bg-white');
+    localStorage.setItem('scanAutoOpen', isOn ? 'on' : 'off');
+}
+
 function toggleTrackingMode(element) {
     toggleSetting(element);
     const isActive = element.classList.contains('bg-white');
@@ -617,6 +623,12 @@ function openSettingsSubpage(type, _pushHistory) {
         const trackHandleTransform = isIndividual ? 'translate-x-5' : '';
         const trackHandleBg = isIndividual ? 'bg-black' : 'bg-white';
 
+        const autoOpenVal = localStorage.getItem('scanAutoOpen');
+        const isAutoOpen = autoOpenVal === null ? true : autoOpenVal === 'on';
+        const autoOpenBg = isAutoOpen ? 'bg-white' : 'bg-[#3A3A3C]';
+        const autoOpenTransform = isAutoOpen ? 'translate-x-5' : '';
+        const autoOpenHandleBg = isAutoOpen ? 'bg-black' : 'bg-white';
+
         html = `
             <div class="bg-[#1C1C1E] rounded-[24px] overflow-hidden border border-white/10">
                 <div class="flex items-center justify-between p-5">
@@ -625,6 +637,14 @@ function openSettingsSubpage(type, _pushHistory) {
                         <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('tracking.desc')}</span>
                     </div>
                     <div onclick="triggerHapticFeedback(); toggleTrackingMode(this)" class="w-12 h-7 ${trackToggleBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${trackHandleBg} rounded-full transition-transform duration-300 ${trackHandleTransform} shadow-sm"></div></div>
+                </div>
+                <div class="h-[1px] bg-white/5 mx-5"></div>
+                <div class="flex items-center justify-between p-5">
+                    <div class="flex flex-col pr-4">
+                        <span class="text-white text-[17px]">${t('tracking.autoOpenTitle')}</span>
+                        <span class="text-[#8E8E93] text-[13px] mt-0.5">${t('tracking.autoOpenDesc')}</span>
+                    </div>
+                    <div onclick="triggerHapticFeedback(); toggleAutoOpenOnScan(this)" class="w-12 h-7 ${autoOpenBg} rounded-full relative cursor-pointer transition-colors duration-300 flex-shrink-0"><div class="absolute left-1 top-1 w-5 h-5 ${autoOpenHandleBg} rounded-full transition-transform duration-300 ${autoOpenTransform} shadow-sm"></div></div>
                 </div>
             </div>
         `;
@@ -1435,44 +1455,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Prüft ob gerade externe Musik läuft.
-     * Methode: AudioContext kurz öffnen und einen winzigen PCM-Buffer analysieren.
-     * Auf iOS/WebKit gibt die AudioContext-State Auskunft über Audio-Aktivität.
-     * Falls Musik läuft → Jingle überspringen.
-     */
-    async function isMusicPlaying() {
-        try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            // Wenn iOS die Session bereits aktiv hat (Musik spielt),
-            // ist der ctx.state direkt 'running' und wir können einen kurzen
-            // AnalyserNode nutzen, um nach echten Samples zu suchen.
-            await ctx.resume();
-            const analyser = ctx.createAnalyser();
-            analyser.fftSize = 256;
-            const data = new Uint8Array(analyser.frequencyBinCount);
-            // Kurz warten damit der Analyser befüllt wird
-            await new Promise(resolve => setTimeout(resolve, 100));
-            analyser.getByteFrequencyData(data);
-            const sum = data.reduce((a, b) => a + b, 0);
-            await ctx.close();
-            return sum > 0;
-        } catch (e) {
-            // Kein AudioContext verfügbar → sicherheitshalber abspielen
-            return false;
-        }
-    }
-
     if (splashScreen && splashVideo) {
-        splashVideo.play().then(async () => {
-            if (splashSound) {
-                const musicActive = await isMusicPlaying();
-                if (!musicActive) {
-                    splashSound.play().catch(e => console.log("Audio-Autoplay blockiert"));
-                } else {
-                    console.log("Musik läuft – Jingle übersprungen.");
-                }
-            }
+        splashVideo.play().then(() => {
+            // Jingle nativ abspielen — die App entscheidet über Stumm-Modus und
+            // laufende Musik. Browser-Fallback nutzt das <audio>-Element.
+            playAppSound('splash');
         }).catch(e => console.log("Video-Autoplay blockiert:", e));
 
         splashVideo.addEventListener('ended', removeSplashScreen);
