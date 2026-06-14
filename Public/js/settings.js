@@ -1707,13 +1707,20 @@ function openGithubPage() {
     const profileTab = document.getElementById('tab-profile');
     if (profileTab) profileTab.style.pointerEvents = 'none';
 
-    page.classList.remove('hidden');
+    // Appear with a quick fade instead of a slide-in (it opens right after the
+    // passcode unlock, where a slide-in feels wrong). Position the page on-screen
+    // instantly with no transition, then fade opacity in. Inline transition/opacity
+    // are cleared afterwards so the back-button / swipe close still slide out.
+    page.style.transition = 'none';
+    page.classList.remove('hidden', 'translate-x-full');
+    page.classList.add('translate-x-0');
+    page.style.opacity = '0';
+    void page.offsetWidth;                       // commit the no-transition state
     document.body.classList.add('overflow-hidden');
     _loadGithubCommits();
-    setTimeout(() => {
-        page.classList.remove('translate-x-full');
-        page.classList.add('translate-x-0');
-    }, 10);
+    page.style.transition = 'opacity .2s ease';
+    requestAnimationFrame(() => { page.style.opacity = '1'; });
+    setTimeout(() => { page.style.transition = ''; page.style.opacity = ''; }, 230);
 }
 window.openGithubPage = openGithubPage;
 
