@@ -15,11 +15,6 @@ DROP POLICY IF EXISTS "Allow authenticated user insert on avatars" ON storage.ob
 DROP POLICY IF EXISTS "Allow authenticated user update on avatars" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated user delete on avatars" ON storage.objects;
 
--- Policy to allow anyone to read files from the avatars bucket
-CREATE POLICY "Allow public read access on avatars" ON storage.objects
-    FOR SELECT
-    USING (bucket_id = 'avatars');
-
 -- Policy to allow authenticated users to upload their own avatar
 -- We enforce that the file name starts with the user's ID
 CREATE POLICY "Allow authenticated user insert on avatars" ON storage.objects

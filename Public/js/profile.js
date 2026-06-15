@@ -450,18 +450,25 @@ function initCropEvents() {
 }
 
 async function saveCroppedAvatar() {
+    console.log("saveCroppedAvatar triggered.");
     const saveBtn = document.getElementById('crop-save-btn');
-    if (!saveBtn || saveBtn.disabled) return;
+    if (!saveBtn || saveBtn.disabled) {
+        console.warn("saveBtn is either missing or disabled.");
+        return;
+    }
 
     saveBtn.disabled = true;
     const originalText = saveBtn.innerHTML;
-    saveBtn.innerHTML = `<svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span>Speichern...</span>`;
+    saveBtn.innerHTML = `<svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
 
     try {
+        console.log("Fetching user credentials from Supabase...");
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) throw new Error('Nicht eingeloggt.');
+        console.log("Authenticated user:", user.id);
 
         // 1. 240x240 Canvas erstellen und Ausschnitt zeichnen
+        console.log("Setting up 240x240 canvas...");
         const canvas = document.createElement('canvas');
         canvas.width = 240;
         canvas.height = 240;
@@ -477,8 +484,11 @@ async function saveCroppedAvatar() {
         const offX240 = cropState.offsetX * ratio;
         const offY240 = cropState.offsetY * ratio;
         const zoom = cropState.zoom;
+        console.log("Crop parameters:", { fitW240, fitH240, offX240, offY240, zoom });
 
         const cropImg = document.getElementById('crop-image');
+        if (!cropImg) throw new Error("crop-image element not found in DOM");
+        console.log("Drawing crop image to canvas. Image src length:", cropImg.src ? cropImg.src.length : 0);
 
         ctx.save();
         ctx.translate(120, 120);
@@ -486,18 +496,25 @@ async function saveCroppedAvatar() {
         ctx.scale(zoom, zoom);
         ctx.drawImage(cropImg, -fitW240 / 2, -fitH240 / 2, fitW240, fitH240);
         ctx.restore();
+        console.log("Canvas rendering complete.");
 
         // 2. In Blob konvertieren (JPEG für beste Performance & Speichergröße)
+        console.log("Converting canvas to JPEG blob...");
         const blob = await new Promise((resolve, reject) => {
             canvas.toBlob((b) => {
-                if (b) resolve(b);
-                else reject(new Error('Canvas conversion failed'));
+                if (b) {
+                    console.log("Blob created. Size:", b.size, "Type:", b.type);
+                    resolve(b);
+                } else {
+                    reject(new Error('Canvas conversion failed'));
+                }
             }, 'image/jpeg', 0.9);
         });
 
         // 3. In Supabase Storage hochladen
         const fileName = `${user.id}-${Date.now()}.jpg`;
         const filePath = `${user.id}/${fileName}`;
+        console.log("Uploading blob to storage avatars bucket. Path:", filePath);
 
         const { data: uploadData, error: uploadError } = await supabaseClient.storage
             .from('avatars')
@@ -507,29 +524,42 @@ async function saveCroppedAvatar() {
                 upsert: true
             });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+            console.error("Storage upload error details:", uploadError);
+            throw uploadError;
+        }
+        console.log("Upload succeeded. uploadData:", uploadData);
 
         // Öffentliche URL abrufen
+        console.log("Retrieving public URL...");
         const { data: urlData } = supabaseClient.storage
             .from('avatars')
             .getPublicUrl(filePath);
 
         const newAvatarUrl = urlData.publicUrl;
+        console.log("New avatar public URL:", newAvatarUrl);
 
         // 4. Aktuelles Profil holen zwecks Löschen des alten Bildes
+        console.log("Fetching existing profile to check for old avatar...");
         const { data: profile } = await supabaseClient
             .from('profiles')
             .select('avatar_url')
             .eq('id', user.id)
             .single();
+        console.log("Existing profile data:", profile);
 
         // 5. In DB speichern
+        console.log("Updating profile avatar_url in database public.profiles...");
         const { error: dbError } = await supabaseClient
             .from('profiles')
             .update({ avatar_url: newAvatarUrl })
             .eq('id', user.id);
 
-        if (dbError) throw dbError;
+        if (dbError) {
+            console.error("Database profiles update error:", dbError);
+            throw dbError;
+        }
+        console.log("Database updated successfully.");
 
         // 6. Altes Bild aus Storage löschen
         if (profile?.avatar_url) {
@@ -539,6 +569,7 @@ async function saveCroppedAvatar() {
                 if (prefixIdx !== -1) {
                     const oldFilePath = profile.avatar_url.substring(prefixIdx + bucketPrefix.length);
                     if (oldFilePath) {
+                        console.log("Deleting old avatar file from storage:", oldFilePath);
                         await supabaseClient.storage.from('avatars').remove([oldFilePath]);
                     }
                 }
@@ -548,6 +579,7 @@ async function saveCroppedAvatar() {
         }
 
         // 7. UI-Elemente direkt updaten
+        console.log("Updating UI avatar images...");
         const mainAvatarImg = document.getElementById('profile-image');
         const mainAvatarPlaceholder = document.getElementById('profile-avatar-placeholder');
         if (mainAvatarImg && mainAvatarPlaceholder) {
@@ -572,11 +604,12 @@ async function saveCroppedAvatar() {
 
         if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
         
+        console.log("Closing crop modal...");
         closeCropModal();
 
     } catch (err) {
         console.error("Failed to save cropped avatar:", err);
-        alert(t('editProfile.errorUpload') || 'Fehler beim Hochladen des Bildes: ' + err.message);
+        alert((t && typeof t === 'function' ? t('editProfile.errorUpload') : 'Fehler beim Hochladen des Bildes') + ': ' + err.message);
     } finally {
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalText;

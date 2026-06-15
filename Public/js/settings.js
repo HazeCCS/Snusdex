@@ -2046,6 +2046,87 @@ function closeCreatorCodePopup() {
 }
 window.closeCreatorCodePopup = closeCreatorCodePopup;
 
+// ── Creator Code Popup: swipe-down to dismiss ──────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const card = document.getElementById('creator-code-popup-card');
+    if (!card) return;
+
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let isDragging = false;
+    let swipeLock = false;
+
+    card.addEventListener('touchstart', (e) => {
+        if (swipeLock) return;
+        touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX;
+        isDragging = false;
+    }, { passive: true });
+
+    card.addEventListener('touchmove', (e) => {
+        if (swipeLock) return;
+
+        const diffY = e.touches[0].clientY - touchStartY;
+        const diffX = Math.abs(e.touches[0].clientX - touchStartX);
+
+        if (isDragging) {
+            if (e.cancelable) e.preventDefault();
+            if (diffY > 0) card.style.transform = `translateY(${diffY}px)`;
+            return;
+        }
+
+        // Only start drag if moving more vertically than horizontally
+        if (diffY > 8 && diffY > diffX) {
+            if (e.cancelable) e.preventDefault();
+            isDragging = true;
+            card.style.transition = 'none';
+            card.style.transform = `translateY(${diffY}px)`;
+        }
+    }, { passive: false });
+
+    card.addEventListener('touchend', (e) => {
+        if (!isDragging) return;
+
+        const diffY = e.changedTouches[0].clientY - touchStartY;
+        const cardHeight = card.offsetHeight || 300;
+        const shouldClose = diffY > cardHeight / 3 || diffY > 80;
+
+        isDragging = false;
+        touchStartY = 0;
+        touchStartX = 0;
+
+        if (!shouldClose) {
+            // Snap back
+            card.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+            card.style.transform = 'translateY(0)';
+            setTimeout(() => {
+                card.style.transform = '';
+                card.style.transition = '';
+            }, 300);
+            return;
+        }
+
+        // Dismiss
+        swipeLock = true;
+        card.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
+        card.style.transform = `translateY(${cardHeight + 40}px)`;
+
+        const popup = document.getElementById('creator-code-popup');
+        if (popup) popup.style.background = 'rgba(0,0,0,0)';
+
+        setTimeout(() => {
+            card.style.transform = '';
+            card.style.transition = '';
+            if (popup) {
+                popup.classList.add('hidden');
+                popup.style.pointerEvents = 'none';
+            }
+            if (!_isOverlayPageOpen()) document.body.classList.remove('overflow-hidden');
+            swipeLock = false;
+        }, 380);
+    });
+});
+
 async function redeemCreatorCode() {
     const input = document.getElementById('creator-code-input');
     const btn   = document.getElementById('creator-code-submit-btn');
