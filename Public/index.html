@@ -1865,7 +1865,7 @@
                 </svg>
             </div>
 
-            <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium pl-4 mb-2"
+            <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-normal pl-4 mb-2"
                 data-i18n="settings.sectionAccount">Account</h2>
             <div class="bg-[#1C1C1E] rounded-[20px] overflow-hidden border border-white/10 mb-6">
                 <button onclick="triggerHapticFeedback(); openSettingsSubpage('Stats')"
@@ -1954,9 +1954,9 @@
                 </button>
             </div>
 
-            <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium pl-4 mb-2"
+            <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-normal pl-4 mb-2"
                 data-i18n="settings.sectionAbout">About</h2>
-            <div class="bg-[#1C1C1E] rounded-[20px] overflow-hidden border border-white/10 mb-8">
+            <div class="bg-[#1C1C1E] rounded-[20px] overflow-hidden border border-white/10 mb-6">
                 <button onclick="triggerHapticFeedback(); openSettingsSubpage('Help Center & FAQ')"
                     class="w-full flex items-center justify-between p-4 active:bg-white/5 transition-colors text-left">
                     <div class="flex items-center gap-3">
@@ -2012,9 +2012,9 @@
                 <div id="creator-code-redeemed-list"></div>
             </div>
 
-            <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-semibold pl-1 mb-3 mt-4"
+            <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-normal pl-4 mb-2"
                 data-i18n="settings.sectionSystem">System Info</h2>
-            <div id="github-commit-info" onclick="triggerHapticFeedback(); openGithubPage()"
+            <div id="github-commit-info" onclick="triggerHapticFeedback(); requestSystemInfoAccess()"
                 class="bg-[#1C1C1E] rounded-[24px] border border-white/10 mb-6 w-full max-w-full overflow-hidden active:bg-white/5 cursor-pointer transition-colors">
                 <div class="p-4 sm:p-5 flex items-center gap-4 w-full">
                     <div class="flex items-center justify-center flex-shrink-0">

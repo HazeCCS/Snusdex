@@ -5,7 +5,6 @@ const SYSTEM_INFO_PASSCODE = '6441';
 
     const CODE_LENGTH = SYSTEM_INFO_PASSCODE.length; 
 
-    // Letters shown under each digit, exactly like the iOS keypad.
     const KEYPAD = [
         { n: '1', l: '' },        { n: '2', l: 'ABC' },  { n: '3', l: 'DEF' },
         { n: '4', l: 'GHI' },     { n: '5', l: 'JKL' },  { n: '6', l: 'MNO' },
@@ -14,11 +13,10 @@ const SYSTEM_INFO_PASSCODE = '6441';
     ];
 
     let _input = '';
-    let _locked = false;   // blocks input during the wrong-code shake
+    let _locked = false;  
     let _built = false;
     let _el, _dotsEl, _delEl;
 
-    // ── One-time DOM + CSS injection ────────────────────────────────────────
     function build() {
         if (_built) return;
         _built = true;
