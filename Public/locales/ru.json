@@ -245,6 +245,8 @@
   "editProfile.saved": "Сохранено",
   "editProfile.errorFormat": "Только буквы, цифры и _ (2–30 символов).",
   "editProfile.errorLimitReached": "Лимит (3/3). Ещё {days} дн. до сброса.",
+  "editProfile.errorFileSize": "Размер изображения не должен превышать 5 МБ.",
+  "editProfile.errorUpload": "Ошибка при загрузке изображения.",
   "stats.subtitle": "Отслеживайте прогресс коллекции, отсортированной по брендам снюса.",
   "stats.collected": "Собрано",
   "tracking.title": "Отслеживание пакетиков",

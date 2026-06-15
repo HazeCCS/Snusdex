@@ -245,6 +245,8 @@
   "editProfile.saved": "Gespeichert",
   "editProfile.errorFormat": "Nur Buchstaben, Zahlen und _ erlaubt (2–30 Zeichen).",
   "editProfile.errorLimitReached": "Limit erreicht (3/3). Noch {days} Tag(e) bis zur Freischaltung.",
+  "editProfile.errorFileSize": "Bildgröße darf 5 MB nicht überschreiten.",
+  "editProfile.errorUpload": "Fehler beim Hochladen des Bildes.",
   "stats.subtitle": "Verfolge deinen Sammler-Fortschritt sortiert nach Snus-Marken.",
   "stats.collected": "Gesammelt",
   "tracking.title": "Einzelner Pouch-Tracking",

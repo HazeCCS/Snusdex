@@ -1777,8 +1777,8 @@
 
                 <div class="relative flex-shrink-0 z-10">
                     <div class="w-20 h-20 rounded-full shadow-md border-2 border-white/5 overflow-hidden bg-[#3A3A3C]">
-                        <img id="profile-image" src="merz.jpg" alt="Profile photo" class="w-full h-full object-cover">
-                        <div id="profile-avatar-placeholder" class="w-full h-full hidden">
+                        <img id="profile-image" src="" alt="Profile photo" class="w-full h-full object-cover hidden">
+                        <div id="profile-avatar-placeholder" class="w-full h-full">
                             <svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg"
                                 class="w-full h-full">
                                 <rect width="96" height="96" fill="#3A3A3C" />
@@ -3893,9 +3893,9 @@
     <script src="js/social.js?v=183"></script>
     <script src="js/usage.js?v=181"></script>
     <script src="js/scanner.js?v=183"></script>
-    <script src="js/settings.js?v=182"></script>
+    <script src="js/settings.js?v=185"></script>
     <script src="js/passcode.js?v=2"></script>
-    <script src="js/profile.js?v=181"></script>
+    <script src="js/profile.js?v=185"></script>
     <script src="js/scans.js?v=181"></script>
     <script src="js/suggestions.js?v=181"></script>
     <script src="js/version.js?v=181"></script>
@@ -3906,6 +3906,35 @@
         <svg class="w-5 h-5 flex-shrink-0 text-[#30D158]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         <span id="scan-found-toast-name" class="text-white text-[15px] font-medium flex-1 truncate"></span>
         <button onclick="triggerHapticFeedback(); openScanFoundResult()" class="text-[#0A84FF] text-[15px] font-semibold flex-shrink-0" data-i18n="scan.foundToastOpen">Open</button>
+    </div>
+
+    <!-- Avatar Crop Modal -->
+    <div id="avatar-crop-modal" class="fixed inset-0 z-[10000] hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="bg-[#1C1C1E] border border-white/10 rounded-[28px] p-6 w-full max-w-[320px] flex flex-col items-center shadow-2xl scale-95 opacity-0 transition-all duration-300">
+            <h3 class="text-white text-[18px] font-semibold mb-4 text-center">Bild zuschneiden</h3>
+            
+            <!-- Viewport container -->
+            <div id="crop-viewport" class="relative w-[220px] h-[220px] rounded-full overflow-hidden border-2 border-white/20 bg-black cursor-move touch-none">
+                <img id="crop-image" src="" alt="" class="absolute origin-center select-none pointer-events-none" style="transform: translate(0px, 0px) scale(1);">
+                <!-- Circular overlay boundary -->
+                <div class="absolute inset-0 rounded-full pointer-events-none border border-white/40 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"></div>
+            </div>
+            
+            <!-- Zoom slider -->
+            <div class="w-full mt-5 px-2 flex items-center gap-3">
+                <svg class="w-4 h-4 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m4-3H6" /></svg>
+                <input type="range" id="crop-zoom" min="1" max="3" step="0.01" value="1" class="flex-1 accent-white bg-white/10 h-1 rounded-lg outline-none appearance-none">
+                <svg class="w-5 h-5 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7m3-3v6" /></svg>
+            </div>
+            
+            <!-- Action buttons -->
+            <div class="w-full flex gap-3 mt-6">
+                <button onclick="closeCropModal()" class="flex-1 py-3 bg-white/10 text-white rounded-[14px] font-semibold text-[15px] active:scale-95 transition-all">Abbrechen</button>
+                <button id="crop-save-btn" onclick="saveCroppedAvatar()" class="flex-1 py-3 bg-white text-black rounded-[14px] font-semibold text-[15px] active:scale-95 transition-all flex justify-center items-center gap-2">
+                    <span>Speichern</span>
+                </button>
+            </div>
+        </div>
     </div>
 </body>
 

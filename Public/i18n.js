@@ -285,6 +285,8 @@ const _EN = {
     'editProfile.saved': 'Saved',
     'editProfile.errorFormat': 'Only letters, numbers and _ allowed (2–30 chars).',
     'editProfile.errorLimitReached': 'Limit reached (3/3). {days} day(s) until reset.',
+    'editProfile.errorFileSize': 'Image size must not exceed 5 MB.',
+    'editProfile.errorUpload': 'Error uploading image.',
 
     'stats.subtitle': 'Track your collector progress sorted by snus brand.',
     'stats.collected': 'Collected',

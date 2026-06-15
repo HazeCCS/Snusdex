@@ -267,6 +267,8 @@
   "editProfile.saved": "Opgeslagen",
   "editProfile.errorFormat": "Alleen letters, cijfers en _ toegestaan (2–30 tekens).",
   "editProfile.errorLimitReached": "Limiet bereikt (3/3). Nog {days} dag(en) tot reset.",
+  "editProfile.errorFileSize": "Afbeeldingsgrootte mag niet groter zijn dan 5 MB.",
+  "editProfile.errorUpload": "Fout bij het uploaden van de afbeelding.",
 
   "stats.subtitle": "Volg je verzamelvoortgang gesorteerd op snusmerk.",
   "stats.collected": "Verzameld",

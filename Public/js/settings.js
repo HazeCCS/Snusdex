@@ -411,8 +411,8 @@ function openSettingsSubpage(type, _pushHistory) {
                 <div class="relative">
                     <input type="file" id="profile-image-upload" accept="image/*" class="hidden" onchange="previewProfileImage(event)">
                     <div class="w-24 h-24 rounded-full flex-shrink-0 shadow-lg border-2 border-white/5 overflow-hidden bg-[#3A3A3C]">
-                        <img id="edit-profile-image-preview" src="merz.jpg" alt="Profile photo" class="w-full h-full object-cover">
-                        <div id="edit-profile-avatar-placeholder" class="w-full h-full hidden">${defaultAvatarSvg}</div>
+                        <img id="edit-profile-image-preview" src="" alt="Profile photo" class="w-full h-full object-cover hidden">
+                        <div id="edit-profile-avatar-placeholder" class="w-full h-full">${defaultAvatarSvg}</div>
                     </div>
                     <button onclick="triggerHapticFeedback(); document.getElementById('profile-image-upload').click()" class="absolute bottom-0 right-0 w-8 h-8 bg-[#1C1C1E] border border-white/20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform z-10">
                         <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -432,43 +432,6 @@ function openSettingsSubpage(type, _pushHistory) {
                         </div>
                         <span class="text-[11px] text-[#8E8E93]">${t('editProfile.none')}</span>
                     </div>
-                <!-- Error state -->
-                <div id="creator-code-error-content" class="hidden">
-                    <div class="flex items-center gap-3 mb-5">
-                        <div class="w-11 h-11 rounded-2xl bg-[#FF3B30]/15 flex items-center justify-center flex-shrink-0">
-                            <svg class="w-6 h-6 text-[#FF3B30]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-white text-[17px] font-semibold leading-tight">Creator Code nicht gefunden</p>
-                            <p class="text-[#8E8E93] text-[13px] mt-0.5">Bitte überprüfe deinen Code und versuche es erneut.</p>
-                        </div>
-                    </div>
-                    <button onclick="closeCreatorCodePopup()"
-                        class="w-full bg-[#1C1C1E] border border-white/10 text-white font-medium text-[17px] py-4 rounded-[16px] active:bg-white/5 transition-colors">
-                        OK
-                    </button>
-                </div>
-                <!-- Cooldown state -->
-                <div id="creator-code-cooldown-content" class="hidden">
-                    <div class="flex items-center gap-3 mb-5">
-                        <div class="w-11 h-11 rounded-2xl bg-[#FF9F0A]/15 flex items-center justify-center flex-shrink-0">
-                            <svg class="w-6 h-6 text-[#FF9F0A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-white text-[17px] font-semibold leading-tight">Cooldown aktiv</p>
-                            <p id="creator-cooldown-days" class="text-[#FF9F0A] text-[13px] font-medium mt-0.5"></p>
-                        </div>
-                    </div>
-                    <p class="text-[#8E8E93] text-[14px] leading-relaxed mb-5">Du kannst deinen Creator Code nur alle 14 Tage ändern.</p>
-                    <button onclick="closeCreatorCodePopup()"
-                        class="w-full bg-[#1C1C1E] border border-white/10 text-white font-medium text-[17px] py-4 rounded-[16px] active:bg-white/5 transition-colors">
-                        OK
-                    </button>
-                </div>
                 </div>
             </div>
 
@@ -510,7 +473,7 @@ function openSettingsSubpage(type, _pushHistory) {
 
                 const { data: profile } = await supabaseClient
                     .from('profiles')
-                    .select('username, username_changes, username_last_reset')
+                    .select('username, username_changes, username_last_reset, avatar_url')
                     .eq('id', user.id).single();
 
                 // Use user_metadata.username – same source as setupProfile – always correct
@@ -519,6 +482,16 @@ function openSettingsSubpage(type, _pushHistory) {
                 const usernameInput = document.getElementById('edit-username');
                 if (usernameInput && correctUsername) usernameInput.placeholder = correctUsername;
 
+                const editAvatarImg = document.getElementById('edit-profile-image-preview');
+                const editAvatarPlaceholder = document.getElementById('edit-profile-avatar-placeholder');
+                if (profile?.avatar_url) {
+                    if (editAvatarImg) { editAvatarImg.src = profile.avatar_url; editAvatarImg.classList.remove('hidden'); }
+                    if (editAvatarPlaceholder) editAvatarPlaceholder.classList.add('hidden');
+                } else {
+                    if (editAvatarImg) editAvatarImg.classList.add('hidden');
+                    if (editAvatarPlaceholder) editAvatarPlaceholder.classList.remove('hidden');
+                }
+
                 const now = new Date();
                 const lastReset = profile?.username_last_reset ? new Date(profile.username_last_reset) : null;
                 const sameMonth = lastReset && lastReset.getMonth() === now.getMonth() && lastReset.getFullYear() === now.getFullYear();
@@ -526,7 +499,7 @@ function openSettingsSubpage(type, _pushHistory) {
                 const remaining = Math.max(0, 3 - changesThisMonth);
 
                 window._cachedUsernameChangesRemaining = remaining;
-                window._profileCache = { email: user.email, username: correctUsername, remaining };
+                window._profileCache = { email: user.email, username: correctUsername, remaining, avatar_url: profile?.avatar_url || null };
 
                 const changesLeftEl = document.getElementById('username-changes-left');
                 if (changesLeftEl) {
