@@ -466,6 +466,19 @@ async function handleLogout(btn) {
         localStorage.removeItem('cached_badges');
         localStorage.removeItem('cached_user_badges');
         localStorage.removeItem('cached_badge_progress');
+        localStorage.removeItem('lastTrackedDate');
+        localStorage.removeItem('streakCount');
+        localStorage.removeItem('metalCardColorId');
+        localStorage.removeItem('metalCardColorHex');
+        localStorage.removeItem('metalCardFont');
+        localStorage.removeItem('metalCardAnim');
+        localStorage.removeItem('metalCardSaturation');
+        localStorage.removeItem('metalCardPattern');
+        localStorage.removeItem('metalCardIntensity');
+        localStorage.removeItem('dexFavoriteBrands');
+        localStorage.removeItem('dexFavoriteSnus');
+        localStorage.removeItem('creatorUnlockedAnimations');
+        localStorage.removeItem('creatorCodesRedeemed');
         window.location.reload();
     }
 }

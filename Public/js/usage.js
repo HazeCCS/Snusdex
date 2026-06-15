@@ -133,7 +133,8 @@ async function validateAndRenderStreak() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const lastDate = new Date(storedDate);
+        const parts = storedDate.split('-');
+        const lastDate = new Date(parts[0], parts[1] - 1, parts[2]);
         lastDate.setHours(0, 0, 0, 0);
 
         const diffTime = today - lastDate;
@@ -150,20 +151,26 @@ async function validateAndRenderStreak() {
 }
 
 async function incrementStreak() {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+    
     const storedDate = localStorage.getItem('lastTrackedDate');
     
     if (storedDate !== todayStr) {
         let activeStreak = parseInt(localStorage.getItem('streakCount')) || 0;
         
         if (storedDate) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            const todayMidnight = new Date();
+            todayMidnight.setHours(0, 0, 0, 0);
             
-            const lastDate = new Date(storedDate);
+            const parts = storedDate.split('-');
+            const lastDate = new Date(parts[0], parts[1] - 1, parts[2]);
             lastDate.setHours(0, 0, 0, 0);
             
-            const diffTime = today - lastDate;
+            const diffTime = todayMidnight - lastDate;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
             
             if (diffDays === 1) {
@@ -180,16 +187,18 @@ async function incrementStreak() {
         currentStreakCount = activeStreak;
         renderStreakUI();
         
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user) {
-            const xpVal = getStreakMilestoneXP(activeStreak);
-            
-            supabaseClient.from('profiles').update({
-                streak_count: activeStreak,
-                last_tracked_date: todayStr
-            }).eq('id', user.id).then(async ({error}) => {
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) {
+                const xpVal = getStreakMilestoneXP(activeStreak);
+                
+                const { error } = await supabaseClient.from('profiles').update({
+                    streak_count: activeStreak,
+                    last_tracked_date: todayStr
+                }).eq('id', user.id);
+
                 if (error) {
-                    console.log("SQL Columns streak_count/last_tracked_date may not exist yet.");
+                    console.error("Failed to update daily streak in database:", error);
                 } else {
                     if (xpVal > 0) {
                         try {
@@ -201,10 +210,13 @@ async function incrementStreak() {
                         }
                     }
                 }
-            });
+            }
+        } catch (e) {
+            console.error("Error in incrementStreak database update:", e);
         }
     }
 }
+
 
 function showStreakMilestoneOverlay(streak, xp) {
     const overlay = document.getElementById('streak-milestone-overlay');
@@ -623,8 +635,8 @@ async function executeAddPouch(logId, maxPouches, newCount) {
                 amount: 1 
             });
         }
-        incrementStreak();
-        loadUsageData();
+        await incrementStreak();
+        await loadUsageData();
     }
 }
 

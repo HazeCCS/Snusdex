@@ -599,7 +599,7 @@ async function collectCurrentSnus() {
             updateLivePerformance();
             evaluateBadges();
             if (typeof incrementStreak === 'function') {
-                incrementStreak();
+                await incrementStreak();
             }
         }
         renderDexGrid(globalSnusData);

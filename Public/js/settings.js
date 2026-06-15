@@ -373,6 +373,7 @@ function openSettingsSubpage(type, _pushHistory) {
         'Theme': 'settings.theme',
         'Tracking': 'settings.tracking', 'Help Center & FAQ': 'settings.helpCenter',
         'Delete Account': 'settings.deleteAccount',
+        'Creator Code': 'Creator Code',
         'README': 'README', 'Architecture Map': 'Architecture Map',
     };
     titleObj.innerText = t(_subpageTitleMap[type] || type);
@@ -431,6 +432,43 @@ function openSettingsSubpage(type, _pushHistory) {
                         </div>
                         <span class="text-[11px] text-[#8E8E93]">${t('editProfile.none')}</span>
                     </div>
+                <!-- Error state -->
+                <div id="creator-code-error-content" class="hidden">
+                    <div class="flex items-center gap-3 mb-5">
+                        <div class="w-11 h-11 rounded-2xl bg-[#FF3B30]/15 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-6 h-6 text-[#FF3B30]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-white text-[17px] font-semibold leading-tight">Creator Code nicht gefunden</p>
+                            <p class="text-[#8E8E93] text-[13px] mt-0.5">Bitte überprüfe deinen Code und versuche es erneut.</p>
+                        </div>
+                    </div>
+                    <button onclick="closeCreatorCodePopup()"
+                        class="w-full bg-[#1C1C1E] border border-white/10 text-white font-medium text-[17px] py-4 rounded-[16px] active:bg-white/5 transition-colors">
+                        OK
+                    </button>
+                </div>
+                <!-- Cooldown state -->
+                <div id="creator-code-cooldown-content" class="hidden">
+                    <div class="flex items-center gap-3 mb-5">
+                        <div class="w-11 h-11 rounded-2xl bg-[#FF9F0A]/15 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-6 h-6 text-[#FF9F0A]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-white text-[17px] font-semibold leading-tight">Cooldown aktiv</p>
+                            <p id="creator-cooldown-days" class="text-[#FF9F0A] text-[13px] font-medium mt-0.5"></p>
+                        </div>
+                    </div>
+                    <p class="text-[#8E8E93] text-[14px] leading-relaxed mb-5">Du kannst deinen Creator Code nur alle 14 Tage ändern.</p>
+                    <button onclick="closeCreatorCodePopup()"
+                        class="w-full bg-[#1C1C1E] border border-white/10 text-white font-medium text-[17px] py-4 rounded-[16px] active:bg-white/5 transition-colors">
+                        OK
+                    </button>
+                </div>
                 </div>
             </div>
 
@@ -1019,6 +1057,88 @@ function openSettingsSubpage(type, _pushHistory) {
                 ${t('deleteAccount.cancel')}
             </button>
         `;
+
+    } else if (type === 'Creator Code') {
+        // Load already-redeemed codes from localStorage for display
+        const redeemedRaw = localStorage.getItem('creatorCodesRedeemed');
+        let redeemed = [];
+        try { redeemed = JSON.parse(redeemedRaw) || []; } catch(e) { redeemed = []; }
+
+        const redeemedListHTML = redeemed.length === 0
+            ? ''
+            : `<div class="mt-6">
+                <p class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium mb-3 px-1">Aktivierter Code</p>
+                <div class="bg-[#1C1C1E] rounded-[20px] overflow-hidden border border-white/10">
+                    ${redeemed.map((r, i) => `
+                        <div class="px-5 py-4 ${i < redeemed.length - 1 ? 'border-b border-white/5' : ''}">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-[#BF5AF2]/10 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-[#BF5AF2]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-white text-[15px] font-semibold tracking-wide">${r.code}</p>
+                                    ${r.credits ? `<p class="text-[#BF5AF2] text-[13px] font-medium mt-0.5">${r.credits}</p>` : ''}
+                                    ${r.text ? `<p class="text-[#8E8E93] text-[12px] mt-1 leading-snug">${r.text}</p>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+
+        html = `
+            <div class="flex flex-col items-center mb-6 mt-2">
+                <div class="w-16 h-16 rounded-[20px] bg-gradient-to-br from-[#BF5AF2]/20 to-[#0A84FF]/20 border border-white/10 flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-[#BF5AF2]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                    </svg>
+                </div>
+                <h2 class="text-white text-[20px] font-bold tracking-tight mb-1">Creator Code</h2>
+                <p class="text-[#8E8E93] text-[14px] text-center leading-relaxed px-4">Gib einen Creator Code ein, um exklusive Inhalte wie Animationen oder Badges freizuschalten.</p>
+            </div>
+
+            <div class="bg-[#1C1C1E] rounded-[24px] border border-white/10 overflow-hidden">
+                <div class="px-5 pt-5 pb-4">
+                    <label class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-medium block mb-3">Code eingeben</label>
+                    <div class="flex gap-3 items-center">
+                        <div class="flex-1 rounded-2xl overflow-hidden border border-white/10 bg-black focus-within:border-white/30 focus-within:bg-white/[0.01] transition-all duration-200">
+                            <input
+                                type="text"
+                                id="creator-code-input"
+                                placeholder="z.B. HAZECCS"
+                                autocomplete="off"
+                                autocorrect="off"
+                                autocapitalize="characters"
+                                spellcheck="false"
+                                oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9_]/g, '')"
+                                class="w-full bg-transparent text-white px-4 py-[15px] text-[17px] focus:outline-none transition-all block placeholder:text-[#8E8E93]/40"
+                            >
+                        </div>
+                        <button
+                            id="creator-code-submit-btn"
+                            onclick="triggerHapticFeedback(); redeemCreatorCode()"
+                            class="bg-[#BF5AF2] text-white font-semibold text-[15px] px-5 py-[15px] rounded-2xl active:scale-95 transition-all duration-200 flex-shrink-0 flex items-center gap-1.5 shadow-[0_4px_14px_rgba(191,90,242,0.25)]"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            <span>OK</span>
+                        </button>
+                    </div>
+                    <p id="creator-code-hint" class="text-[12px] text-[#636366] mt-2.5 px-1">Codes sind case-insensitive und werden automatisch in Großbuchstaben umgewandelt.</p>
+                </div>
+            </div>
+
+            ${redeemedListHTML}
+        `;
+
+        // Allow submitting via Enter key
+        setTimeout(() => {
+            const input = document.getElementById('creator-code-input');
+            if (input) {
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') { triggerHapticFeedback(); redeemCreatorCode(); }
+                });
+            }
+        }, 100);
 
     } else if (type === 'README') {
         const _spinnerSvg = `<svg class="animate-spin w-4 h-4 text-[#8E8E93]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
@@ -1815,3 +1935,353 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 300);
     });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CREATOR CODE SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Render already-redeemed codes inline below the input field
+function renderCreatorCodeRedeemed() {
+    const list = document.getElementById('creator-code-redeemed-list');
+    if (!list) return;
+    let redeemed = [];
+    try { redeemed = JSON.parse(localStorage.getItem('creatorCodesRedeemed') || '[]'); } catch(e) {}
+    if (!redeemed.length) { list.innerHTML = ''; return; }
+
+    list.innerHTML = redeemed.map((r, i) => `
+        <div class="border-t border-white/5 pt-3 flex items-start gap-3 mt-3">
+            <div class="w-6 h-6 rounded-full bg-[#BF5AF2]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg class="w-3 h-3 text-[#BF5AF2]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-[#8E8E93] text-[13px] font-semibold leading-none mb-1">${r.code}</p>
+                ${r.credits ? `<p class="text-[#BF5AF2] text-[13px] font-medium leading-tight">${r.credits}</p>` : ''}
+                ${r.text    ? `<p class="text-[#8E8E93] text-[12px] leading-snug mt-0.5">${r.text}</p>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+window.renderCreatorCodeRedeemed = renderCreatorCodeRedeemed;
+
+// Run on DOMContentLoaded so the list is populated when profile tab opens
+document.addEventListener('DOMContentLoaded', renderCreatorCodeRedeemed);
+
+function showCreatorCodePopup(state, data) {
+    const popup = document.getElementById('creator-code-popup');
+    const card  = document.getElementById('creator-code-popup-card');
+    if (!popup || !card) return;
+
+    const successEl  = document.getElementById('creator-code-success-content');
+    const errorEl    = document.getElementById('creator-code-error-content');
+    const infoCard   = document.getElementById('creator-info-card');
+    const handleEl   = document.getElementById('creator-handle-text');
+    const msgEl      = document.getElementById('creator-message-text');
+    const unlockedEl = document.getElementById('creator-unlocked-items');
+
+    successEl.classList.add('hidden');
+    errorEl.classList.add('hidden');
+    const cooldownEl = document.getElementById('creator-code-cooldown-content');
+    if (cooldownEl) cooldownEl.classList.add('hidden');
+
+    if (state === 'cooldown' && data) {
+        if (cooldownEl) {
+            const daysEl = cooldownEl.querySelector('#creator-cooldown-days');
+            if (daysEl) daysEl.textContent = `Noch ${data.daysLeft} Tag${data.daysLeft === 1 ? '' : 'e'}`;
+            cooldownEl.classList.remove('hidden');
+        }
+    } else if (state === 'success' && data) {
+        if (data.credits || data.text) {
+            infoCard.classList.remove('hidden');
+            handleEl.textContent = data.credits || '';
+            if (!data.credits) handleEl.closest('.flex').classList.add('hidden');
+            if (data.text) {
+                msgEl.textContent = data.text;
+                msgEl.classList.remove('hidden');
+            } else {
+                msgEl.classList.add('hidden');
+            }
+        } else {
+            infoCard.classList.add('hidden');
+        }
+
+        const animNames = { sweep:'Sweep', pulse:'Pulse', ripple:'Ripple', gol:'Game of Life', firework:'Firework', wave:'Wave', mountains:'Mountains' };
+        let unlockedHTML = '';
+        if (data.activates_animation && data.activates_animation !== 'none') {
+            unlockedHTML += `
+                <div class="flex items-center gap-3 bg-white/5 border border-white/5 rounded-[16px] px-4 py-3">
+                    <svg class="w-5 h-5 text-[#8E8E93] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3l14 9-14 9V3z"/></svg>
+                    <div>
+                        <p class="text-white text-[14px] font-semibold">Animation freigeschaltet</p>
+                        <p class="text-[#8E8E93] text-[12px] font-medium">${animNames[data.activates_animation] || data.activates_animation}</p>
+                    </div>
+                </div>`;
+        }
+        if (data.activates_badge) {
+            unlockedHTML += `
+                <div class="flex items-center gap-3 bg-white/5 border border-white/5 rounded-[16px] px-4 py-3">
+                    <svg class="w-5 h-5 text-[#8E8E93] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+                    <div>
+                        <p class="text-white text-[14px] font-semibold">Badge freigeschaltet</p>
+                        <p class="text-[#8E8E93] text-[12px] font-medium">Sieh dir deine Badges an!</p>
+                    </div>
+                </div>`;
+        }
+        unlockedEl.innerHTML = unlockedHTML;
+        successEl.classList.remove('hidden');
+    } else if (state === 'error') {
+        const titleEl = document.getElementById('creator-error-title');
+        const descEl  = document.getElementById('creator-error-desc');
+        if (titleEl && descEl) {
+            if (data && data.reason === 'already_active') {
+                titleEl.textContent = 'Bereits aktiv';
+                descEl.textContent = 'Dieser Creator Code ist bereits für dein Profil aktiviert.';
+            } else if (data && data.reason === 'not_found') {
+                titleEl.textContent = 'Creator Code nicht gefunden';
+                descEl.textContent = 'Bitte überprüfe deinen Code und versuche es erneut.';
+            } else {
+                titleEl.textContent = 'Fehler';
+                descEl.textContent = (data && data.message) || 'Ein unerwarteter Fehler ist aufgetreten.';
+            }
+        }
+        errorEl.classList.remove('hidden');
+    } else {
+        errorEl.classList.remove('hidden');
+    }
+
+    popup.classList.remove('hidden');
+    popup.style.pointerEvents = 'auto';
+    document.body.classList.add('overflow-hidden');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        popup.style.background = 'rgba(0,0,0,0.6)';
+        card.style.transform = 'translateY(0)';
+    }));
+}
+
+function closeCreatorCodePopup() {
+    const popup = document.getElementById('creator-code-popup');
+    const card  = document.getElementById('creator-code-popup-card');
+    if (!popup || !card) return;
+    popup.style.background = 'rgba(0,0,0,0)';
+    card.style.transform = 'translateY(100%)';
+    setTimeout(() => {
+        popup.classList.add('hidden');
+        popup.style.pointerEvents = 'none';
+        if (!_isOverlayPageOpen()) document.body.classList.remove('overflow-hidden');
+    }, 450);
+}
+window.closeCreatorCodePopup = closeCreatorCodePopup;
+
+async function redeemCreatorCode() {
+    const input = document.getElementById('creator-code-input');
+    const btn   = document.getElementById('creator-code-submit-btn');
+    if (!input || !btn) return;
+
+    const rawCode = input.value.trim().toUpperCase();
+    if (!rawCode) {
+        // Shake the input card briefly
+        const card = input.closest('div');
+        if (card) {
+            card.style.transition = 'transform 0.08s ease';
+            card.style.transform = 'translateX(4px)';
+            setTimeout(() => { card.style.transform = 'translateX(-4px)'; setTimeout(() => { card.style.transform = ''; }, 80); }, 80);
+        }
+        return;
+    }
+
+    // Loading spinner in button
+    const origHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="animate-spin w-3.5 h-3.5 text-[#8E8E93]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
+
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) throw new Error('not_logged_in');
+
+        // ── Aktuellen aktiven Code abfragen ──────────────────────────────────
+        const { data: currentRedemption, error: curRedemptionError } = await supabaseClient
+            .from('creator_code_redemptions')
+            .select('id, code_id, creator_codes(code, activates_animation, activates_badge)')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+        if (curRedemptionError) throw curRedemptionError;
+
+        const isChanging = !currentRedemption || !currentRedemption.creator_codes || currentRedemption.creator_codes.code !== rawCode;
+
+        if (!isChanging) {
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+            showCreatorCodePopup('error', { reason: 'already_active' });
+            return;
+        }
+
+        // ── Cooldown-Prüfung via Supabase profiles (nur bei Änderung) ─────────
+        const { data: profile, error: profileError } = await supabaseClient
+            .from('profiles')
+            .select('creator_code_last_redeemed')
+            .eq('id', user.id)
+            .single();
+
+        if (profileError) {
+            console.warn('Could not fetch profile for cooldown check:', profileError);
+        }
+
+        const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
+        if (isChanging && profile?.creator_code_last_redeemed) {
+            const lastRedeemed = new Date(profile.creator_code_last_redeemed).getTime();
+            const elapsed = Date.now() - lastRedeemed;
+            if (elapsed < COOLDOWN_MS) {
+                const daysLeft = Math.ceil((COOLDOWN_MS - elapsed) / (24 * 60 * 60 * 1000));
+                btn.disabled = false;
+                btn.innerHTML = origHTML;
+                showCreatorCodePopup('cooldown', { daysLeft });
+                return;
+            }
+        }
+
+        // ── Neuen Code aus Supabase laden ────────────────────────────────────
+        const { data: codeData, error: codeError } = await supabaseClient
+            .from('creator_codes')
+            .select('id, code, activates_animation, activates_badge, credits, text')
+            .eq('code', rawCode)
+            .single();
+
+        if (codeError || !codeData) {
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+            showCreatorCodePopup('error', { reason: 'not_found' });
+            return;
+        }
+
+        // ── Alten Code deaktivieren (falls vorhanden und geändert) ───────────
+        if (isChanging && currentRedemption) {
+            // Badge entfernen
+            if (currentRedemption.creator_codes?.activates_badge) {
+                const oldBadgeId = currentRedemption.creator_codes.activates_badge;
+                const { error: deleteBadgeError } = await supabaseClient
+                    .from('user_badges')
+                    .delete()
+                    .eq('user_id', user.id)
+                    .eq('badge_id', oldBadgeId);
+                if (deleteBadgeError) throw deleteBadgeError;
+
+                // Falls dieses Badge als featured ausgewählt war, setzen wir es auf NULL zurück
+                if (window._featuredBadgeId === oldBadgeId) {
+                    window._featuredBadgeId = null;
+                    const { error: updateProfileError } = await supabaseClient
+                        .from('profiles')
+                        .update({ featured_badge_id: null })
+                        .eq('id', user.id);
+                    if (updateProfileError) console.error("Error setting featured badge to null:", updateProfileError);
+                    if (typeof renderFeaturedBadgeOverlay === 'function') {
+                        renderFeaturedBadgeOverlay();
+                    }
+                }
+            }
+        }
+
+        // ── Neuen Redemption-Record anlegen (upsert auf user_id) ──────────────
+        const { error: upsertError } = await supabaseClient
+            .from('creator_code_redemptions')
+            .upsert({ user_id: user.id, code_id: codeData.id }, { onConflict: 'user_id' });
+
+        if (upsertError) throw upsertError;
+
+        // ── Neue Animation freischalten / alte überschreiben ─────────────────
+        if (codeData.activates_animation) {
+            localStorage.setItem('creatorUnlockedAnimations', JSON.stringify([codeData.activates_animation]));
+        } else {
+            localStorage.removeItem('creatorUnlockedAnimations');
+        }
+
+        // ── Neues Badge vergeben ─────────────────────────────────────────────
+        if (codeData.activates_badge) {
+            const { data: existingBadge, error: selectBadgeError } = await supabaseClient
+                .from('user_badges').select('id')
+                .eq('user_id', user.id).eq('badge_id', codeData.activates_badge).maybeSingle();
+            
+            if (selectBadgeError) throw selectBadgeError;
+
+            if (!existingBadge) {
+                const { error: insertBadgeError } = await supabaseClient
+                    .from('user_badges')
+                    .insert({ user_id: user.id, badge_id: codeData.activates_badge });
+                if (insertBadgeError) throw insertBadgeError;
+            }
+        }
+
+        // ── Validate and clean up card appearance ────────────────────────────
+        let currentAnim = localStorage.getItem('metalCardAnim') || 'sweep';
+        let currentPattern = localStorage.getItem('metalCardPattern') || 'none';
+        let appearanceChanged = false;
+
+        if (!checkAnimationUnlocked(currentAnim)) {
+            localStorage.setItem('metalCardAnim', 'sweep');
+            currentAnim = 'sweep';
+            appearanceChanged = true;
+        }
+        if (!checkPatternUnlocked(currentPattern)) {
+            localStorage.setItem('metalCardPattern', 'none');
+            currentPattern = 'none';
+            appearanceChanged = true;
+        }
+
+        if (appearanceChanged) {
+            applyCardAppearance('metal-card-container', getLocalCardAppearance());
+            applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
+            if (typeof _refreshAppearanceButtonStates === 'function') {
+                _refreshAppearanceButtonStates();
+            }
+            await syncCardAppearanceToCloud();
+        }
+
+        // ── Eingelösten Code lokal für die Anzeige-Liste persistieren ─────────
+        const redeemed = [{ code: rawCode, credits: codeData.credits || null, text: codeData.text || null, redeemedAt: new Date().toISOString() }];
+        localStorage.setItem('creatorCodesRedeemed', JSON.stringify(redeemed));
+
+        input.value = '';
+        btn.disabled = false;
+        btn.innerHTML = origHTML;
+
+        // Badges-System neu laden und UI aktualisieren
+        if (typeof loadBadges === 'function') {
+            await loadBadges();
+        }
+        renderCreatorCodeRedeemed();
+
+        // Erfolgs-Popup
+        showCreatorCodePopup('success', codeData);
+
+    } catch(err) {
+        console.error('Creator code redemption error:', err);
+        btn.disabled = false;
+        btn.innerHTML = origHTML;
+
+        // Check for Postgres trigger exception
+        if (err.message && err.message.includes('once every 14 days')) {
+            try {
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('creator_code_last_redeemed')
+                    .eq('id', user.id)
+                    .single();
+                if (profile?.creator_code_last_redeemed) {
+                    const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
+                    const lastRedeemed = new Date(profile.creator_code_last_redeemed).getTime();
+                    const elapsed = Date.now() - lastRedeemed;
+                    const daysLeft = Math.ceil((COOLDOWN_MS - elapsed) / (24 * 60 * 60 * 1000));
+                    showCreatorCodePopup('cooldown', { daysLeft: Math.max(1, daysLeft) });
+                    return;
+                }
+            } catch (e) {
+                console.error('Failed to fetch profile timestamp after trigger error:', e);
+            }
+        }
+
+        showCreatorCodePopup('error', null);
+    }
+}
+window.redeemCreatorCode = redeemCreatorCode;
+

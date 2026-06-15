@@ -25,6 +25,34 @@ async function setupProfile(user) {
 
     // Vollständiges Profil im Hintergrund nachladen (featured badge + korrekter username aus DB + card design & streak)
     try {
+        // Sync creator code from DB first so the animation/badge benefits are known before loading appearance
+        try {
+            const { data: redemption } = await supabaseClient
+                .from('creator_code_redemptions')
+                .select('code_id, creator_codes(code, activates_animation, credits, text)')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (redemption && redemption.creator_codes) {
+                const codeData = redemption.creator_codes;
+                if (codeData.activates_animation) {
+                    localStorage.setItem('creatorUnlockedAnimations', JSON.stringify([codeData.activates_animation]));
+                } else {
+                    localStorage.removeItem('creatorUnlockedAnimations');
+                }
+                const redeemed = [{
+                    code: codeData.code,
+                    credits: codeData.credits || null,
+                    text: codeData.text || null,
+                    redeemedAt: new Date().toISOString()
+                }];
+                localStorage.setItem('creatorCodesRedeemed', JSON.stringify(redeemed));
+            } else {
+                localStorage.removeItem('creatorUnlockedAnimations');
+                localStorage.removeItem('creatorCodesRedeemed');
+            }
+        } catch (e) { /* ignore */ }
+
         let profileData = null;
         let res = await supabaseClient
             .from('profiles')
@@ -88,12 +116,24 @@ async function setupProfile(user) {
         if (profileData?.last_tracked_date) {
             localStorage.setItem('lastTrackedDate', profileData.last_tracked_date);
             localStorage.setItem('streakCount', profileData.streak_count || 0);
-            
-            // Re-validate and render streak UI
-            if (typeof validateAndRenderStreak === 'function') {
-                validateAndRenderStreak();
-            }
+        } else {
+            localStorage.removeItem('lastTrackedDate');
+            localStorage.setItem('streakCount', 0);
         }
+        
+        // Re-validate and render streak UI
+        if (typeof validateAndRenderStreak === 'function') {
+            validateAndRenderStreak();
+        }
+
+        // Render creator code if function is available
+        try {
+            if (typeof renderCreatorCodeRedeemed === 'function') {
+                renderCreatorCodeRedeemed();
+            } else if (typeof window.renderCreatorCodeRedeemed === 'function') {
+                window.renderCreatorCodeRedeemed();
+            }
+        } catch (e) { /* ignore */ }
 
         // Load badges at startup to sync achievements and trigger new unlock animations
         if (typeof loadBadges === 'function') {

@@ -27,6 +27,11 @@ const CARD_FONT_MAP = {
 
 function checkAnimationUnlocked(animId) {
     if (animId === 'none') return true;
+    // Creator Code override: always allow if redeemed via a creator code
+    try {
+        const creatorAnims = JSON.parse(localStorage.getItem('creatorUnlockedAnimations') || '[]');
+        if (creatorAnims.includes(animId)) return true;
+    } catch(e) {}
     if (typeof actualXp !== 'number') return true; // fallback while loading
     const currentXp = actualXp;
     if (animId === 'sweep') return currentXp >= 300;
