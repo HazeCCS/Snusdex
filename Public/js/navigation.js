@@ -87,14 +87,23 @@ function switchTab(tabId) {
     }
 
     if (tabId === 'social') {
-        const now = Date.now();
-        if (!_socialCacheData || (now - _socialCacheTime) > SOCIAL_CACHE_TTL) {
+        if (!_socialCacheData) {
             loadTopSnusOfWeek();
         } else {
             renderSocialFromCache();
+            if (typeof checkAndReloadSocialSilently === 'function') {
+                checkAndReloadSocialSilently();
+            }
         }
         loadBadges();
         if (typeof loadActivityHeatmap === 'function') loadActivityHeatmap();
+
+        // Update Creator's Pick scroll buttons visibility after layout is active
+        if (typeof updateCreatorsPickScrollButtons === 'function') {
+            updateCreatorsPickScrollButtons();
+            setTimeout(updateCreatorsPickScrollButtons, 100);
+            setTimeout(updateCreatorsPickScrollButtons, 300);
+        }
     }
 
     if (tabId === 'profile') {

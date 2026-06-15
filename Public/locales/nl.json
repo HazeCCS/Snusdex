@@ -132,6 +132,11 @@
   "rating.strength": "Sterkte",
   "rating.vis": "Uit.",
   "rating.str": "Str.",
+  "rating.creatorPick.headlineLabel": "Koptekst <span class=\"normal-case text-white/30\">(optioneel)</span>",
+  "rating.creatorPick.headlinePlaceholder": "bijv. Mijn Summer Pick 🔥",
+  "rating.creatorPick.reviewLabel": "Jouw Review <span class=\"normal-case text-white/30\">(optioneel)</span>",
+  "rating.creatorPick.reviewPlaceholder": "Schrijf wat je van deze snus vindt...",
+  "rating.creatorPick.maxChars": "Max. 300 tekens",
 
   "dex.searchPlaceholder": "Snus zoeken...",
 

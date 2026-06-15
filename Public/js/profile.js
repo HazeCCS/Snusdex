@@ -56,7 +56,7 @@ async function setupProfile(user) {
         let profileData = null;
         let res = await supabaseClient
             .from('profiles')
-            .select('username, featured_badge_id, card_appearance, streak_count, last_tracked_date, avatar_url')
+            .select('username, featured_badge_id, card_appearance, streak_count, last_tracked_date, avatar_url, is_creator')
             .eq('id', user.id)
             .single();
 
@@ -64,7 +64,7 @@ async function setupProfile(user) {
             console.warn("Retrying profile fetch without new sync columns...");
             res = await supabaseClient
                 .from('profiles')
-                .select('username, featured_badge_id, avatar_url')
+                .select('username, featured_badge_id, avatar_url, is_creator')
                 .eq('id', user.id)
                 .single();
             if (res.error && res.error.code === '42703') {
@@ -103,6 +103,11 @@ async function setupProfile(user) {
 
         window._featuredBadgeId = profileData?.featured_badge_id || null;
         renderFeaturedBadgeOverlay();
+
+        // Creator-Pick Toggle im Rating-Modal steuern
+        if (typeof setupCreatorPickToggle === 'function') {
+            setupCreatorPickToggle(profileData?.is_creator === true);
+        }
 
         // Sync card appearance from DB
         if (profileData?.card_appearance && Object.keys(profileData.card_appearance).length > 0) {

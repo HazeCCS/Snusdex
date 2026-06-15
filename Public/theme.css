@@ -316,3 +316,247 @@ html.light input[type="range"].accent-white { accent-color: var(--app-fg); }
    Arbitrary `bg-white/[0.01]` and `bg-white/[0.X]` literal opacities */
 html.light .bg-white\/\[0\.01\] { background-color: rgba(var(--rgb-fg), 0.03) !important; }
 
+
+/* ============================================================================
+   CREATOR'S PICK CAROUSEL — Component Styles
+   ============================================================================ */
+
+/* Wrapper: suppress scrollbar chrome */
+#creators-pick-carousel {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+#creators-pick-carousel::-webkit-scrollbar {
+    display: none;
+}
+
+/* Individual card */
+.cp-card {
+    flex-shrink: 0;
+    width: calc(100vw - 40px);
+    background: linear-gradient(135deg, #1f142b 0%, #151120 50%, #0f0a17 100%);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: 24px;
+    cursor: pointer;
+    scroll-snap-align: start;
+    position: relative;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 12px 30px -5px rgba(0, 0, 0, 0.5), 0 0 20px 2px rgba(147, 51, 234, 0.15);
+}
+.cp-card:active {
+    transform: scale(0.98);
+    opacity: 0.92;
+}
+
+/* Avatar chip — floats above the card's top-left corner */
+.cp-avatar-chip {
+    position: absolute;
+    top: -14px;
+    left: 16px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #1C1C1E;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    z-index: 10;
+}
+.cp-avatar-initial {
+    font-size: 16px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.8);
+}
+
+/* Inner padding — extra top to clear the avatar chip */
+.cp-card-inner {
+    padding: 20px;
+}
+
+/* Header row */
+.cp-card-header {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 6px;
+    padding-left: 48px; /* indent past avatar chip */
+}
+.cp-headline {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8E8E93;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.cp-handle {
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    font-weight: 500;
+}
+
+/* Snus product name */
+.cp-snus-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+    margin-bottom: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Body: bars column (left) + image column (right) */
+.cp-body {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+/* Rating bars column */
+.cp-bars-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+.cp-rating-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.cp-rating-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: #8E8E93;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    width: 36px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.cp-bar-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.cp-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Snus image column */
+.cp-img-col {
+    width: 90px;
+    height: 90px;
+    flex-shrink: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cp-img-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    height: 60%;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+}
+.cp-snus-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+}
+
+/* Review text */
+.cp-review-text {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    line-height: 1.5;
+    font-style: italic;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding-top: 10px;
+    margin-top: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Light mode overrides */
+html.light .cp-card {
+    background: linear-gradient(135deg, #f7f1ff 0%, #ffffff 100%);
+    border-color: rgba(168, 85, 247, 0.2);
+    box-shadow: 0 12px 30px -5px rgba(168, 85, 247, 0.1);
+}
+html.light .cp-avatar-chip {
+    border-color: var(--surface-1);
+}
+html.light .cp-headline,
+html.light .cp-rating-label {
+    color: var(--muted-fg);
+}
+html.light .cp-handle {
+    color: var(--fg-a40);
+}
+html.light .cp-snus-name {
+    color: var(--app-fg);
+}
+html.light .cp-bar-track {
+    background: var(--fg-a10);
+}
+html.light .cp-review-text {
+    color: var(--fg-a50);
+    border-top-color: var(--fg-a08);
+}
+
+/* Compact mode transitions */
+.cp-card-inner {
+    transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cp-profile-row {
+    transition: margin-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cp-card-details {
+    max-height: 450px;
+    opacity: 1;
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Compact active states */
+#creators-pick-wrapper.compact-active #creators-pick-toggle-arrow {
+    transform: rotate(-90deg);
+}
+
+#creators-pick-carousel.compact .cp-card-inner {
+    padding: 12px 16px;
+}
+
+#creators-pick-carousel.compact .cp-profile-row {
+    margin-bottom: 0px;
+}
+
+#creators-pick-carousel.compact .cp-card-details {
+    max-height: 0px;
+    opacity: 0;
+}
+
+

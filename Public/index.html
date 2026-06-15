@@ -1740,6 +1740,51 @@
                 </div>
             </div>
 
+            <!-- ═══════════════════════════════════════════════════ -->
+            <!-- CREATOR'S PICK CAROUSEL                           -->
+            <!-- ═══════════════════════════════════════════════════ -->
+            <div id="creators-pick-wrapper" style="display:none;" class="mb-5">
+                <!-- Section label -->
+                <div class="flex items-center justify-between mb-3 px-0">
+                    <span class="text-[13px] text-[#8E8E93] font-semibold uppercase tracking-wider">Creator's Pick</span>
+                    <button id="creators-pick-toggle-btn" onclick="triggerHapticFeedback(); toggleCreatorsPickCompact()"
+                        class="w-7 h-7 bg-white/10 border border-white/10 rounded-full flex items-center justify-center active:scale-90 transition-transform">
+                        <svg id="creators-pick-toggle-arrow" class="w-3.5 h-3.5 text-white transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="relative">
+                    <!-- Carousel track — overflow-visible so avatar chips peek out -->
+                    <div id="creators-pick-carousel" class="flex gap-4 overflow-x-auto pb-6 pt-2 snap-x snap-mandatory"
+                        style="
+                            -ms-overflow-style: none;
+                            scrollbar-width: none;
+                            padding-left: 2px;
+                            padding-right: 16px;
+                            overflow-y: visible;
+                        ">
+                        <!-- Cards rendered by JS -->
+                    </div>
+                    <!-- Scroll Button Left -->
+                    <button id="creators-pick-scroll-left" onclick="triggerHapticFeedback(); scrollCreatorsPick('left')" class="hidden absolute left-2 top-[calc(50%-12px)] -translate-y-1/2 z-20 flex items-center justify-center bg-black/60 backdrop-blur-md border border-white/15 rounded-full opacity-0 pointer-events-none transition-all duration-300 active:scale-95 hover:bg-black/80 hover:text-white shadow-[0_4px_12px_rgba(0,0,0,0.5)]" style="width: 52px; height: 28px;">
+                        <svg class="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <!-- Scroll Button Right -->
+                    <button id="creators-pick-scroll-right" onclick="triggerHapticFeedback(); scrollCreatorsPick('right')" class="hidden absolute right-2 top-[calc(50%-12px)] -translate-y-1/2 z-20 flex items-center justify-center bg-black/60 backdrop-blur-md border border-white/15 rounded-full opacity-0 pointer-events-none transition-all duration-300 active:scale-95 hover:bg-black/80 hover:text-white shadow-[0_4px_12px_rgba(0,0,0,0.5)]" style="width: 52px; height: 28px;">
+                        <svg class="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Community Picks Header -->
+            <div class="flex items-center justify-between mb-3 px-0">
+                <span class="text-[13px] text-[#8E8E93] font-semibold uppercase tracking-wider">Community Picks</span>
+            </div>
             <div id="top-snus-container"></div>
 
             <!-- Heatmap -->
@@ -1769,8 +1814,7 @@
         <div class="px-5 py-4">
             <h1 class="text-[34px] font-bold tracking-tight mb-6" data-i18n="profile.title">Profile</h1>
 
-            <div
-                onclick="triggerHapticFeedback(); openSettingsSubpage('Edit Profile')"
+            <div onclick="triggerHapticFeedback(); openSettingsSubpage('Edit Profile')"
                 class="bg-[#1C1C1E] rounded-[24px] p-6 border border-white/10 flex items-center gap-5 mb-8 relative overflow-hidden shadow-lg w-full cursor-pointer active:scale-[0.98] active:bg-white/5 transition-all duration-150 select-none">
                 <div
                     class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none">
@@ -1815,7 +1859,8 @@
                     </div>
                 </div>
                 <!-- Chevron arrow indicating tappable -->
-                <svg class="w-4 h-4 text-white/25 flex-shrink-0 relative z-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <svg class="w-4 h-4 text-white/25 flex-shrink-0 relative z-10" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
             </div>
@@ -1831,7 +1876,6 @@
                                 stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
->>>>>>> b85da0c (Snusdex RC2.6 Creator Codes Update, Better Daily Streak Fix)
                             </svg>
                         </div>
                         <span class="text-white text-[17px] font-medium" data-i18n="settings.stats">Stats</span>
@@ -2177,7 +2221,7 @@
                             1/6</div>
                     </div>
 
-                    <div class="relative w-full overflow-hidden mb-6 min-h-[240px]">
+                    <div id="rating-steps-container" class="relative w-full overflow-hidden mb-6 min-h-[240px] transition-[min-height] duration-300">
                         <div id="step-visuals"
                             class="w-full transition-all duration-300 absolute inset-0 z-10 opacity-100">
                             <div class="rating-group mb-6" data-category="visuals">
@@ -2271,6 +2315,50 @@
                                     class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[15px] focus:border-white outline-none transition-all resize-none"></textarea>
                             </div>
                         </div>
+                        <!-- Creator's Pick Step (step 7, only for creators) -->
+                        <div id="step-creator-pick"
+                            class="w-full transition-all duration-300 absolute inset-0 translate-x-full opacity-0 pointer-events-none z-0">
+                            <div class="mb-5">
+                                <label
+                                    class="text-[13px] text-[#8E8E93] mb-2 px-1 block uppercase tracking-wider font-medium"
+                                    data-i18n-html="rating.creatorPick.headlineLabel">Überschrift
+                                    <span class="normal-case text-white/30">(optional)</span></label>
+                                <input type="text" id="cp-headline-input" placeholder="z.B. Mein Summer Pick 🔥"
+                                    data-i18n-placeholder="rating.creatorPick.headlinePlaceholder"
+                                    maxlength="16"
+                                    class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[15px] focus:border-white outline-none transition-all">
+                            </div>
+                            <div>
+                                <label
+                                    class="text-[13px] text-[#8E8E93] mb-2 px-1 block uppercase tracking-wider font-medium"
+                                    data-i18n-html="rating.creatorPick.reviewLabel">Dein
+                                    Review <span class="normal-case text-white/30">(optional)</span></label>
+                                <textarea id="cp-review-input" rows="4"
+                                    placeholder="Schreib was du über diesen Snus denkst..."
+                                    data-i18n-placeholder="rating.creatorPick.reviewPlaceholder"
+                                    maxlength="300"
+                                    class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[15px] focus:border-white outline-none transition-all resize-none"></textarea>
+                                <p class="text-[11px] text-[#8E8E93] mt-1 px-1" data-i18n="rating.creatorPick.maxChars">Max. 300 Zeichen</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Creator's Pick Toggle — shown below steps for creators, always accessible -->
+                    <div id="creator-pick-toggle-row" class="hidden mb-3">
+                        <button id="creator-pick-toggle-btn" onclick="triggerHapticFeedback(); toggleCreatorPickMode()"
+                            class="w-full flex items-center justify-between px-4 py-3 rounded-[14px] bg-white/5 border border-white/10 active:bg-white/10 transition-all">
+                            <div class="flex items-center gap-3">
+                                <div id="creator-pick-check-icon"
+                                    class="w-6 h-6 rounded-full border-2 border-white/30 flex items-center justify-center transition-all">
+                                    <svg class="w-3.5 h-3.5 text-white hidden" id="creator-pick-checkmark" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <span class="text-white text-[15px] font-medium">Creator's Pick</span>
+                            </div>
+                            <span class="text-[12px] text-[#8E8E93] font-medium">+Headline &amp; Text</span>
+                        </button>
                     </div>
 
                     <button id="rating-next-btn" onclick="triggerHapticFeedback(); nextRatingStep()"
@@ -2998,9 +3086,11 @@
                             </svg>
                         </div>
                         <div>
-                            <p id="creator-error-title" class="text-white text-[17px] font-semibold leading-tight">Creator Code nicht gefunden
+                            <p id="creator-error-title" class="text-white text-[17px] font-semibold leading-tight">
+                                Creator Code nicht gefunden
                             </p>
-                            <p id="creator-error-desc" class="text-[#8E8E93] text-[13px] mt-0.5">Bitte überprüfe deinen Code und versuche es
+                            <p id="creator-error-desc" class="text-[#8E8E93] text-[13px] mt-0.5">Bitte überprüfe deinen
+                                Code und versuche es
                                 erneut.</p>
                         </div>
                     </div>
@@ -3099,7 +3189,7 @@
         style="background: rgba(0,0,0,0.72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);">
         <div id="rating-summary-card"
             class="w-full bg-[#1C1C1E] rounded-t-[32px] border-t border-white/10 shadow-2xl flex flex-col items-center"
-            style="transform: translateY(100%); transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1); padding-bottom: env(safe-area-inset-bottom, 24px);">
+            style="transform: translateY(100%); transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1); padding-bottom: calc(env(safe-area-inset-bottom, 24px) + 16px);">
 
             <!-- Drag handle -->
             <div class="w-10 h-1.5 bg-[#3A3A3C] rounded-full mt-4 mb-5 flex-shrink-0"></div>
@@ -3128,10 +3218,10 @@
             <div id="rating-summary-circles" class="grid grid-cols-6 gap-2 px-6 mb-7 w-full"></div>
 
             <!-- Continue button -->
-            <div class="px-6 w-full mb-2">
+            <div class="px-6 w-full mb-4">
                 <button onclick="closeRatingSummary()"
                     class="w-full py-4 rounded-2xl bg-white text-black text-[17px] font-bold tracking-tight active:scale-[0.97] transition-transform shadow-lg">
-                    Super! 🎉
+                    Continue
                 </button>
             </div>
         </div>
@@ -3198,7 +3288,8 @@
 
                 <!-- Account Section -->
                 <div class="settings-search-section">
-                    <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-normal pl-4 mb-2" data-i18n="settings.sectionAccount">Account</h2>
+                    <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-normal pl-4 mb-2"
+                        data-i18n="settings.sectionAccount">Account</h2>
                     <div class="bg-[#1C1C1E] rounded-[20px] overflow-hidden border border-white/10 mb-6">
                         <div class="settings-row" data-search="edit profile account username photo avatar picture">
                             <button onclick="triggerHapticFeedback(); openSettingsSubpage('Edit Profile')"
@@ -3249,7 +3340,8 @@
 
                 <!-- Privacy & Preferences Section -->
                 <div class="settings-search-section">
-                    <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-normal pl-4 mb-2" data-i18n="settings.sectionPreferences">Privacy & Preferences</h2>
+                    <h2 class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-normal pl-4 mb-2"
+                        data-i18n="settings.sectionPreferences">Privacy & Preferences</h2>
                     <div class="bg-[#1C1C1E] rounded-[20px] overflow-hidden border border-white/10 mb-6">
                         <div class="settings-row" data-search="privacy security account privatsphäre sicherheit">
                             <button onclick="triggerHapticFeedback(); openSettingsSubpage('Privacy & Security')"
@@ -3906,36 +3998,60 @@
     <script src="js/version.js?v=181"></script>
     <script src="js/dex-scroll.js?v=181"></script>
     <div id="scan-found-toast"
-         class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-3 px-4 py-3 bg-[#2C2C2E] border border-white/10 rounded-2xl shadow-xl transition-all duration-300 translate-y-full opacity-0 pointer-events-auto"
-         style="min-width:220px;max-width:calc(100vw - 48px)">
-        <svg class="w-5 h-5 flex-shrink-0 text-[#30D158]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9990] flex items-center gap-3 px-4 py-3 bg-[#2C2C2E] border border-white/10 rounded-2xl shadow-xl transition-all duration-300 translate-y-full opacity-0 pointer-events-none"
+        style="min-width:220px;max-width:calc(100vw - 48px)">
+        <svg class="w-5 h-5 flex-shrink-0 text-[#30D158]" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+        </svg>
         <span id="scan-found-toast-name" class="text-white text-[15px] font-medium flex-1 truncate"></span>
-        <button onclick="triggerHapticFeedback(); openScanFoundResult()" class="text-[#0A84FF] text-[15px] font-semibold flex-shrink-0" data-i18n="scan.foundToastOpen">Open</button>
+        <button onclick="triggerHapticFeedback(); openScanFoundResult()"
+            class="text-[#0A84FF] text-[15px] font-semibold flex-shrink-0" data-i18n="scan.foundToastOpen">Open</button>
     </div>
 
     <!-- Avatar Crop Modal -->
-    <div id="avatar-crop-modal" class="fixed inset-0 hidden flex items-center justify-center p-4" style="z-index: 10000; background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);">
-        <div class="bg-[#1C1C1E] border border-white/10 p-6 w-full flex flex-col items-center shadow-2xl scale-95 opacity-0 transition-all duration-300" style="border-radius: 28px; max-width: 320px;">
+    <div id="avatar-crop-modal" class="fixed inset-0 hidden flex items-center justify-center p-4"
+        style="z-index: 10000; background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);">
+        <div class="bg-[#1C1C1E] border border-white/10 p-6 w-full flex flex-col items-center shadow-2xl scale-95 opacity-0 transition-all duration-300"
+            style="border-radius: 28px; max-width: 320px;">
             <h3 class="text-white text-[18px] font-semibold mb-4 text-center">Bild zuschneiden</h3>
-            
+
             <!-- Viewport container -->
-            <div id="crop-viewport" class="relative rounded-full overflow-hidden border-2 border-white/20 bg-black cursor-move touch-none" style="width: 220px; height: 220px;">
-                <img id="crop-image" src="" alt="" class="absolute origin-center select-none pointer-events-none" style="transform: translate(0px, 0px) scale(1);">
+            <div id="crop-viewport"
+                class="relative rounded-full overflow-hidden border-2 border-white/20 bg-black cursor-move touch-none"
+                style="width: 220px; height: 220px;">
+                <img id="crop-image" src="" alt="" class="absolute origin-center select-none pointer-events-none"
+                    style="transform: translate(0px, 0px) scale(1);">
                 <!-- Circular overlay boundary -->
-                <div class="absolute inset-0 rounded-full pointer-events-none border border-white/40" style="box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);"></div>
+                <div class="absolute inset-0 rounded-full pointer-events-none border border-white/40"
+                    style="box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);"></div>
             </div>
-            
+
             <!-- Zoom slider -->
             <div class="w-full mt-5 px-2 flex items-center gap-3">
-                <svg class="w-4 h-4 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m4-3H6" /></svg>
-                <input type="range" id="crop-zoom" min="1" max="3" step="0.01" value="1" class="flex-1 accent-white bg-white/10 h-1 outline-none appearance-none" style="border-radius: 9999px;">
-                <svg class="w-5 h-5 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7m3-3v6" /></svg>
+                <svg class="w-4 h-4 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m4-3H6" />
+                </svg>
+                <input type="range" id="crop-zoom" min="1" max="3" step="0.01" value="1"
+                    class="flex-1 accent-white bg-white/10 h-1 outline-none appearance-none"
+                    style="border-radius: 9999px;">
+                <svg class="w-5 h-5 text-[#8E8E93]" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7m3-3v6" />
+                </svg>
             </div>
-            
+
             <!-- Action buttons -->
             <div class="w-full flex gap-3 mt-6">
-                <button onclick="closeCropModal()" class="flex-1 py-3 bg-white/10 text-white font-semibold text-[15px] active:scale-95 transition-all" style="border-radius: 14px;">Abbrechen</button>
-                <button id="crop-save-btn" onclick="saveCroppedAvatar()" class="flex-1 py-3 bg-white text-black font-semibold text-[15px] active:scale-95 transition-all flex justify-center items-center gap-2" style="border-radius: 14px;">
+                <button onclick="closeCropModal()"
+                    class="flex-1 py-3 bg-white/10 text-white font-semibold text-[15px] active:scale-95 transition-all"
+                    style="border-radius: 14px;">Abbrechen</button>
+                <button id="crop-save-btn" onclick="saveCroppedAvatar()"
+                    class="flex-1 py-3 bg-white text-black font-semibold text-[15px] active:scale-95 transition-all flex justify-center items-center gap-2"
+                    style="border-radius: 14px;">
                     <span>Speichern</span>
                 </button>
             </div>

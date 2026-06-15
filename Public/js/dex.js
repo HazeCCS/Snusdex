@@ -19,6 +19,13 @@ let globalUserCollection = {};
 // ==========================================
 let _socialCacheData = null;
 let _socialCacheTime = 0;
+let _lastSocialMetadata = {
+    collectionsCount: 0,
+    collectionsMaxTime: null,
+    picksCount: 0,
+    picksMaxTime: null
+};
+let _isCheckingSocialDb = false;
 const SOCIAL_CACHE_TTL = 5 * 60 * 1000; // 5 Minuten
 
 // ==========================================
@@ -33,6 +40,9 @@ const _skeletonTemplates = {
 
     // Matches renderSocialListUI() list item exactly
     'social-list-item': `<div class="border-b border-white/5 last:border-0"><div class="flex items-center gap-3 p-3"><div class="sk w-5 h-[14px] rounded flex-shrink-0"></div><div class="sk w-10 h-10 rounded-xl flex-shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="sk h-[18px] w-[65%] rounded-full"></div><div class="sk h-[13px] w-[40%] rounded-full"></div></div><div class="flex-shrink-0 min-w-[48px] px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center gap-1"><div class="sk h-[17px] w-8 rounded-md"></div><div class="sk h-[9px] w-7 rounded-full"></div></div></div></div>`,
+
+    // Matches renderCreatorsPickCard() exactly
+    'creator-pick': `<div class="cp-card opacity-60"><div class="cp-card-inner"><div class="flex items-center justify-between mb-4"><div class="flex items-center gap-2.5 min-w-0"><div class="w-9 h-9 rounded-full sk flex-shrink-0"></div><div class="flex flex-col gap-1.5"><div class="sk h-3.5 w-24 rounded-full"></div><div class="sk h-2.5 w-16 rounded-full"></div></div></div><div class="sk h-4 w-28 rounded-full"></div></div><div class="flex items-center gap-4 mb-5"><div class="sk w-20 h-20 rounded-full flex-shrink-0"></div><div class="flex-1 flex flex-col justify-center gap-2"><div class="sk h-4 w-[75%] rounded-full"></div><div class="sk h-3 w-[50%] rounded-full"></div><div class="flex items-end gap-1"><div class="sk h-6 w-10 rounded-md"></div><div class="sk h-3 w-12 rounded-full mb-0.5"></div></div></div></div><div class="pt-3.5 border-t border-white/5 grid grid-cols-6 gap-1 mb-3.5">${Array(6).fill('<div class="flex flex-col items-center"><div class="sk w-8 h-8 rounded-full mb-1"></div><div class="sk h-[8px] w-6 rounded-full"></div></div>').join('')}</div></div></div>`,
 };
 
 function skeletonHTML(type, count) {

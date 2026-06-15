@@ -403,16 +403,16 @@ function showScanFoundToast(snus) {
     if (!toast || !nameEl) return;
     if (_scanFoundToastTimer) clearTimeout(_scanFoundToastTimer);
     nameEl.textContent = snus.name || '';
-    toast.classList.remove('translate-y-full', 'opacity-0');
-    toast.classList.add('translate-y-0', 'opacity-100');
+    toast.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
+    toast.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
     _scanFoundToastTimer = setTimeout(closeScanFoundToast, 3500);
 }
 
 function closeScanFoundToast() {
     const toast = document.getElementById('scan-found-toast');
     if (!toast) return;
-    toast.classList.remove('translate-y-0', 'opacity-100');
-    toast.classList.add('translate-y-full', 'opacity-0');
+    toast.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
+    toast.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
     if (_scanFoundToastTimer) { clearTimeout(_scanFoundToastTimer); _scanFoundToastTimer = null; }
 }
 

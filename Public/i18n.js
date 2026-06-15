@@ -144,6 +144,11 @@ const _EN = {
     'rating.strength': 'Strength',
     'rating.vis': 'Vis.',
     'rating.str': 'Str.',
+    'rating.creatorPick.headlineLabel': 'Headline <span class="normal-case text-white/30">(optional)</span>',
+    'rating.creatorPick.headlinePlaceholder': 'e.g. Summer Pick 🔥',
+    'rating.creatorPick.reviewLabel': 'Your Review <span class="normal-case text-white/30">(optional)</span>',
+    'rating.creatorPick.reviewPlaceholder': 'Write what you think of this snus...',
+    'rating.creatorPick.maxChars': 'Max. 300 characters',
 
     'dex.searchPlaceholder': 'Search Snus...',
 

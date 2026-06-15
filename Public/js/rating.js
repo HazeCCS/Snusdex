@@ -66,8 +66,55 @@ let tempRatings = {
 };
 let currentSelectedSnusId = null;
 
-const RATING_STEPS = ['visuals', 'smell', 'taste', 'bite', 'drip', 'strength'];
+// Creator's Pick state
+let _isCurrentUserCreator = false;
+let _isCreatorPickActive = false;
+
+const BASE_RATING_STEPS = ['visuals', 'smell', 'taste', 'bite', 'drip', 'strength'];
+let RATING_STEPS = [...BASE_RATING_STEPS];
 let currentRatingStepIndex = 0;
+
+// Zeige Creator-Pick Toggle wenn is_creator = true
+function setupCreatorPickToggle(isCreator) {
+    _isCurrentUserCreator = isCreator;
+    const row = document.getElementById('creator-pick-toggle-row');
+    if (!row) return;
+    if (isCreator) {
+        row.classList.remove('hidden');
+    } else {
+        row.classList.add('hidden');
+    }
+}
+
+window.toggleCreatorPickMode = function () {
+    _isCreatorPickActive = !_isCreatorPickActive;
+    const icon = document.getElementById('creator-pick-check-icon');
+    const checkmark = document.getElementById('creator-pick-checkmark');
+    const btn = document.getElementById('creator-pick-toggle-btn');
+    if (icon && checkmark && btn) {
+        if (_isCreatorPickActive) {
+            icon.classList.remove('border-white/30');
+            icon.classList.add('border-[#34C759]', 'bg-[#34C759]/20');
+            checkmark.classList.remove('hidden');
+            btn.classList.remove('bg-white/5', 'border-white/10');
+            btn.classList.add('bg-[#34C759]/10', 'border-[#34C759]/40');
+        } else {
+            icon.classList.add('border-white/30');
+            icon.classList.remove('border-[#34C759]', 'bg-[#34C759]/20');
+            checkmark.classList.add('hidden');
+            btn.classList.add('bg-white/5', 'border-white/10');
+            btn.classList.remove('bg-[#34C759]/10', 'border-[#34C759]/40');
+        }
+    }
+    // RATING_STEPS dynamisch anpassen
+    if (_isCreatorPickActive) {
+        RATING_STEPS = [...BASE_RATING_STEPS, 'creator-pick'];
+    } else {
+        RATING_STEPS = [...BASE_RATING_STEPS];
+    }
+    triggerHapticFeedback();
+};
+
 
 function getRatingColor(val) {
     // Returns a CSS color string transitioning red(1)→yellow(5)→green(7)→blue(10)
@@ -91,8 +138,24 @@ function getRatingColor(val) {
 
 function initRatingWizard() {
     currentRatingStepIndex = 0;
+    _isCreatorPickActive = false;
+    RATING_STEPS = [...BASE_RATING_STEPS];
 
-    RATING_STEPS.forEach(cat => {
+    // Creator-Pick Toggle zurücksetzen
+    const icon = document.getElementById('creator-pick-check-icon');
+    const checkmark = document.getElementById('creator-pick-checkmark');
+    const btn = document.getElementById('creator-pick-toggle-btn');
+    if (icon) { icon.classList.add('border-white/30'); icon.classList.remove('border-[#34C759]', 'bg-[#34C759]/20'); }
+    if (checkmark) checkmark.classList.add('hidden');
+    if (btn) { btn.classList.add('bg-white/5', 'border-white/10'); btn.classList.remove('bg-[#34C759]/10', 'border-[#34C759]/40'); }
+
+    // Creator-Pick Felder leeren
+    const headlineInput = document.getElementById('cp-headline-input');
+    const reviewInput = document.getElementById('cp-review-input');
+    if (headlineInput) headlineInput.value = '';
+    if (reviewInput) reviewInput.value = '';
+
+    BASE_RATING_STEPS.forEach(cat => {
         tempRatings[cat] = null;
         tempRatings[`${cat}_text`] = '';
 
@@ -113,6 +176,9 @@ function initRatingWizard() {
         const textEl = document.getElementById(`text-${cat}`);
         if (textEl) textEl.value = '';
     });
+
+    // Re-apply toggle visibility based on stored creator state
+    setupCreatorPickToggle(_isCurrentUserCreator);
 
     updateRatingStepUI();
 }
@@ -159,7 +225,21 @@ function updateRatingStepUI() {
 
     if (!title) return;
 
-    title.innerText = t('rating.' + RATING_STEPS[currentRatingStepIndex]);
+    const currentStep = RATING_STEPS[currentRatingStepIndex];
+
+    const stepsContainer = document.getElementById('rating-steps-container');
+    if (stepsContainer) {
+        if (currentStep === 'creator-pick') {
+            stepsContainer.style.minHeight = '310px';
+        } else {
+            stepsContainer.style.minHeight = '240px';
+        }
+    }
+    if (currentStep === 'creator-pick') {
+        title.innerText = "Creator's Pick";
+    } else {
+        title.innerText = t('rating.' + currentStep);
+    }
     indicator.innerText = `${currentRatingStepIndex + 1}/${RATING_STEPS.length}`;
 
     if (currentRatingStepIndex === 0) {
@@ -190,15 +270,20 @@ function updateRatingStepUI() {
         nextIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />`;
     }
 
-    RATING_STEPS.forEach((step, index) => {
+    // Panel-IDs: BASE_RATING_STEPS + optionaler creator-pick Step
+    const allPanelIds = [...BASE_RATING_STEPS, 'creator-pick'];
+    allPanelIds.forEach((step, _i) => {
         const panel = document.getElementById(`step-${step}`);
         if (!panel) return;
-
         panel.classList.remove('translate-x-0', 'translate-x-full', '-translate-x-full', 'opacity-0', 'opacity-100', 'z-10', 'z-0', 'pointer-events-none');
 
-        if (index === currentRatingStepIndex) {
+        const indexInCurrentSteps = RATING_STEPS.indexOf(step);
+        if (indexInCurrentSteps === -1) {
+            // Nicht in aktuellem Flow: ganz nach rechts schieben
+            panel.classList.add('translate-x-full', 'opacity-0', 'z-0', 'pointer-events-none');
+        } else if (indexInCurrentSteps === currentRatingStepIndex) {
             panel.classList.add('translate-x-0', 'opacity-100', 'z-10');
-        } else if (index < currentRatingStepIndex) {
+        } else if (indexInCurrentSteps < currentRatingStepIndex) {
             panel.classList.add('-translate-x-full', 'opacity-0', 'z-0', 'pointer-events-none');
         } else {
             panel.classList.add('translate-x-full', 'opacity-0', 'z-0', 'pointer-events-none');
@@ -208,6 +293,12 @@ function updateRatingStepUI() {
 
 function nextRatingStep() {
     const currentStep = RATING_STEPS[currentRatingStepIndex];
+
+    // Creator-Pick Step: keine Bewertungs-Pflicht
+    if (currentStep === 'creator-pick') {
+        collectCurrentSnus();
+        return;
+    }
 
     // Guard: require a rating selection before proceeding
     if (tempRatings[currentStep] === null) {
@@ -607,6 +698,29 @@ async function collectCurrentSnus() {
         _socialCacheData = null;
         _socialCacheTime = 0;
 
+        // Creator's Pick speichern falls aktiv
+        if (_isCreatorPickActive && _isCurrentUserCreator) {
+            try {
+                const headlineVal = (document.getElementById('cp-headline-input')?.value || '').trim();
+                const reviewVal = (document.getElementById('cp-review-input')?.value || '').trim();
+                await supabaseClient.rpc('upsert_creator_pick', {
+                    p_snus_id:          currentSelectedSnusId,
+                    p_custom_headline:  headlineVal || null,
+                    p_review_text:      reviewVal || null,
+                    p_rating_taste:     tempRatings.taste,
+                    p_rating_smell:     tempRatings.smell,
+                    p_rating_bite:      tempRatings.bite,
+                    p_rating_drip:      tempRatings.drip,
+                    p_rating_visuals:   tempRatings.visuals,
+                    p_rating_strength:  tempRatings.strength
+                });
+                // Carousel refreshen
+                if (typeof loadCreatorsPicks === 'function') loadCreatorsPicks();
+            } catch (cpErr) {
+                console.warn('[CreatorPick] Fehler beim Speichern:', cpErr);
+            }
+        }
+
         // Show rating summary popup instead of closing directly
         showRatingSummary(currentSelectedSnusId, { ...tempRatings });
     } else {
@@ -622,7 +736,7 @@ async function collectCurrentSnus() {
 function editRating() {
     if (globalUserCollection[currentSelectedSnusId]) {
         const currentRatings = globalUserCollection[currentSelectedSnusId].ratings;
-        RATING_STEPS.forEach(cat => {
+        BASE_RATING_STEPS.forEach(cat => {
             const val = currentRatings[cat];
             if (val != null) setRating(cat, val);
             const textEl = document.getElementById(`text-${cat}`);
@@ -681,7 +795,7 @@ function showRatingSummary(snusId, ratings) {
     if (metaEl) metaEl.innerText = `${snus.nicotine || '??'} mg/g`;
 
     // Overall score (average of all 6)
-    const vals = RATING_STEPS.map(cat => ratings[cat]).filter(v => v !== null && v !== undefined);
+    const vals = BASE_RATING_STEPS.map(cat => ratings[cat]).filter(v => v !== null && v !== undefined);
     const overall = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
     const overallEl = document.getElementById('rating-summary-overall');
     if (overallEl) {
@@ -700,7 +814,7 @@ function showRatingSummary(snusId, ratings) {
             drip:     t('rating.drip')  || 'Drip',
             strength: t('rating.str')   || 'Str.'
         };
-        circlesEl.innerHTML = RATING_STEPS.map(cat => {
+        circlesEl.innerHTML = BASE_RATING_STEPS.map(cat => {
             const val = ratings[cat];
             const display = (val !== null && val !== undefined) ? Number(val).toFixed(1) : '—';
             const ringStyle = getScoreRingStyle(val);

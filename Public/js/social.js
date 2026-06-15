@@ -100,8 +100,274 @@ async function loadTopSnusOfWeek() {
         }
     }
 
+    // Load Creator's Picks Carousel
+    await loadCreatorsPicks();
+
     // Load Most Scanned List Wrapper & Data
     await loadMostScannedThisWeek();
+}
+
+// ==========================================
+// 9.1. CREATOR'S PICK CAROUSEL
+// ==========================================
+
+let _creatorPicksData = [];
+
+function getBarColor(val) {
+    const n = parseFloat(val);
+    if (isNaN(n)) return '#636366';
+    if (n <= 3.9) return '#FF3B30';
+    if (n <= 5.9) return '#FF9F0A';
+    if (n <= 7.9) return '#34C759';
+    if (n <= 8.9) return '#30D158';
+    return '#32ADE6';
+}
+
+function renderCreatorsPickCard(pick, index = 0) {
+    const snus = globalSnusData.find(s => String(s.id) === String(pick.snus_id));
+    if (!snus) return '';
+
+    const imgUrl = snus.image ? `${GITHUB_BASE}${snus.image}` : '';
+    const rarity = (snus.rarity || 'common').toLowerCase().trim();
+
+    // Calculate overall score dynamically from the 6 sub-ratings
+    const ratingsVal = [
+        parseFloat(pick.rating_visuals),
+        parseFloat(pick.rating_smell),
+        parseFloat(pick.rating_taste),
+        parseFloat(pick.rating_bite),
+        parseFloat(pick.rating_drip),
+        parseFloat(pick.rating_strength)
+    ];
+    const validRatings = ratingsVal.filter(v => !isNaN(v));
+    const overall = validRatings.length > 0 
+        ? (validRatings.reduce((sum, v) => sum + v, 0) / validRatings.length).toFixed(1) 
+        : 'N/A';
+
+    // Avatar: initials fallback if no avatar_url
+    const avatarStyle = pick.creator_avatar_url
+        ? `background-image:url('${pick.creator_avatar_url}');background-size:cover;background-position:center;`
+        : `background: linear-gradient(135deg, #2C2C2E, #3A3A3C);`;
+
+    const avatarContent = pick.creator_avatar_url
+        ? ''
+        : `<span class="text-[12px] font-bold text-white/85">${(pick.creator_name || '?').charAt(0).toUpperCase()}</span>`;
+
+    const creatorName = pick.creator_name || 'Creator';
+    const handleText = pick.creator_handle 
+        ? (pick.creator_handle.startsWith('@') ? pick.creator_handle : '@' + pick.creator_handle) 
+        : '';
+
+    const createCircle = (label, val) => `
+        <div class="flex flex-col items-center">
+            <div class="w-10 h-10 rounded-full border-2 ${getScoreRingColor(val)} flex items-center justify-center bg-black/20 mb-1">
+                <span class="text-[13px] font-bold ${getScoreColor(val)}">${val != null ? parseFloat(val).toFixed(1) : '—'}</span>
+            </div>
+            <span class="text-[9px] text-[#8E8E93] uppercase tracking-wider font-medium">${label}</span>
+        </div>
+    `;
+
+    return `
+        <div class="cp-card opacity-0" style="animation: fadeViewIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards ${index * 0.08}s" onclick="openSnusDetail(${snus.id})">
+            <!-- Card inner -->
+            <div class="cp-card-inner">
+                <!-- Layer 1: Profile (avatar + name) and Heading -->
+                <div class="flex items-center justify-between mb-4 cp-profile-row">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-9 h-9 rounded-full border border-white/10 overflow-hidden flex items-center justify-center flex-shrink-0" style="${avatarStyle}">
+                            ${avatarContent}
+                        </div>
+                        <div class="flex flex-col min-w-0">
+                            <span class="text-[14px] font-semibold text-white leading-tight truncate">${creatorName}</span>
+                            ${handleText ? `<span class="text-[11px] text-[#8E8E93] font-medium leading-none mt-0.5 truncate">${handleText}</span>` : ''}
+                        </div>
+                    </div>
+                    ${pick.custom_headline ? `
+                        <h4 class="text-white text-[16px] font-bold tracking-tight leading-snug max-w-[50%] truncate text-right">&ldquo;${pick.custom_headline}&rdquo;</h4>
+                    ` : ''}
+                </div>
+
+                <!-- Expandable details container -->
+                <div class="cp-card-details">
+                    <!-- Layer 3: Rating & Product Info -->
+                    <div class="flex items-center gap-4 mb-5">
+                        <div class="w-20 h-20 flex-shrink-0 flex items-center justify-center relative">
+                            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] aspect-square rounded-full z-0" style="box-shadow: 0 0 20px 2px var(--${rarity}, var(--common)); opacity: 0.3;"></div>
+                            ${imgUrl ? `<img src="${imgUrl}" class="w-full h-full object-contain drop-shadow-xl z-10 relative" onerror="this.src='https://via.placeholder.com/150/000000/FFFFFF?text=?'">` : ''}
+                        </div>
+
+                        <div class="flex-1 flex flex-col justify-center">
+                            <h3 class="text-[17px] font-bold text-white tracking-tight leading-tight line-clamp-1 mb-0.5">${snus.name}</h3>
+                            <p class="text-[11px] text-[#8E8E93] font-medium mb-1.5">${snus.nicotine} ${t('unit.mgPerG')} • <span style="color: var(--${rarity}, var(--common)); text-shadow: 0 0 8px var(--${rarity}, var(--common));" class="uppercase text-[10px]">${tRarity(snus.rarity)}</span></p>
+
+                            <div class="flex items-end gap-1">
+                                <span class="text-[22px] font-bold ${getScoreColor(overall)} leading-none">${overall}</span>
+                                <span class="text-[11px] text-[#8E8E93] font-medium pb-0.5">${t('social.overallSuffix')}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Circles for the 6 sub-ratings -->
+                    <div class="pt-3.5 border-t border-white/5 grid grid-cols-6 gap-1 mb-3.5">
+                        ${createCircle(t('rating.vis'), pick.rating_visuals)}
+                        ${createCircle(t('rating.smell'), pick.rating_smell)}
+                        ${createCircle(t('rating.taste'), pick.rating_taste)}
+                        ${createCircle(t('rating.bite'), pick.rating_bite)}
+                        ${createCircle(t('rating.drip'), pick.rating_drip)}
+                        ${createCircle(t('rating.str'), pick.rating_strength)}
+                    </div>
+
+                    <!-- Review text -->
+                    ${pick.review_text ? `
+                    <div class="pt-3 border-t border-white/5">
+                        <p class="text-[12px] text-[#8E8E93] italic leading-relaxed">&ldquo;${pick.review_text}&rdquo;</p>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderCreatorsPickCarousel(picks) {
+    const wrapper = document.getElementById('creators-pick-wrapper');
+    const carousel = document.getElementById('creators-pick-carousel');
+    if (!wrapper || !carousel) return;
+
+    if (!picks || picks.length === 0) {
+        wrapper.style.display = 'none';
+        return;
+    }
+
+    wrapper.style.display = '';
+
+    const cardsHTML = picks.map((p, idx) => renderCreatorsPickCard(p, idx)).filter(Boolean).join('');
+    if (!cardsHTML) {
+        wrapper.style.display = 'none';
+        return;
+    }
+
+    carousel.innerHTML = cardsHTML;
+
+    // Apply persisted compact state
+    const isCompact = localStorage.getItem('creatorsPickCompact') === 'true';
+    if (isCompact) {
+        carousel.classList.add('compact');
+        wrapper.classList.add('compact-active');
+    } else {
+        carousel.classList.remove('compact');
+        wrapper.classList.remove('compact-active');
+    }
+
+    // Scroll buttons visibility setup
+    updateCreatorsPickScrollButtons();
+    setTimeout(updateCreatorsPickScrollButtons, 100);
+    setTimeout(updateCreatorsPickScrollButtons, 300);
+
+    if (!carousel.dataset.scrollObserved) {
+        carousel.dataset.scrollObserved = 'true';
+        carousel.addEventListener('scroll', () => {
+            updateCreatorsPickScrollButtons();
+        }, { passive: true });
+        window.addEventListener('resize', () => {
+            updateCreatorsPickScrollButtons();
+        }, { passive: true });
+    }
+}
+
+window.scrollCreatorsPick = function (direction) {
+    const carousel = document.getElementById('creators-pick-carousel');
+    if (!carousel) return;
+    const card = carousel.querySelector('.cp-card');
+    if (!card) return;
+
+    const cardWidth = card.offsetWidth;
+    const gap = 16; // gap-4 is 16px
+    const scrollAmount = cardWidth + gap;
+
+    if (direction === 'left') {
+        carousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    } else {
+        carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+};
+
+window.updateCreatorsPickScrollButtons = function () {
+    const carousel = document.getElementById('creators-pick-carousel');
+    const btnLeft = document.getElementById('creators-pick-scroll-left');
+    const btnRight = document.getElementById('creators-pick-scroll-right');
+    if (!carousel || !btnLeft || !btnRight) return;
+
+    const cards = carousel.querySelectorAll('.cp-card');
+    if (cards.length <= 1) {
+        btnLeft.classList.add('hidden');
+        btnRight.classList.add('hidden');
+        return;
+    }
+
+    btnLeft.classList.remove('hidden');
+    btnRight.classList.remove('hidden');
+
+    const scrollLeft = carousel.scrollLeft;
+    const maxScrollLeft = carousel.scrollWidth - carousel.clientWidth;
+
+    // Show left button if we are scrolled to the right (so there's content to the left)
+    if (scrollLeft > 15) {
+        btnLeft.classList.remove('opacity-0', 'pointer-events-none');
+        btnLeft.classList.add('opacity-100');
+    } else {
+        btnLeft.classList.add('opacity-0', 'pointer-events-none');
+        btnLeft.classList.remove('opacity-100');
+    }
+
+    // Show right button if we are not at the end yet (use 35px tolerance for subpixel/padding scroll limit)
+    if (scrollLeft < maxScrollLeft - 35) {
+        btnRight.classList.remove('opacity-0', 'pointer-events-none');
+        btnRight.classList.add('opacity-100');
+    } else {
+        btnRight.classList.add('opacity-0', 'pointer-events-none');
+        btnRight.classList.remove('opacity-100');
+    }
+}
+
+window.toggleCreatorsPickCompact = function () {
+    const wrapper = document.getElementById('creators-pick-wrapper');
+    const carousel = document.getElementById('creators-pick-carousel');
+    if (wrapper && carousel) {
+        const isCurrentlyCompact = carousel.classList.contains('compact');
+        if (isCurrentlyCompact) {
+            carousel.classList.remove('compact');
+            wrapper.classList.remove('compact-active');
+            localStorage.setItem('creatorsPickCompact', 'false');
+        } else {
+            carousel.classList.add('compact');
+            wrapper.classList.add('compact-active');
+            localStorage.setItem('creatorsPickCompact', 'true');
+        }
+    }
+    triggerHapticFeedback();
+};
+
+async function loadCreatorsPicks() {
+    const wrapper = document.getElementById('creators-pick-wrapper');
+    const carousel = document.getElementById('creators-pick-carousel');
+    if (wrapper && carousel) {
+        carousel.innerHTML = skeletonHTML('creator-pick', 2);
+        wrapper.style.display = '';
+    }
+
+    try {
+        const { data, error } = await supabaseClient.rpc('get_creator_picks');
+        if (error || !data || data.length === 0) {
+            if (wrapper) wrapper.style.display = 'none';
+            return;
+        }
+        _creatorPicksData = data;
+        renderCreatorsPickCarousel(data);
+    } catch (e) {
+        console.warn('Creator picks load error:', e);
+        if (wrapper) wrapper.style.display = 'none';
+    }
 }
 
 let _socialListMode = 0; // 0: 7 Days, 1: Today, 2: Top Rated
@@ -380,6 +646,15 @@ function renderSocialListUI() {
     if (topContainer) {
         _socialCacheData = topContainer.innerHTML;
         _socialCacheTime = Date.now();
+
+        // Update baseline metadata so we don't do silent reload immediately
+        if (typeof getSocialDbMetadata === 'function') {
+            getSocialDbMetadata().then(meta => {
+                if (meta) {
+                    _lastSocialMetadata = meta;
+                }
+            });
+        }
     }
 }
 
@@ -445,6 +720,196 @@ function renderSocialCard(title, snus, ratings, overall, count, countLabel = 'Sc
             </div>
         </div>
     `;
+}
+
+// ==========================================
+// 9.2. SILENT BACKGROUND RELOADING
+// ==========================================
+
+async function getSocialDbMetadata() {
+    try {
+        const collectionsPromise = supabaseClient
+            .from('user_collections')
+            .select('collected_at', { count: 'exact' })
+            .order('collected_at', { ascending: false })
+            .limit(1);
+
+        const picksPromise = supabaseClient
+            .from('creator_picks')
+            .select('created_at', { count: 'exact' })
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        const [collectionsRes, picksRes] = await Promise.all([collectionsPromise, picksPromise]);
+
+        const collectionsCount = collectionsRes.count || 0;
+        const collectionsMaxTime = collectionsRes.data && collectionsRes.data[0] 
+            ? collectionsRes.data[0].collected_at 
+            : null;
+
+        const picksCount = picksRes.count || 0;
+        const picksMaxTime = picksRes.data && picksRes.data[0] 
+            ? picksRes.data[0].created_at 
+            : null;
+
+        return {
+            collectionsCount,
+            collectionsMaxTime,
+            picksCount,
+            picksMaxTime
+        };
+    } catch (e) {
+        console.warn("[Social] Error fetching social DB metadata:", e);
+        return null;
+    }
+}
+
+async function checkAndReloadSocialSilently() {
+    if (_isCheckingSocialDb) return;
+    _isCheckingSocialDb = true;
+
+    try {
+        const currentMeta = await getSocialDbMetadata();
+        if (!currentMeta) {
+            _isCheckingSocialDb = false;
+            return;
+        }
+
+        const hasChanged = !_lastSocialMetadata ||
+            currentMeta.collectionsCount !== _lastSocialMetadata.collectionsCount ||
+            currentMeta.collectionsMaxTime !== _lastSocialMetadata.collectionsMaxTime ||
+            currentMeta.picksCount !== _lastSocialMetadata.picksCount ||
+            currentMeta.picksMaxTime !== _lastSocialMetadata.picksMaxTime;
+
+        if (!hasChanged) {
+            console.log("[Social] Silent check: No new ratings or picks. No reload needed.");
+            _isCheckingSocialDb = false;
+            return;
+        }
+
+        console.log("[Social] Silent check: New data detected. Loading silently in background...");
+
+        // Fetch everything in parallel
+        const [statsRes, picksRes, listStatsRes] = await Promise.all([
+            supabaseClient.rpc('get_social_stats'),
+            supabaseClient.rpc('get_creator_picks'),
+            supabaseClient.rpc('get_social_list_stats')
+        ]);
+
+        if (statsRes.error) throw statsRes.error;
+        if (picksRes.error) throw picksRes.error;
+        if (listStatsRes.error) throw listStatsRes.error;
+
+        // Render silently and update cache
+        renderSocialTabFromData(statsRes.data, picksRes.data, listStatsRes.data);
+
+        // Update baseline metadata
+        _lastSocialMetadata = currentMeta;
+        console.log("[Social] Silent reload complete. UI and cache updated.");
+    } catch (err) {
+        console.warn("[Social] Silent reload failed:", err);
+    } finally {
+        _isCheckingSocialDb = false;
+    }
+}
+
+function renderSocialTabFromData(statsData, picksData, listStatsData) {
+    const container = document.getElementById('top-snus-container');
+    if (!container) return;
+
+    // 1. Render Featured Cards
+    let featuredHTML = '';
+    if (statsData) {
+        const { top_rated, most_popular_today } = statsData;
+
+        if (top_rated && top_rated.snus_id) {
+            const snusInfo = globalSnusData.find(s => s.id == top_rated.snus_id);
+            if (snusInfo) {
+                const ratings = {
+                    visuals: (top_rated.avg_ratings.visuals || 0).toFixed(1),
+                    smell: (top_rated.avg_ratings.smell || 0).toFixed(1),
+                    taste: (top_rated.avg_ratings.taste || 0).toFixed(1),
+                    bite: (top_rated.avg_ratings.bite || 0).toFixed(1),
+                    drip: (top_rated.avg_ratings.drip || 0).toFixed(1),
+                    strength: (top_rated.avg_ratings.strength || 0).toFixed(1),
+                };
+                const overall = (top_rated.avg_score || 0).toFixed(1);
+                const count = top_rated.rating_count || 0;
+                featuredHTML += renderSocialCard(t('social.topRatedCard'), snusInfo, ratings, overall, count, t('social.ratingsLabel'));
+            }
+        }
+
+        if (most_popular_today && most_popular_today.snus_id) {
+            const snusInfo = globalSnusData.find(s => s.id == most_popular_today.snus_id);
+            if (snusInfo) {
+                let popOverall = 'N/A';
+                let popAvgRatings = { taste: 'N/A', smell: 'N/A', bite: 'N/A', drip: 'N/A', visuals: 'N/A', strength: 'N/A' };
+
+                if (most_popular_today.rating_count && most_popular_today.rating_count > 0) {
+                    popAvgRatings = {
+                        visuals: (most_popular_today.avg_ratings.visuals || 0).toFixed(1),
+                        smell: (most_popular_today.avg_ratings.smell || 0).toFixed(1),
+                        taste: (most_popular_today.avg_ratings.taste || 0).toFixed(1),
+                        bite: (most_popular_today.avg_ratings.bite || 0).toFixed(1),
+                        drip: (most_popular_today.avg_ratings.drip || 0).toFixed(1),
+                        strength: (most_popular_today.avg_ratings.strength || 0).toFixed(1),
+                    };
+                    popOverall = (most_popular_today.avg_score || 0).toFixed(1);
+                }
+
+                featuredHTML += renderSocialCard(t('social.mostPopularCard'), snusInfo, popAvgRatings, popOverall, most_popular_today.scan_count, t('social.scansLabel'));
+            }
+        }
+    }
+
+    // 2. Save scroll position of the carousel
+    const carousel = document.getElementById('creators-pick-carousel');
+    const scrollPos = carousel ? carousel.scrollLeft : 0;
+
+    // 3. Render Creator's Picks Carousel
+    if (picksData) {
+        _creatorPicksData = picksData;
+        renderCreatorsPickCarousel(picksData);
+        if (carousel) {
+            // Restore scroll position
+            carousel.scrollLeft = scrollPos;
+        }
+    }
+
+    // 4. Process and Map Lists
+    if (listStatsData) {
+        const mapToSnus = (items, countField) => {
+            if (!items) return [];
+            return items.map(item => {
+                const snusInfo = globalSnusData.find(s => String(s.id) === String(item.snus_id));
+                return {
+                    snusInfo,
+                    count: item[countField],
+                    score: item.score,
+                    ratings: {
+                        visuals: item.visuals,
+                        smell: item.smell,
+                        taste: item.taste,
+                        bite: item.bite,
+                        drip: item.drip,
+                        strength: item.strength
+                    }
+                };
+            }).filter(item => item.snusInfo != null);
+        };
+
+        _socialListData.days7 = mapToSnus(listStatsData.most_scanned_7d, 'scan_count');
+        _socialListData.today = mapToSnus(listStatsData.most_scanned_today, 'scan_count');
+        _socialListData.topRated = mapToSnus(listStatsData.top_rated_all_time, 'rating_count');
+    }
+
+    // 5. Update the Community Picks / Lists inside `#top-snus-container` silently
+    container.innerHTML = featuredHTML + `<div id="social-dynamic-list-wrapper"></div>`;
+    renderSocialListUI();
+
+    // 6. Update cached cache variables
+    _socialCacheData = container.innerHTML;
+    _socialCacheTime = Date.now();
 }
 
 // ==========================================
