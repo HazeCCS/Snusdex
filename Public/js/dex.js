@@ -122,10 +122,17 @@ async function loadDex() {
                 date: item.collected_at,
                 ratings: {
                     taste: item.rating_taste || 5,
+                    taste_text: item.rating_taste_text || '',
                     smell: item.rating_smell || 5,
+                    smell_text: item.rating_smell_text || '',
                     bite: item.rating_bite || 5,
+                    bite_text: item.rating_bite_text || '',
                     drip: item.rating_drip || 5,
-                    visuals: item.rating_visuals || 5
+                    drip_text: item.rating_drip_text || '',
+                    visuals: item.rating_visuals || 5,
+                    visuals_text: item.rating_visuals_text || '',
+                    strength: item.rating_strength || 5,
+                    strength_text: item.rating_strength_text || ''
                 }
             };
         });
