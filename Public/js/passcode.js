@@ -3,7 +3,7 @@ const SYSTEM_INFO_PASSCODE = '6441';
 (function () {
     'use strict';
 
-    const CODE_LENGTH = SYSTEM_INFO_PASSCODE.length; 
+    const CODE_LENGTH = SYSTEM_INFO_PASSCODE.length;
 
     const KEYPAD = [
         { n: '1', l: '' },        { n: '2', l: 'ABC' },  { n: '3', l: 'DEF' },
@@ -13,7 +13,7 @@ const SYSTEM_INFO_PASSCODE = '6441';
     ];
 
     let _input = '';
-    let _locked = false;  
+    let _locked = false;
     let _built = false;
     let _el, _dotsEl, _delEl;
 
@@ -116,13 +116,12 @@ const SYSTEM_INFO_PASSCODE = '6441';
         root.id = 'passcode-lock';
         root.className = 'pc-hidden';
 
-        // ── App-style page header (back button + title) ──
         const header = document.createElement('div');
         header.className = 'pc-header';
         const back = document.createElement('div');
         back.className = 'pc-back';
         back.innerHTML = `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>`;
-        back.addEventListener('pointerdown', triggerHapticFeedback);   // haptic on press
+        back.addEventListener('pointerdown', triggerHapticFeedback);
         back.addEventListener('click', close);
         const htitle = document.createElement('h1');
         htitle.className = 'pc-htitle';
@@ -181,7 +180,6 @@ const SYSTEM_INFO_PASSCODE = '6441';
         bindSwipeToClose(root);
     }
 
-    // ── Swipe-to-close — identical gesture/thresholds to the other app pages ──
     function bindSwipeToClose(el) {
         let startX = 0, startY = 0, swiping = false, lock = false;
 
@@ -202,7 +200,7 @@ const SYSTEM_INFO_PASSCODE = '6441';
                 if (diffX > 0) el.style.transform = `translateX(${diffX}px)`;
                 return;
             }
-            if (diffY > Math.abs(diffX)) return;        // vertical → ignore
+            if (diffY > Math.abs(diffX)) return;
             if (diffX > 0) {
                 if (e.cancelable) e.preventDefault();
                 swiping = true;
@@ -242,7 +240,6 @@ const SYSTEM_INFO_PASSCODE = '6441';
         });
     }
 
-    // ── Rendering ───────────────────────────────────────────────────────────
     function renderDots() {
         const dots = _dotsEl.children;
         for (let i = 0; i < dots.length; i++) {
@@ -251,13 +248,12 @@ const SYSTEM_INFO_PASSCODE = '6441';
         if (_delEl) _delEl.classList.toggle('pc-hide', _input.length === 0);
     }
 
-    // ── Input handling ──────────────────────────────────────────────────────
     function onDigit(n) {
         if (_locked || _input.length >= CODE_LENGTH) return;
         _input += n;
         renderDots();
         if (_input.length === CODE_LENGTH) {
-            // brief delay so the last dot visibly fills before validating
+
             setTimeout(validate, 130);
         }
     }
@@ -289,8 +285,7 @@ const SYSTEM_INFO_PASSCODE = '6441';
     }
 
     function success() {
-        // Cross-fade: the System Info (GitHub) page quick-fades in beneath while
-        // this passcode page fades away (no slide on either side).
+
         if (typeof openGithubPage === 'function') openGithubPage();
         _el.classList.add('pc-fade');
         setTimeout(() => {
@@ -302,7 +297,6 @@ const SYSTEM_INFO_PASSCODE = '6441';
         }, 260);
     }
 
-    // ── Show / hide (slides in/out like the app's other pages) ───────────────
     function open() {
         build();
         _input = '';
@@ -311,11 +305,10 @@ const SYSTEM_INFO_PASSCODE = '6441';
         _el.classList.remove('pc-hidden', 'pc-fade');
         _el.style.opacity = '';
         document.body.classList.add('overflow-hidden');
-        void _el.offsetWidth;            // force reflow so the slide-in animates
+        void _el.offsetWidth;
         _el.classList.add('pc-in');
     }
 
-    // Back button / swipe: slide the page away and return to Settings (no access granted).
     function close() {
         _el.classList.remove('pc-in');
         document.body.classList.remove('overflow-hidden');
@@ -326,6 +319,5 @@ const SYSTEM_INFO_PASSCODE = '6441';
         }, 300);
     }
 
-    // Public entry point — replaces the direct openGithubPage() call.
     window.requestSystemInfoAccess = open;
 })();

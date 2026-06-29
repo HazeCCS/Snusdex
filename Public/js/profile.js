@@ -1,9 +1,5 @@
-// ==========================================
-// 8. HELPER & INITIALISIERUNG
-// ==========================================
-
 async function setupProfile(user) {
-    // Sofort mit user_metadata rendern (kein DB-Wait nötig)
+
     const emailEl = document.getElementById('profile-email');
     const initialsEl = document.getElementById('user-initials');
     const idEl = document.getElementById('profile-id');
@@ -14,7 +10,7 @@ async function setupProfile(user) {
 
     if (emailEl) {
         emailEl.innerText = currentUsername;
-        emailEl.removeAttribute('data-i18n'); // verhindert dass applyTranslations() den Username überschreibt
+        emailEl.removeAttribute('data-i18n');
     }
     if (initialsEl) initialsEl.innerText = currentUsername[0].toUpperCase();
     if (idEl) idEl.innerText = `ID #${user.id.split('-')[0].toUpperCase()}`;
@@ -23,9 +19,8 @@ async function setupProfile(user) {
     updateGreeting();
     loadUserStats(user.id);
 
-    // Vollständiges Profil im Hintergrund nachladen (featured badge + korrekter username aus DB + card design & streak)
     try {
-        // Sync creator code from DB first so the animation/badge benefits are known before loading appearance
+
         try {
             const { data: redemption } = await supabaseClient
                 .from('creator_code_redemptions')
@@ -51,7 +46,7 @@ async function setupProfile(user) {
                 localStorage.removeItem('creatorUnlockedAnimations');
                 localStorage.removeItem('creatorCodesRedeemed');
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) {  }
 
         let profileData = null;
         let res = await supabaseClient
@@ -104,12 +99,10 @@ async function setupProfile(user) {
         window._featuredBadgeId = profileData?.featured_badge_id || null;
         renderFeaturedBadgeOverlay();
 
-        // Creator-Pick Toggle im Rating-Modal steuern
         if (typeof setupCreatorPickToggle === 'function') {
             setupCreatorPickToggle(profileData?.is_creator === true);
         }
 
-        // Sync card appearance from DB
         if (profileData?.card_appearance && Object.keys(profileData.card_appearance).length > 0) {
             const app = profileData.card_appearance;
             if (app.colorId) localStorage.setItem('metalCardColorId', app.colorId);
@@ -119,13 +112,9 @@ async function setupProfile(user) {
             if (app.saturation) localStorage.setItem('metalCardSaturation', app.saturation);
             if (app.pattern) localStorage.setItem('metalCardPattern', app.pattern);
             if (app.intensity) localStorage.setItem('metalCardIntensity', app.intensity);
-            
-            // Apply immediately to own profile card — read back from localStorage so the
-            // canvas renderer captures a fresh object and isn't bound to a stale snapshot.
+
             applyCardAppearance('metal-card-container', getLocalCardAppearance());
 
-            // If the Darstellung subpage is open when cloud sync arrives, refresh
-            // the preview card and button states so they don't show stale values.
             if (window._currentSubpageType === 'Darstellung') {
                 applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
                 if (typeof _refreshAppearanceButtonStates === 'function') {
@@ -134,7 +123,6 @@ async function setupProfile(user) {
             }
         }
 
-        // Sync daily streak from DB
         if (profileData?.last_tracked_date) {
             localStorage.setItem('lastTrackedDate', profileData.last_tracked_date);
             localStorage.setItem('streakCount', profileData.streak_count || 0);
@@ -142,26 +130,23 @@ async function setupProfile(user) {
             localStorage.removeItem('lastTrackedDate');
             localStorage.setItem('streakCount', 0);
         }
-        
-        // Re-validate and render streak UI
+
         if (typeof validateAndRenderStreak === 'function') {
             validateAndRenderStreak();
         }
 
-        // Render creator code if function is available
         try {
             if (typeof renderCreatorCodeRedeemed === 'function') {
                 renderCreatorCodeRedeemed();
             } else if (typeof window.renderCreatorCodeRedeemed === 'function') {
                 window.renderCreatorCodeRedeemed();
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) {  }
 
-        // Load badges at startup to sync achievements and trigger new unlock animations
         if (typeof loadBadges === 'function') {
             loadBadges();
         }
-    } catch (e) { /* ignore */ }
+    } catch (e) {  }
 }
 
 function previewProfileImage(event) {
@@ -189,7 +174,6 @@ async function handleProfileSave(btn) {
     const newUsername = (document.getElementById('edit-username')?.value || '').trim();
     const errorEl = document.getElementById('edit-username-error');
 
-    // Validierung: nur Buchstaben, Zahlen, Unterstriche
     const usernameRegex = /^[a-zA-Z0-9_]{2,30}$/;
     if (!usernameRegex.test(newUsername)) {
         if (errorEl) { errorEl.innerText = t('editProfile.errorFormat'); errorEl.classList.remove('hidden'); }
@@ -208,7 +192,6 @@ async function handleProfileSave(btn) {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) throw new Error('Nicht eingeloggt.');
 
-        // Aktuelles Profil laden (Rate-Limit Check)
         const { data: profile } = await supabaseClient
             .from('profiles').select('username, username_changes, username_last_reset').eq('id', user.id).single();
 
@@ -226,11 +209,9 @@ async function handleProfileSave(btn) {
             return;
         }
 
-        // Supabase auth metadata updaten
         const { error: authError } = await supabaseClient.auth.updateUser({ data: { username: newUsername } });
         if (authError) throw authError;
 
-        // profiles Tabelle updaten inkl. Rate-Limit Counter
         const { error: dbError } = await supabaseClient.from('profiles').update({
             username: newUsername,
             username_changes: changesThisMonth + 1,
@@ -238,7 +219,6 @@ async function handleProfileSave(btn) {
         }).eq('id', user.id);
         if (dbError) throw dbError;
 
-        // Update global cache + all UI spots
         currentUsername = newUsername;
         const emailEl = document.getElementById('profile-email');
         const initialsEl = document.getElementById('user-initials');
@@ -246,10 +226,9 @@ async function handleProfileSave(btn) {
         if (initialsEl) initialsEl.innerText = currentUsername[0].toUpperCase();
         updateGreeting();
 
-        // Update the remaining-changes badge and cache
         const newRemaining = Math.max(0, 3 - (changesThisMonth + 1));
         window._cachedUsernameChangesRemaining = newRemaining;
-        // Also update profileCache so next open of Edit Profile shows correct values
+
         window._profileCache = { ...(window._profileCache || {}), username: newUsername, remaining: newRemaining };
         const changesLeftEl = document.getElementById('username-changes-left');
         if (changesLeftEl) {
@@ -279,8 +258,6 @@ async function handleProfileSave(btn) {
     }
 }
 
-// ── CUSTOM PROFILE PICTURE CROP & UPLOAD FLOW ──────────────────────────────
-
 let cropState = {
     zoom: 1,
     offsetX: 0,
@@ -308,17 +285,14 @@ function openCropModal(imageSrc) {
 
     if (slider) slider.value = 1;
 
-    // Reset crop state
     cropState.zoom = 1;
     cropState.offsetX = 0;
     cropState.offsetY = 0;
     cropState.isDragging = false;
 
-    // Show modal
     modal.classList.remove('hidden');
     console.log("Modal classList after remove hidden:", modal.className);
-    
-    // Animate scale/opacity
+
     setTimeout(() => {
         const card = modal.querySelector('div');
         if (card) {
@@ -340,7 +314,6 @@ function openCropModal(imageSrc) {
             return;
         }
 
-        // Scale to fit 220px viewport container
         const scaleToFit = Math.max(220 / imgNaturalW, 220 / imgNaturalH);
         cropState.fitWidth = imgNaturalW * scaleToFit;
         cropState.fitHeight = imgNaturalH * scaleToFit;
@@ -377,7 +350,7 @@ function closeCropModal() {
 
     setTimeout(() => {
         modal.classList.add('hidden');
-        // Clear file input
+
         const fileInput = document.getElementById('profile-image-upload');
         if (fileInput) fileInput.value = '';
     }, 300);
@@ -443,7 +416,7 @@ function initCropEvents() {
 
     slider.addEventListener('input', () => {
         cropState.zoom = parseFloat(slider.value);
-        
+
         const maxOffsetX = Math.max(0, (cropState.fitWidth * cropState.zoom) / 2 - 110);
         cropState.offsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, cropState.offsetX));
 
@@ -472,7 +445,6 @@ async function saveCroppedAvatar() {
         if (!user) throw new Error('Nicht eingeloggt.');
         console.log("Authenticated user:", user.id);
 
-        // 1. 240x240 Canvas erstellen und Ausschnitt zeichnen
         console.log("Setting up 240x240 canvas...");
         const canvas = document.createElement('canvas');
         canvas.width = 240;
@@ -482,7 +454,6 @@ async function saveCroppedAvatar() {
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, 240, 240);
 
-        // Skalierung von 220px Viewport auf 240px Zielgröße abbilden
         const ratio = 240 / 220;
         const fitW240 = cropState.fitWidth * ratio;
         const fitH240 = cropState.fitHeight * ratio;
@@ -503,7 +474,6 @@ async function saveCroppedAvatar() {
         ctx.restore();
         console.log("Canvas rendering complete.");
 
-        // 2. In Blob konvertieren (JPEG für beste Performance & Speichergröße)
         console.log("Converting canvas to JPEG blob...");
         const blob = await new Promise((resolve, reject) => {
             canvas.toBlob((b) => {
@@ -516,7 +486,6 @@ async function saveCroppedAvatar() {
             }, 'image/jpeg', 0.9);
         });
 
-        // 3. In Supabase Storage hochladen
         const fileName = `${user.id}-${Date.now()}.jpg`;
         const filePath = `${user.id}/${fileName}`;
         console.log("Uploading blob to storage avatars bucket. Path:", filePath);
@@ -535,7 +504,6 @@ async function saveCroppedAvatar() {
         }
         console.log("Upload succeeded. uploadData:", uploadData);
 
-        // Öffentliche URL abrufen
         console.log("Retrieving public URL...");
         const { data: urlData } = supabaseClient.storage
             .from('avatars')
@@ -544,7 +512,6 @@ async function saveCroppedAvatar() {
         const newAvatarUrl = urlData.publicUrl;
         console.log("New avatar public URL:", newAvatarUrl);
 
-        // 4. Aktuelles Profil holen zwecks Löschen des alten Bildes
         console.log("Fetching existing profile to check for old avatar...");
         const { data: profile } = await supabaseClient
             .from('profiles')
@@ -553,7 +520,6 @@ async function saveCroppedAvatar() {
             .single();
         console.log("Existing profile data:", profile);
 
-        // 5. In DB speichern
         console.log("Updating profile avatar_url in database public.profiles...");
         const { error: dbError } = await supabaseClient
             .from('profiles')
@@ -566,7 +532,6 @@ async function saveCroppedAvatar() {
         }
         console.log("Database updated successfully.");
 
-        // 6. Altes Bild aus Storage löschen
         if (profile?.avatar_url) {
             try {
                 const bucketPrefix = '/storage/v1/object/public/avatars/';
@@ -583,7 +548,6 @@ async function saveCroppedAvatar() {
             }
         }
 
-        // 7. UI-Elemente direkt updaten
         console.log("Updating UI avatar images...");
         const mainAvatarImg = document.getElementById('profile-image');
         const mainAvatarPlaceholder = document.getElementById('profile-avatar-placeholder');
@@ -601,14 +565,13 @@ async function saveCroppedAvatar() {
             editAvatarPlaceholder.classList.add('hidden');
         }
 
-        // Cache synchronisieren
         window._profileCache = {
             ...(window._profileCache || {}),
             avatar_url: newAvatarUrl
         };
 
         if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
-        
+
         console.log("Closing crop modal...");
         closeCropModal();
 
@@ -746,10 +709,6 @@ function animateNumber(elementId, startValue, endValue, duration = 1500, suffix 
     requestAnimationFrame(update);
 }
 
-// ==========================================
-// I18N REFRESH HELPERS
-// ==========================================
-
 window.refreshStatUnits = function () {
     const unit = ' ' + t('unit.mg');
     ['stat-flow', 'stat-avg-mg'].forEach(id => {
@@ -769,9 +728,6 @@ window.refreshLevelDisplay = function () {
     if (profileLevelEl) profileLevelEl.innerText = `${t('profile.level')} ${level}`;
 };
 
-// ==========================================
-// 11. DEBUGGING & DEV COMMANDS
-// ==========================================
 window.unlock = function (id) {
     const foundSnus = globalSnusData.find(s => s.id === id);
     if (foundSnus) {
@@ -783,7 +739,6 @@ window.unlock = function (id) {
     return "Dev command executed.";
 };
 
-// Global bindings for profile picture crop functions
 window.previewProfileImage = previewProfileImage;
 window.openCropModal = openCropModal;
 window.closeCropModal = closeCropModal;

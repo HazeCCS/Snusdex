@@ -1,6 +1,3 @@
-// neue sprache hinzufügen: LANG_NAMES ergänzen + locales/{lang}.json anlegen, fertig
-// bitte keine strings mehr hardcoden, das hab ich gerade alles aufgeräumt
-
 const LANG_NAMES = {
     en: 'English',
     de: 'Deutsch',
@@ -8,7 +5,6 @@ const LANG_NAMES = {
     nl: 'Nederlands',
 };
 
-// EN bleibt hier inline kein fetch beim start, läuft sofort
 const _EN = {
     'greeting.morning': 'Good morning',
     'greeting.afternoon': 'Good afternoon',
@@ -450,7 +446,6 @@ const TRANSLATIONS = { en: _EN };
 let currentLang = localStorage.getItem('appLang') || 'en';
 let _t = _EN;
 
-// immer synchron — fällt auf EN zurück wenn der key fehlt
 function t(key, params) {
     const str = (_t[key] !== undefined) ? _t[key] : (_EN[key] !== undefined ? _EN[key] : key);
     if (!params) return str;
@@ -464,7 +459,6 @@ async function _loadLang(lang) {
     TRANSLATIONS[lang] = await res.json();
 }
 
-// async weil beim ersten wechsel die json geladen wird bitte awaiten
 async function setLang(lang) {
     if (!LANG_NAMES[lang]) return;
     try {
@@ -518,7 +512,7 @@ function applyTranslations() {
             document.documentElement.lang = saved;
         } catch (e) {
             console.warn(e.message);
-            localStorage.setItem('appLang', 'en'); // irgendwas kaputt, zurück zu en
+            localStorage.setItem('appLang', 'en');
         }
     }
     if (document.readyState === 'loading') {

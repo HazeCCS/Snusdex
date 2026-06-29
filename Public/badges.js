@@ -2,21 +2,18 @@ async function loadBadges() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
 
-    // Fetch user collections count for collector badges
     const { data: collections } = await supabaseClient
         .from('user_collections')
         .select('snus_id')
         .eq('user_id', user.id);
-    
+
     const uniqueCansCount = collections ? new Set(collections.map(c => c.snus_id)).size : 0;
 
-    // Fetch all badges
     const { data: allBadges } = await supabaseClient
         .from('badges')
         .select('*')
         .order('level', { ascending: true });
 
-    // Fetch user unlocked badges
     const { data: userBadges } = await supabaseClient
         .from('user_badges')
         .select('badge_id')

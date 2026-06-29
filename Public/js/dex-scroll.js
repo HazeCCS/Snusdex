@@ -1,20 +1,15 @@
-// ==========================================
-// DEX SCROLL ANIMATION & HAPTICS (PIXEL-PERFECT)
-// ==========================================
 let dexScrollRafId = null;
 let lastHapticScrollY = 0;
 let _dexScrollListenerActive = false;
-// Dynamic threshold – updated after first render to match actual card row height
+
 let HAPTIC_PIXEL_THRESHOLD = 140;
 
-// Called from loadMoreDexItems after first chunk: compute real row height from DOM
 function recalcHapticThreshold() {
     const grid = document.getElementById('dex-grid');
     if (!grid || grid.children.length < 2) return;
     const first = grid.children[0].getBoundingClientRect();
     const second = grid.children[1].getBoundingClientRect();
-    // In 3-col layout rows differ by top position; in 2-col too
-    // Walk cards until we find one on the next row (different top)
+
     let rowHeight = 0;
     for (let i = 1; i < Math.min(grid.children.length, 12); i++) {
         const rect = grid.children[i].getBoundingClientRect();
@@ -37,21 +32,18 @@ function updateDexScale() {
     const viewportCenter = window.innerHeight / 2;
     const focusZoneHalfHeight = window.innerHeight * 0.25;
     const fadeZoneHeight = window.innerHeight * 0.2;
-    // Nur Karten in einem erweiterten Viewport prüfen (Culling)
+
     const cullMargin = window.innerHeight * 1.5;
     const cards = grid.querySelectorAll('.dex-anim-card');
 
-    // 1. DOM Reads - alle rects auf einmal lesen (kein thrashing)
     const rects = Array.from(cards).map(card => ({
         card,
         rect: card.getBoundingClientRect()
     }));
 
-    // 2. DOM Writes - gebatcht, nur für Karten im erweiterten Viewport
     rects.forEach(({ card, rect }) => {
         const cardCenter = rect.top + rect.height / 2;
 
-        // Culling: Karten weit außerhalb nicht anfassen
         if (rect.bottom < -cullMargin || rect.top > window.innerHeight + cullMargin) {
             return;
         }
@@ -74,23 +66,21 @@ function updateDexScale() {
 
 function initDexScrollAnimation() {
     lastHapticScrollY = window.scrollY;
-    if (_dexScrollListenerActive) return; // Verhindert doppelte Registrierung
+    if (_dexScrollListenerActive) return;
     _dexScrollListenerActive = true;
 
     window.addEventListener('scroll', () => {
         const dexTab = document.getElementById('tab-dex');
-        // Dex ist aktiv wenn data-tabState === 'visible' (gesetzt vom Navigation-Rewrite)
-        // Fallback auf Klasse für Kompatibilität
+
         const dexIsActive = dexTab && (dexTab.dataset.tabState === 'visible' || !dexTab.classList.contains('tab-dex-hidden'));
 
         if (dexIsActive) {
-            // 1. Visual scale animation – skip entirely in alpha mode
+
             if (dexSortMode !== 'alpha') {
                 if (dexScrollRafId) cancelAnimationFrame(dexScrollRafId);
                 dexScrollRafId = requestAnimationFrame(updateDexScale);
             }
 
-            // 2. Row-based haptics – ONLY in ID sort mode
             if (dexSortMode === 'id') {
                 const currentScrollY = window.scrollY;
                 const scrollDelta = Math.abs(currentScrollY - lastHapticScrollY);
@@ -98,16 +88,13 @@ function initDexScrollAnimation() {
                 if (scrollDelta >= HAPTIC_PIXEL_THRESHOLD) {
                     const timesToTrigger = Math.min(
                         Math.floor(scrollDelta / HAPTIC_PIXEL_THRESHOLD),
-                        10 // safety cap for extreme flick-scrolls
+                        10
                     );
 
-                    // Fire all haptics immediately – no setTimeout delay
-                    // so rapid flick scrolling fires bam-bam-bam without lag
                     for (let i = 0; i < timesToTrigger; i++) {
                         triggerLightHapticFeedback();
                     }
 
-                    // Carry over the remainder so no pixel is "lost" between events
                     const sign = currentScrollY > lastHapticScrollY ? 1 : -1;
                     lastHapticScrollY = currentScrollY - (scrollDelta % HAPTIC_PIXEL_THRESHOLD) * sign;
                 }
@@ -128,21 +115,15 @@ function triggerLightHapticFeedback() {
     }
 }
 
-// ==========================================
-// BRAND GROUPING & RENDERING (Sort by Name)
-// ==========================================
-
 function groupAndSortByBrand(items) {
     const groups = {};
 
-    // 1. Gruppieren nach Marke
     items.forEach(snus => {
         const brand = snus.brand || 'Unbekannt';
         if (!groups[brand]) groups[brand] = [];
         groups[brand].push(snus);
     });
 
-    // 2. Marken alphabetisch und nach Favoriten sortieren
     let favoriteBrands = [];
     try {
         favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]');
@@ -160,7 +141,6 @@ function groupAndSortByBrand(items) {
     sortedBrands.forEach(brand => {
         const brandItems = groups[brand];
 
-        // 3. Innerhalb der Marke sortieren: Freigeschaltet zuerst, dann nach ID
         brandItems.sort((a, b) => {
             const aUnlocked = !!globalUserCollection[a.id];
             const bUnlocked = !!globalUserCollection[b.id];
@@ -231,7 +211,7 @@ window.showRemoveFavoriteModal = function (brandName) {
     if (modal && backdrop && card) {
         document.body.classList.add('overflow-hidden');
         modal.classList.remove('hidden');
-        // Force reflow
+
         void modal.offsetWidth;
         backdrop.classList.remove('opacity-0');
         backdrop.classList.add('opacity-100');
@@ -254,7 +234,7 @@ window.closeRemoveFavoriteModal = function () {
         setTimeout(() => {
             modal.classList.add('hidden');
             brandToRemove = null;
-            // Restore scroll if not in settings subpage (which also controls overflow)
+
             const subpage = document.getElementById('settings-subpage');
             if (!subpage || subpage.classList.contains('translate-x-full')) {
                 document.body.classList.remove('overflow-hidden');
@@ -319,7 +299,6 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
     const rarityIndicator = `<div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: var(--${rarity}, var(--common)); box-shadow: 0 0 6px var(--${rarity}, var(--common));"></div>`;
     const imgUrl = GITHUB_BASE + snus.image;
 
-    // Immer opacity-0 starten – verhindert Flash bei gecachten Bildern im Brand-Carousel
     const placeholderHTML = `<div class="dex-placeholder absolute inset-0 flex items-center justify-center pointer-events-none"><div class="w-[60%] h-[60%] rounded-xl sk"></div></div>`;
     const imgClass = `dex-lazy-img w-full h-full object-contain scale-[1.1] drop-shadow-xl z-10 opacity-0 transition-opacity duration-300`;
 
@@ -342,18 +321,14 @@ function createHorizontalCardHTML(snus, isUnlocked, glowActive) {
     `;
 }
 
-// Tracked scroll listener refs so we can remove them on re-render
 let _brandScrollListeners = [];
 
-// Batched scale-update für alle übergebenen Carousels: erst ALLE Rects lesen,
-// dann ALLE Styles schreiben → kein Layout-Thrashing über Carousel-Grenzen.
 function _updateCarouselScales(containers) {
     if (!containers.length) return;
 
     const focusRatio = 0.35;
     const fadeRatio  = 0.15;
 
-    // Phase 1 – alle BCR Reads (kein Style-Write)
     const data = containers.map(container => {
         const cr   = container.getBoundingClientRect();
         const cc   = cr.left + cr.width / 2;
@@ -363,7 +338,6 @@ function _updateCarouselScales(containers) {
         return { cards, cc, fw, fz, rects: cards.map(c => c.getBoundingClientRect()) };
     });
 
-    // Phase 2 – alle Style Writes
     data.forEach(({ cards, cc, fw, fz, rects }) => {
         cards.forEach((card, i) => {
             const dist = Math.abs(cc - (rects[i].left + rects[i].width / 2));
@@ -397,8 +371,6 @@ function initBrandScrollAnimation(container) {
     _brandScrollListeners.push({ el: container, fn: onScroll });
 }
 
-// ─── Brand Observer für lazy Brand-Sections ──────────────────────────────────
-// Ersetzt Placeholder-Sentinels mit echtem Brand-Inhalt wenn sie in den View kommen.
 let _brandLazyObserver = null;
 
 function _initBrandLazyObserver(myGen) {
@@ -411,7 +383,6 @@ function _initBrandLazyObserver(myGen) {
         entries.forEach(entry => {
             if (!entry.isIntersecting) return;
 
-            // Guard: veraltete Render-Generation → ignorieren
             if (_dexRenderGen !== myGen) {
                 _brandLazyObserver.unobserve(entry.target);
                 return;
@@ -421,9 +392,6 @@ function _initBrandLazyObserver(myGen) {
             pending.push(entry.target);
         });
 
-        // Alle fälligen Sentinels in einem einzigen rAF inflaten –
-        // verhindert aufeinanderfolgende Forced Reflows wenn rootMargin
-        // mehrere Sentinels gleichzeitig sichtbar macht.
         if (pending.length > 0) {
             requestAnimationFrame(() => {
                 pending.forEach(sentinel => _inflatesBrandSentinel(sentinel, myGen));
@@ -434,22 +402,19 @@ function _initBrandLazyObserver(myGen) {
     });
 }
 
-// Baut einen leichten Placeholder für eine noch nicht gerenderte Brand-Section
 function _createBrandSentinel(brandData, globalIndex, myGen) {
     const sentinel = document.createElement('div');
     sentinel.className = 'brand-section-sentinel mb-4';
     sentinel.style.marginLeft  = '-20px';
     sentinel.style.marginRight = '-20px';
     sentinel.style.width       = 'calc(100% + 40px)';
-    // Minimale Höhe damit der Observer einen sinnvollen rootMargin Trigger hat
+
     sentinel.style.minHeight   = '200px';
 
-    // Daten für späteren inflate
     sentinel._brandData   = brandData;
     sentinel._brandIndex  = globalIndex;
     sentinel._myGen       = myGen;
 
-    // Leichter Skeleton als visueller Platzhalter
     sentinel.innerHTML = `
         <div class="flex justify-between items-end mb-3 mt-6 px-5 opacity-40">
             <div class="sk h-6 w-32 rounded-md"></div>
@@ -469,7 +434,6 @@ function _createBrandSentinel(brandData, globalIndex, myGen) {
     return sentinel;
 }
 
-// Tauscht einen Sentinel gegen die echte Brand-Section aus
 function _inflatesBrandSentinel(sentinel, myGen) {
     if (_dexRenderGen !== myGen) return;
     if (!sentinel.parentNode) return;
@@ -501,10 +465,8 @@ function _inflatesBrandSentinel(sentinel, myGen) {
         </div>
     `;
 
-    // Sentinel 1:1 ersetzen
     sentinel.parentNode.replaceChild(section, sentinel);
 
-    // Lazy-imgs + Scroll-Animation für diese Section initialisieren
     if (!imageLazyObserver) initImageLazyLoadObserver();
 
     section.querySelectorAll('.dex-lazy-img:not(.observed)').forEach(img => {
@@ -520,43 +482,34 @@ function _inflatesBrandSentinel(sentinel, myGen) {
     }
 }
 
-// ─── Render-Generation-Guard ─────────────────────────────────────────────────
 let _dexRenderGen = 0;
 
-// Wie viele Brands sofort (sync) gerendert werden – Rest kommt via Observer
 const BRAND_FIRST_CHUNK = 4;
 
 function renderDexGrouped(groupedData) {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
 
-    // Neue Generation – veraltete Observer-Callbacks ignorieren sich selbst
     const myGen = ++_dexRenderGen;
 
-    // Bestehende Carousel-Scroll-Listener aufräumen
     _brandScrollListeners.forEach(({ el, fn }) => el.removeEventListener('scroll', fn));
     _brandScrollListeners = [];
 
-    // Brand-Lazy-Observer für diese Render-Runde initialisieren
     _initBrandLazyObserver(myGen);
 
     const glowActive = localStorage.getItem('dexGlow') === 'true';
     if (!imageLazyObserver) initImageLazyLoadObserver();
 
-    // Preload-Queue für Bilder starten (nur sichtbare Brands zuerst)
     const firstItems = groupedData.slice(0, BRAND_FIRST_CHUNK).flatMap(b => b.items);
     requestAnimationFrame(() => preloadAllDexImages(firstItems));
 
-    // ── Fragment bauen ────────────────────────────────────────────────────────
-    // Erste BRAND_FIRST_CHUNK Brands: sofort vollständig rendern (0 Latenz)
-    // Restliche Brands: leichter Sentinel-Placeholder → Observer rendert nach Bedarf
     const fragment = document.createDocumentFragment();
 
     groupedData.forEach((brandData, globalIndex) => {
         const isFirstChunk = globalIndex < BRAND_FIRST_CHUNK;
 
         if (isFirstChunk) {
-            // Sofort-Render: vollständige Section
+
             const section = document.createElement('div');
             section.className = 'brand-section mb-4';
             section.style.marginLeft  = '-20px';
@@ -582,30 +535,25 @@ function renderDexGrouped(groupedData) {
 
             fragment.appendChild(section);
         } else {
-            // Lazy-Render: Sentinel-Placeholder
+
             const sentinel = _createBrandSentinel(brandData, globalIndex, myGen);
             fragment.appendChild(sentinel);
         }
     });
 
-    // ── Einmaliger DOM-Write ──────────────────────────────────────────────────
     grid.innerHTML = '';
     grid.appendChild(fragment);
     grid.style.opacity   = '1';
     grid.style.transition = '';
 
-    // ── Post-render: Observer + Lazy-imgs anmelden ────────────────────────────
     requestAnimationFrame(() => {
         if (_dexRenderGen !== myGen) return;
 
-        // Lazy-imgs der ersten Chunk direkt beobachten
         grid.querySelectorAll('.brand-section .dex-lazy-img:not(.observed)').forEach(img => {
             img.classList.add('observed');
             imageLazyObserver.observe(img);
         });
 
-        // Carousels der ersten Chunk: Scroll-Listener registrieren,
-        // dann EINEN gebatchten Scale-Pass für alle zusammen.
         const firstCarousels = [];
         grid.querySelectorAll('.brand-section .brand-carousel:not(.anim-init)').forEach(carousel => {
             carousel.classList.add('anim-init');
@@ -614,25 +562,18 @@ function renderDexGrouped(groupedData) {
         });
         if (firstCarousels.length) _updateCarouselScales(firstCarousels);
 
-        // Alle Sentinels beim Brand-Observer anmelden
         grid.querySelectorAll('.brand-section-sentinel').forEach(sentinel => {
             _brandLazyObserver.observe(sentinel);
         });
 
-        // Restliche Bilder im Hintergrund preloaden
         const restItems = groupedData.slice(BRAND_FIRST_CHUNK).flatMap(b => b.items);
         preloadAllDexImages(restItems);
     });
 }
 
-
-// ==========================================
-// STATS HELPER
-// ==========================================
 function getBrandStats() {
     const stats = {};
 
-    // Daten aggregieren
     globalSnusData.forEach(snus => {
         const brand = snus.brand || 'Unbekannt';
         const rarity = (snus.rarity || 'common').toLowerCase().trim();
@@ -652,12 +593,11 @@ function getBrandStats() {
         stats[brand].rarities[rarity]++;
     });
 
-    // In Array umwandeln und alphabetisch sortieren (Favoriten zuerst)
     let favoriteBrands = [];
     try { favoriteBrands = JSON.parse(localStorage.getItem('dexFavoriteBrands') || '[]'); } catch (e) { }
 
     return Object.keys(stats).map(brand => {
-        // Find dominant rarity
+
         let dominantRarity = 'common';
         let maxCount = 0;
         for (const [r, count] of Object.entries(stats[brand].rarities)) {

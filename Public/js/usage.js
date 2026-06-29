@@ -1,11 +1,7 @@
-// 10. USAGE LOGS & CONCURRENT CAN TRACKING
-// ==========================================
+let globalAllLogs = [];
+let globalActiveLogs = [];
+let globalInactiveLogs = [];
 
-let globalAllLogs = []; // Array für alle Logs (Caching für Stats/Modals)
-let globalActiveLogs = []; // Array für alle aktuell offenen Dosen
-let globalInactiveLogs = []; // Array für alle geschlossenen Dosen
-
-// --- STREAK LOGIC ---
 let currentStreakCount = 0;
 
 function getStreakMilestoneXP(day) {
@@ -28,14 +24,13 @@ function getNextStreakMilestone(currentStreak) {
         { day: 45, xp: 200 },
         { day: 60, xp: 500 }
     ];
-    
+
     for (let m of milestones) {
         if (currentStreak < m.day) {
             return m;
         }
     }
-    
-    // Beyond day 60, milestones are every 15 days starting at 75
+
     let nextDay = 60 + 15;
     while (currentStreak >= nextDay) {
         nextDay += 15;
@@ -53,8 +48,8 @@ function renderStreakUI() {
 
     if (title) {
         const nextMilestone = getNextStreakMilestone(currentStreakCount);
-        title.innerText = (typeof t === 'function') 
-            ? t('streak.nextReward', { day: nextMilestone.day, xp: nextMilestone.xp }) 
+        title.innerText = (typeof t === 'function')
+            ? t('streak.nextReward', { day: nextMilestone.day, xp: nextMilestone.xp })
             : `Next Reward: Day ${nextMilestone.day} - ${nextMilestone.xp}XP`;
     }
 
@@ -107,7 +102,6 @@ async function validateAndRenderStreak() {
     let storedDate = localStorage.getItem('lastTrackedDate');
     let storedStreak = parseInt(localStorage.getItem('streakCount'));
 
-    // kein lokaler stand → neues gerät oder cache weg, aus supabase wiederherstellen
     if (!storedDate || isNaN(storedStreak)) {
         try {
             const { data: { user } } = await supabaseClient.auth.getUser();
@@ -124,7 +118,7 @@ async function validateAndRenderStreak() {
                     localStorage.setItem('streakCount', storedStreak);
                 }
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) {  }
     }
 
     let activeStreak = storedStreak || 0;
@@ -156,23 +150,23 @@ async function incrementStreak() {
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
     const todayStr = `${yyyy}-${mm}-${dd}`;
-    
+
     const storedDate = localStorage.getItem('lastTrackedDate');
-    
+
     if (storedDate !== todayStr) {
         let activeStreak = parseInt(localStorage.getItem('streakCount')) || 0;
-        
+
         if (storedDate) {
             const todayMidnight = new Date();
             todayMidnight.setHours(0, 0, 0, 0);
-            
+
             const parts = storedDate.split('-');
             const lastDate = new Date(parts[0], parts[1] - 1, parts[2]);
             lastDate.setHours(0, 0, 0, 0);
-            
+
             const diffTime = todayMidnight - lastDate;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-            
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
             if (diffDays === 1) {
                 activeStreak += 1;
             } else if (diffDays > 1) {
@@ -186,12 +180,12 @@ async function incrementStreak() {
         localStorage.setItem('lastTrackedDate', todayStr);
         currentStreakCount = activeStreak;
         renderStreakUI();
-        
+
         try {
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (user) {
                 const xpVal = getStreakMilestoneXP(activeStreak);
-                
+
                 const { error } = await supabaseClient.from('profiles').update({
                     streak_count: activeStreak,
                     last_tracked_date: todayStr
@@ -217,22 +211,21 @@ async function incrementStreak() {
     }
 }
 
-
 function showStreakMilestoneOverlay(streak, xp) {
     const overlay = document.getElementById('streak-milestone-overlay');
     const descText = document.getElementById('streak-milestone-desc');
     const xpText = document.getElementById('streak-milestone-xp');
-    
+
     if (!overlay || !descText || !xpText) return;
-    
+
     descText.innerText = (typeof t === 'function') ? t('streak.milestoneDay', { day: streak }) : `Tag ${streak}`;
     xpText.innerText = `+${xp} XP`;
-    
+
     overlay.classList.remove('hidden');
     overlay.classList.add('flex');
-    
+
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('success');
-    
+
     overlay.onclick = () => {
         overlay.style.transition = 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
         overlay.style.opacity = '0';
@@ -246,7 +239,6 @@ function showStreakMilestoneOverlay(streak, xp) {
     };
 }
 window.showStreakMilestoneOverlay = showStreakMilestoneOverlay;
-// ----------------------
 
 async function startNewCan(snusId) {
     const {
@@ -256,7 +248,6 @@ async function startNewCan(snusId) {
     } = await supabaseClient.auth.getUser();
     if (!user) return false;
 
-    // mg_per_gram aus dem globalen Dex ziehen
     const snus = globalSnusData.find(s => s.id == snusId);
     const mgVal = snus ? snus.nicotine : 0;
 
@@ -273,22 +264,20 @@ async function startNewCan(snusId) {
 
     if (!error) {
         triggerHapticFeedback();
-        await loadUsageData(); // UI aktualisieren
-        return true; // WICHTIG: Signalisiert Erfolg!
+        await loadUsageData();
+        return true;
     } else {
         console.error("Supabase Error:", error.message);
         return false;
     }
 }
 
-// Diese Funktion wird vom Button im Modal aufgerufen
 async function startNewCanFromModal() {
     if (!currentSelectedSnusId) {
         console.error("Fehler: Keine Snus-ID gefunden.");
         return;
     }
 
-    // Button visuell blockieren, damit der User nicht 5x klickt
     const btn = document.getElementById('open-can-btn');
     if (btn) {
         btn.innerHTML = '<div class="flex items-center justify-center w-[34px] h-[25px] mx-auto"><svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>';
@@ -300,7 +289,7 @@ async function startNewCanFromModal() {
 
     if (success) {
         closeSnusDetail();
-        // Wir wechseln automatisch zum Home/Wallet-Tab, damit der User seine neue Dose sieht!
+
         switchTab('home');
     } else {
         alert(t('error.openCanFailed'));
@@ -313,7 +302,6 @@ async function startNewCanFromModal() {
     }
 }
 
-// Zentrale Lade-Funktion für alles, was mit Konsum zu tun hat
 async function loadUsageData() {
     const {
         data: {
@@ -368,10 +356,10 @@ async function finishSpecificCan(logId) {
             const addedPouches = maxPouches - (logItem ? (logItem.pouches_taken || 0) : 0);
             if (addedPouches > 0) {
                 const todayStr = new Date().toISOString().split('T')[0];
-                await supabaseClient.rpc('increment_daily_consumption', { 
-                    uid: user.id, 
-                    target_date: todayStr, 
-                    amount: addedPouches 
+                await supabaseClient.rpc('increment_daily_consumption', {
+                    uid: user.id,
+                    target_date: todayStr,
+                    amount: addedPouches
                 });
             }
         }
@@ -506,7 +494,7 @@ function startEmptyCan(logId) {
         if (lastTs === null) lastTs = ts;
         const delta = ts - lastTs;
         lastTs = ts;
-        // 2% pro 20ms entspricht 100% in 1 Sekunde
+
         emptyCanProgress = Math.min(100, emptyCanProgress + (delta / 20) * 2);
 
         if (progressRect) {
@@ -564,7 +552,7 @@ function startAddPouch(logId, maxPouches, currentPouches) {
         if (lastTs === null) lastTs = ts;
         const delta = ts - lastTs;
         lastTs = ts;
-        // 2% pro 20ms entspricht 100% in 1 Sekunde
+
         addPouchProgress = Math.min(100, addPouchProgress + (delta / 20) * 2);
 
         if (progressCircle) {
@@ -629,10 +617,10 @@ async function executeAddPouch(logId, maxPouches, newCount) {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (user) {
             const todayStr = new Date().toISOString().split('T')[0];
-            await supabaseClient.rpc('increment_daily_consumption', { 
-                uid: user.id, 
-                target_date: todayStr, 
-                amount: 1 
+            await supabaseClient.rpc('increment_daily_consumption', {
+                uid: user.id,
+                target_date: todayStr,
+                amount: 1
             });
         }
         await incrementStreak();

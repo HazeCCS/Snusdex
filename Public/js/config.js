@@ -1,17 +1,9 @@
-// Neuer Commit 15:26:42
-
-
-// ==========================================
-// 1. SETUP & KONFIGURATION
-// ==========================================
 const SUPABASE_KEY = 'sb_publishable_4gIcuQhw528DH6GrmhF16g_V8im-UMU';
 const GITHUB_BASE = 'https://raw.githubusercontent.com/HazeCCS/snusdex-assets/main/assets/';
 const SUPABASE_URL = 'https://aqyjrvukfuyuhlidpoxr.supabase.co';
 
-// Hier definieren wir den Client (darf nicht 'supabase' heißen, da das CDN dies blockiert)
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Globale Caches für Dex-Views & Performance
 window._dexCache = {};
 
 const CARD_FONT_MAP = {
@@ -27,12 +19,12 @@ const CARD_FONT_MAP = {
 
 function checkAnimationUnlocked(animId) {
     if (animId === 'none') return true;
-    // Creator Code override: always allow if redeemed via a creator code
+
     try {
         const creatorAnims = JSON.parse(localStorage.getItem('creatorUnlockedAnimations') || '[]');
         if (creatorAnims.includes(animId)) return true;
     } catch(e) {}
-    if (typeof actualXp !== 'number') return true; // fallback while loading
+    if (typeof actualXp !== 'number') return true;
     const currentXp = actualXp;
     if (animId === 'sweep') return currentXp >= 300;
     if (animId === 'pulse') return currentXp >= 500;
@@ -49,16 +41,15 @@ function checkAnimationUnlocked(animId) {
 
 function checkPatternUnlocked(patternId) {
     if (patternId === 'none') return true;
-    if (typeof globalSnusData === 'undefined' || typeof globalUserCollection === 'undefined' || !globalSnusData.length) return true; // fallback
-    
-    // Count collected snus of each rarity
+    if (typeof globalSnusData === 'undefined' || typeof globalUserCollection === 'undefined' || !globalSnusData.length) return true;
+
     const countRarity = (rarity) => {
-        return globalSnusData.filter(s => 
-            globalUserCollection[s.id] && 
+        return globalSnusData.filter(s =>
+            globalUserCollection[s.id] &&
             (s.rarity || 'common').toLowerCase().trim() === rarity
         ).length;
     };
-    
+
     if (patternId === 'dots') return countRarity('common') >= 1;
     if (patternId === 'grid') return countRarity('uncommon') >= 1;
     if (patternId === 'lines') return countRarity('rare') >= 1;
@@ -75,7 +66,7 @@ function checkPatternUnlocked(patternId) {
 function getLocalCardAppearance() {
     let anim = localStorage.getItem('metalCardAnim') || 'sweep';
     let pattern = localStorage.getItem('metalCardPattern') || 'none';
-    
+
     if (typeof checkAnimationUnlocked === 'function' && !checkAnimationUnlocked(anim)) {
         anim = 'sweep';
     }
@@ -94,9 +85,6 @@ function getLocalCardAppearance() {
     };
 }
 
-// ==========================================
-// 1.2. CANVAS-BASED RENDER ENGINE FOR PREMIUM VISUALS
-// ==========================================
 const CardCanvasRenderer = {
     init(container, appearance) {
         this.destroy(container);
@@ -140,7 +128,7 @@ const CardCanvasRenderer = {
             fireworkSparks: [],
             fireworkGrid: null,
             lastFireworkLaunch: 0,
-            // Topography peaks
+
             topoPeaks: [
                 { x: 50, y: 50, tx: 50, ty: 50, speed: 0.008 },
                 { x: 150, y: 100, tx: 150, ty: 100, speed: 0.005 },
@@ -156,7 +144,6 @@ const CardCanvasRenderer = {
                 state.width = rect.width;
                 state.height = rect.height;
 
-                // Randomize peak targets and positions
                 state.topoPeaks.forEach(peak => {
                     if (peak.x === 50 && peak.y === 50) {
                         peak.x = Math.random() * rect.width;
@@ -166,7 +153,6 @@ const CardCanvasRenderer = {
                     peak.ty = Math.random() * rect.height;
                 });
 
-                // Compute dynamic columns and rows for cubes pattern
                 const cellSize = 8;
                 const gap = 2;
                 const margin = 10;
@@ -335,7 +321,6 @@ const CardCanvasRenderer = {
                 b = parseInt(hex.slice(4,6), 16);
             }
 
-            // Clip all canvas rendering to card border radius (24px)
             ctx.save();
             ctx.beginPath();
             ctx.roundRect(0, 0, state.width, state.height, 24);
@@ -403,28 +388,25 @@ const CardCanvasRenderer = {
                 }
             }
 
-            // --- FIREWORK ANIMATION PHYSICS ---
             const fireworkActive = anim === 'firework' && pattern === 'cubes';
             if (fireworkActive) {
-                // Decay the entire grid intensity
+
                 for (let i = 0; i < state.cols * state.rows; i++) {
                     state.fireworkGrid[i] = Math.max(0.0, state.fireworkGrid[i] - dt * 2.5);
                 }
 
-                // Random firework launches
                 const now = time;
                 if (now - state.lastFireworkLaunch > 1200 + Math.random() * 800) {
                     state.lastFireworkLaunch = now;
                     const rx = Math.floor(Math.random() * state.cols);
-                    const ry = Math.floor(Math.random() * (state.rows - 4)) + 2; // avoid outer edges
+                    const ry = Math.floor(Math.random() * (state.rows - 4)) + 2;
                     spawnFireworkExplosion(state, rx, ry);
                 }
 
-                // Update sparks
                 for (let i = state.fireworkSparks.length - 1; i >= 0; i--) {
                     const spark = state.fireworkSparks[i];
-                    spark.vy += 4.5 * dt; // gravity
-                    spark.vx *= 0.95;    // friction
+                    spark.vy += 4.5 * dt;
+                    spark.vx *= 0.95;
                     spark.vy *= 0.95;
                     spark.x += spark.vx * dt;
                     spark.y += spark.vy * dt;
@@ -438,8 +420,7 @@ const CardCanvasRenderer = {
                         if (cx >= 0 && cx < state.cols && cy >= 0 && cy < state.rows) {
                             const idx = cy * state.cols + cx;
                             state.fireworkGrid[idx] = Math.min(1.0, state.fireworkGrid[idx] + spark.life * 0.95);
-                            
-                            // Light bleed to 4-way neighbors
+
                             const bleed = spark.life * 0.35;
                             const neighbors = [
                                 { x: cx - 1, y: cy },
@@ -459,7 +440,7 @@ const CardCanvasRenderer = {
                     }
                 }
             } else {
-                // If not active, quickly drain firework grid
+
                 if (state.fireworkGrid) {
                     for (let i = 0; i < state.cols * state.rows; i++) {
                         if (state.fireworkGrid[i] > 0) {
@@ -511,7 +492,7 @@ const CardCanvasRenderer = {
 
                 for (let rIdx = 0; rIdx < state.rows; rIdx++) {
                     for (let cIdx = 0; cIdx < state.cols; cIdx++) {
-                        // Skip the 4 corner cubes
+
                         if ((rIdx === 0 || rIdx === state.rows - 1) && (cIdx === 0 || cIdx === state.cols - 1)) {
                             continue;
                         }
@@ -550,41 +531,34 @@ const CardCanvasRenderer = {
                             const centerDist = Math.sqrt((cx - state.width/2)**2 + (cy - state.height/2)**2);
                             f = Math.sin(time * 0.003 - centerDist * 0.015) * 0.45 + 0.55;
                         } else if (anim === 'wave') {
-                            // Silk ribbon: compute the ribbon's Y position at this column
-                            // Amplitude and phase shift slowly over time like fabric fluttering
-                            const T = time * 0.001; // time in seconds
-                            const nx = cIdx / state.cols;  // 0..1 left to right
-                            const ny = rIdx / state.rows;  // 0..1 top to bottom
 
-                            // Amplitude slowly breathes between narrow and wide
+                            const T = time * 0.001;
+                            const nx = cIdx / state.cols;
+                            const ny = rIdx / state.rows;
+
                             const amp1 = 0.18 + Math.sin(T * 0.28) * 0.10;
                             const amp2 = 0.07 + Math.cos(T * 0.19) * 0.05;
                             const amp3 = 0.04 + Math.sin(T * 0.41) * 0.03;
 
-                            // Primary ribbon Y: sweeps left-to-right with slow temporal drift
                             const ribbonY1 = 0.5
                                 + amp1 * Math.sin(nx * 3.5 - T * 1.4)
                                 + amp2 * Math.sin(nx * 5.8 + T * 0.7)
                                 + amp3 * Math.cos(nx * 8.0 - T * 2.1);
 
-                            // Secondary ribbon Y: counter-phase for crossing-ribbon look
                             const ribbonY2 = 0.5
                                 - amp1 * Math.sin(nx * 3.0 - T * 1.1 + 1.2)
                                 + amp2 * Math.cos(nx * 4.5 + T * 0.9)
                                 + amp3 * Math.sin(nx * 7.0 - T * 1.8 + 0.5);
 
-                            // Ribbon half-width in normalized Y units (how thick the glowing band is)
                             const ribbonHalf = 0.10;
                             const dist1 = Math.abs(ny - ribbonY1);
                             const dist2 = Math.abs(ny - ribbonY2);
 
-                            // Soft quadratic falloff from ribbon center → bright core, dark edges
                             const g1 = dist1 < ribbonHalf ? Math.pow(1.0 - dist1 / ribbonHalf, 1.8) : 0.0;
                             const g2 = dist2 < ribbonHalf ? Math.pow(1.0 - dist2 / ribbonHalf, 1.8) : 0.0;
 
                             f = Math.min(1.0, g1 + g2 * 0.7);
 
-                            // Pointer proximity: finger touch creates local bright spot on the ribbon
                             if (state.pointerActive) {
                                 const pDist = Math.sqrt((cx - state.px)**2 + (cy - state.py)**2);
                                 if (pDist < 70) {
@@ -604,7 +578,7 @@ const CardCanvasRenderer = {
                         const y = marginY + rIdx * (cellSize + gap);
 
                         if (anim === 'mountains') {
-                            // ... (unchanged mountains block continues below)
+
                             const ny = rIdx / state.rows;
                             let baseHue;
                             if (ny < 0.35) {
@@ -645,8 +619,7 @@ const CardCanvasRenderer = {
                             lightness = Math.max(15, Math.min(95, lightness));
                             ctx.fillStyle = `hsl(${hue}, 95%, ${lightness}%)`;
                         } else if (anim === 'wave') {
-                            // Ribbon glow: very dark background, bright glowing ribbon using card color
-                            // f=0 → almost invisible cube, f=1 → near-full opacity bright ribbon center
+
                             const baseOp = 0.04;
                             const op = Math.min(0.95, baseOp + Math.pow(f, 0.75) * intensity * 0.88);
                             ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${op})`;
@@ -686,7 +659,7 @@ const CardCanvasRenderer = {
                     }
                 } else if (anim === 'topography') {
                     state.topoPeaks.forEach((peak, idx) => {
-                        // Update position
+
                         if (idx === 2 && state.pointerActive) {
                             peak.x += (state.px - peak.x) * 0.05;
                             peak.y += (state.py - peak.y) * 0.05;
@@ -699,7 +672,6 @@ const CardCanvasRenderer = {
                             peak.y += (peak.ty - peak.y) * peak.speed;
                         }
 
-                        // Draw concentric contours
                         const contourCount = 8;
                         const spacing = 22;
                         for (let c = 1; c <= contourCount; c++) {
@@ -817,7 +789,6 @@ function applyCardAppearance(container, appearance) {
     if (!appearance) appearance = {};
     const anim = appearance.anim || 'sweep';
 
-    // Force cubes pattern for gol, firework, mountains, and wave animations to avoid mismatch
     if (anim === 'gol' || anim === 'firework' || anim === 'mountains' || anim === 'wave') {
         appearance.pattern = 'cubes';
     }
@@ -854,7 +825,6 @@ function applyCardAppearance(container, appearance) {
         if (pattern !== 'none') patternEl.classList.add('p-' + pattern);
     }
 
-    // Canvas support check
     const needsCanvas = (anim === 'ripple' || anim === 'gol' || anim === 'firework' || anim === 'mountains' || pattern === 'cubes');
     if (needsCanvas) {
         CardCanvasRenderer.init(container, appearance);
@@ -862,10 +832,6 @@ function applyCardAppearance(container, appearance) {
         CardCanvasRenderer.destroy(container);
     }
 }
-
-// ==========================================
-// 1.5. SPLASH SCREEN / LOADING
-// ==========================================
 
 document.addEventListener('DOMContentLoaded', () => {
     const video  = document.getElementById('splash-video');
@@ -881,13 +847,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (video) {
         video.play().catch(err => {
             console.log("Video-Autoplay blocked:", err);
-            // Autoplay blockiert → sofort dimmen (kurze Pause für UX)
+
             setTimeout(dismissSplash, 400);
         });
 
         video.addEventListener('ended', dismissSplash, { once: true });
 
-        // Sicherheitsnetz: Splash spätestens nach 5s schließen
         setTimeout(dismissSplash, 5000);
     } else {
         dismissSplash();
@@ -898,10 +863,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initDexScrollAnimation();
     loadBadgesFromCache();
 
-    // Initialize metal card glow color + border + font locally on the container
     applyCardAppearance('metal-card-container', getLocalCardAppearance());
 
-    // Initialize tracking mode preview label
     const trackingModeEl = document.getElementById('tracking-mode-preview');
     if (trackingModeEl) {
         const storedMode = localStorage.getItem('snusTrackingMode') || 'full';
@@ -911,8 +874,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Open camera from native bridge (sdx-open-camera custom event)
 window.addEventListener('sdx-open-camera', function () {
     if (typeof openScanModal === 'function') openScanModal();
 });
-

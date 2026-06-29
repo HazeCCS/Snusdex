@@ -1,12 +1,39 @@
 let html5QrCode = null;
 let isProcessingScan = false;
 let scanFlashlightOn = false;
-let scanCameraIndex = 0;     // 0=normal, 1=wide, 2=tele
+let scanCameraIndex = 0;
 const SCAN_CAMERA_MODES = [
     { label: 'Normal', labelKey: 'scan.cameraNormal', zoom: null, facingMode: 'environment' },
     { label: 'Weitwinkel', labelKey: 'scan.cameraWide', zoom: 0.5, facingMode: 'environment' },
     { label: 'Telelinse', labelKey: 'scan.cameraTele', zoom: 2.0, facingMode: 'environment' },
 ];
+
+const scanEngine = (typeof EanScanEngine !== 'undefined')
+    ? new EanScanEngine({
+        requiredReads: 3,
+        consensusWindowMs: 1500,
+        cooldownMs: 3000,
+        acceptEan8: true,
+        onConfirm: onEanConfirmed,
+    })
+    : null;
+
+function onEanConfirmed(result) {
+    if (isProcessingScan) return;
+    isProcessingScan = true;
+    clearScanHelpTimer();
+    dismissScanHelpPrompt();
+
+    playAppSound('scan');
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
+
+    console.log('[EAN] confirmed', result);
+    closeScanModal();
+
+    setTimeout(() => {
+        simulateScan(result.ean);
+    }, 400);
+}
 
 const scanModal = document.getElementById('scan-modal');
 const scanModalCard = document.getElementById('scan-modal-card');
@@ -22,12 +49,9 @@ if (scanModal) {
     });
 }
 
-
 async function openScanModal() {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
-    // Prime the scan sound for the browser fallback so it can play asynchronously.
-    // On native iOS the soundHandler bridge handles playback, no priming needed.
     const hasNativeSound = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.soundHandler;
     if (!hasNativeSound) {
         const scanSound = document.getElementById('scan-sound');
@@ -45,7 +69,6 @@ async function openScanModal() {
     scanFlashlightOn = false;
     scanCameraIndex = 0;
 
-    // Reset button states
     const flashlightBtn = document.getElementById('scan-flashlight-btn');
     const flashlightLabel = document.getElementById('scan-flashlight-label');
     const cameraLabel = document.getElementById('scan-camera-label');
@@ -83,19 +106,20 @@ async function openScanModal() {
                 html5QrCode = new Html5Qrcode("scanner-reader", {
                     formatsToSupport: [
                         Html5QrcodeSupportedFormats.EAN_13,
-                        Html5QrcodeSupportedFormats.EAN_8,
-                        Html5QrcodeSupportedFormats.UPC_A,
-                        Html5QrcodeSupportedFormats.UPC_E,
-                        Html5QrcodeSupportedFormats.CODE_128,
-                        Html5QrcodeSupportedFormats.CODE_39
+                        Html5QrcodeSupportedFormats.EAN_8
                     ],
                     verbose: false,
                     useBarCodeDetectorIfSupported: true
                 });
             }
 
+            if (scanEngine) scanEngine.reset();
+
             await html5QrCode.start({
-                facingMode: "environment"
+                facingMode: "environment",
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+                advanced: [{ focusMode: 'continuous' }]
             }, {
                 fps: 15,
                 qrbox: (viewfinderWidth, viewfinderHeight) => {
@@ -107,23 +131,27 @@ async function openScanModal() {
             },
                 (decodedText, decodedResult) => {
                     if (isProcessingScan) return;
-                    isProcessingScan = true;
-                    clearScanHelpTimer();
-                    dismissScanHelpPrompt();
 
-                    playAppSound('scan');
+                    const fmt = decodedResult && decodedResult.result && decodedResult.result.format
+                        ? decodedResult.result.format.formatName
+                        : undefined;
 
-                    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
-                    closeScanModal();
-
-                    setTimeout(() => {
-                        simulateScan(decodedText);
-                    }, 400);
+                    if (scanEngine) {
+                        scanEngine.push(decodedText, fmt);
+                    } else {
+                        if (typeof EanValidator !== 'undefined' &&
+                            EanValidator.validate(decodedText)) {
+                            onEanConfirmed({ ean: String(decodedText).trim(), confidence: 1, timestamp: Date.now() });
+                        }
+                    }
                 },
                 (errorMessage) => { }
             );
 
-            // Configure torch button visual state based on scanner capabilities
+            try {
+                await html5QrCode.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] });
+            } catch (e) { }
+
             try {
                 const capabilities = html5QrCode.getRunningTrackCapabilities();
                 const flashBtn = document.getElementById('scan-flashlight-btn');
@@ -136,7 +164,7 @@ async function openScanModal() {
                         flashBtn.style.pointerEvents = '';
                     }
                 }
-            } catch (e) { /* Capabilities not available */ }
+            } catch (e) {  }
 
             document.getElementById('camera-loading').classList.add('opacity-0', 'pointer-events-none');
 
@@ -155,11 +183,11 @@ async function openScanModal() {
     }, 300);
 }
 
-
 function closeScanModal(isDragging = false) {
     clearScanHelpTimer();
     dismissScanHelpPrompt();
-    // Turn off flashlight when closing
+    if (scanEngine) scanEngine.reset();
+
     if (scanFlashlightOn && html5QrCode) {
         try { html5QrCode.applyVideoConstraints({ advanced: [{ torch: false }] }); } catch (e) { }
         scanFlashlightOn = false;
@@ -212,7 +240,6 @@ function closeScanModal(isDragging = false) {
             scannerReader.classList.add('opacity-0');
         }
 
-        // Reset flashlight button visual state
         const flashBtn = document.getElementById('scan-flashlight-btn');
         if (flashBtn) {
             flashBtn.style.opacity = '';
@@ -222,9 +249,6 @@ function closeScanModal(isDragging = false) {
     }, 400);
 }
 
-// ==========================================
-// NOT-FOUND MODAL
-// ==========================================
 let lastScannedBarcode = "";
 
 function openNotFoundModal(barcode) {
@@ -234,7 +258,6 @@ function openNotFoundModal(barcode) {
     const card = document.getElementById('not-found-card');
     if (!modal || !backdrop || !card) return;
 
-    // Prefill form
     const barcodeInput = document.getElementById('missing-snus-barcode');
     if (barcodeInput) barcodeInput.value = lastScannedBarcode;
 
@@ -244,17 +267,14 @@ function openNotFoundModal(barcode) {
     const nicotineInput = document.getElementById('missing-snus-nicotine');
     if (nicotineInput) nicotineInput.value = "";
 
-    // Hide success view
     const successView = document.getElementById('not-found-success-view');
     if (successView) successView.classList.add('hidden');
 
-    // Show main view, hide report view
     showNotFoundMainView();
 
     modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 
-    // Force reflow then animate in
     void modal.offsetWidth;
     backdrop.classList.remove('opacity-0');
     backdrop.classList.add('opacity-100');
@@ -317,7 +337,6 @@ function showNotFoundSuccessView() {
         reportView.classList.add('hidden');
         successView.classList.remove('hidden');
 
-        // Restart SVG checkmark animation
         const svg = successView.querySelector('.success-checkmark-svg');
         if (svg) {
             const newSvg = svg.cloneNode(true);
@@ -348,7 +367,6 @@ async function submitMissingSnus() {
 
     const nicotine = parseFloat(nicotineVal);
 
-    // Disable button to prevent double submit
     const submitBtn = document.getElementById('missing-snus-submit-btn');
     if (submitBtn) {
         submitBtn.disabled = true;
@@ -366,7 +384,6 @@ async function submitMissingSnus() {
 
         if (error) throw error;
 
-        // Success!
         showNotFoundSuccessView();
     } catch (err) {
         console.error("Error submitting product suggestion:", err);
@@ -423,16 +440,12 @@ function openScanFoundResult() {
 window.openScanFoundResult = openScanFoundResult;
 window.closeScanFoundToast = closeScanFoundToast;
 
-// Normalisiert einen Barcode auf reine Ziffern ohne führende Nullen, damit
-// UPC-A (12 Stellen) und EAN-13 (13 Stellen mit führender 0) sowie numerisch
-// gespeicherte Codes (führende Nullen verloren) zuverlässig zusammenpassen.
 function normalizeBarcode(code) {
     if (code === null || code === undefined) return '';
     const digits = String(code).replace(/\D/g, '');
     return digits.replace(/^0+/, '');
 }
 
-// Sucht ein Produkt zum gescannten Code: erst exakt, dann normalisiert.
 function findSnusByBarcode(code) {
     const raw = String(code == null ? '' : code).trim();
     if (!raw) return null;
@@ -456,8 +469,6 @@ async function simulateScan(text) {
         }
     }
 
-    // Falls der Katalog leer ist (z.B. Netzproblem beim App-Start), erst
-    // nachladen, bevor wir "nicht gefunden" entscheiden.
     if (!globalSnusData.length && typeof loadDex === 'function') {
         try { await loadDex(); } catch (e) { console.error("Katalog-Reload vor Scan fehlgeschlagen:", e); }
     }
@@ -530,11 +541,10 @@ async function cycleScanCamera() {
     const label = document.getElementById('scan-camera-label');
     if (label) label.textContent = t(mode.labelKey);
 
-    // If zoom is supported by the current track, use applyVideoConstraints
     try {
         const capabilities = html5QrCode.getRunningTrackCapabilities();
         if (capabilities.zoom) {
-            // null = Normal = 1.0x; always apply so switching Tele→Normal resets zoom
+
             const targetZoom = mode.zoom !== null ? mode.zoom : 1.0;
             const clampedZoom = Math.min(Math.max(targetZoom, capabilities.zoom.min), capabilities.zoom.max);
             await html5QrCode.applyVideoConstraints({ advanced: [{ zoom: clampedZoom }] });
@@ -591,9 +601,6 @@ if (scanModalCard) {
     });
 }
 
-// ==========================================
-// SCAN HELP SYSTEM (20-second prompt + Help Center)
-// ==========================================
 let _scanHelpTimer = null;
 
 function startScanHelpTimer() {
@@ -631,9 +638,6 @@ function dismissScanHelpPrompt() {
 }
 window.dismissScanHelpPrompt = dismissScanHelpPrompt;
 
-// visualViewport keyboard handler: keeps modal at fixed inset-0, pads scrollable area
-// by keyboard height instead of shrinking the modal. WebKit bug #237851: read values
-// inside requestAnimationFrame as visualViewport fires before values update.
 let _scanHelpVVListening = false;
 let _scanHelpVVRafId = null;
 
@@ -662,7 +666,7 @@ function _attachScanHelpVV() {
     _scanHelpVVListening = true;
     if (window.visualViewport) window.visualViewport.addEventListener('resize', _onScanHelpVVResize);
     window.addEventListener('resize', _onScanHelpVVResize);
-    // iOS 17+: vv.height stays stale after keyboard dismissal; re-read after focusout settles
+
     const card = document.getElementById('scan-help-card');
     if (card && !card._focusOutBound) {
         card._focusOutBound = true;
@@ -746,10 +750,6 @@ function initScanHelpGestures() {
     }, { passive: true });
 }
 
-// ==========================================
-// SCAN HELP MODAL — Search & Request
-// ==========================================
-
 function onScanHelpSearch(query) {
     const container = document.getElementById('scan-help-results');
     if (!container) return;
@@ -792,13 +792,9 @@ window.onScanHelpSearch = onScanHelpSearch;
 
 function submitProductRequest() {
     triggerHapticFeedback();
-    // TODO: implement submission feature
+
 }
 window.submitProductRequest = submitProductRequest;
-
-// ==========================================
-// DEBUG PORTAL (DEV MENU)
-// ==========================================
 
 function openDebugPortal() {
     console.log("openDebugPortal called");
@@ -813,20 +809,17 @@ function openDebugPortal() {
     modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 
-    // Reset inputs inside portal
     ['debug-unlock-id', 'debug-unlock-ean', 'debug-raw-scan'].forEach(id => {
         const input = document.getElementById(id);
         if (input) input.value = '';
     });
 
-    // Animate in
     void modal.offsetWidth;
     backdrop.classList.remove('opacity-0');
     backdrop.classList.add('opacity-100');
     card.classList.remove('scale-95', 'opacity-0');
     card.classList.add('scale-100', 'opacity-100');
 
-    // Populate badges menu
     populateDebugBadgesMenu();
 }
 window.openDebugPortal = openDebugPortal;
@@ -842,7 +835,6 @@ async function populateDebugBadgesMenu() {
             return;
         }
 
-        // Fetch badges if global list is not loaded yet
         if (!globalBadges || globalBadges.length === 0) {
             const { data: allBadges } = await supabaseClient.from('badges').select('*').order('level', { ascending: true });
             if (allBadges) globalBadges = allBadges;
@@ -856,7 +848,7 @@ async function populateDebugBadgesMenu() {
         let html = '';
         globalBadges.forEach(badge => {
             const hasBadge = globalUserBadges.has(badge.id);
-            const btnClass = hasBadge 
+            const btnClass = hasBadge
                 ? "bg-[#FF453A]/10 border border-[#FF453A]/20 text-[#FF453A] px-2.5 py-1 rounded-[8px] text-[11px] font-semibold"
                 : "bg-white text-black px-2.5 py-1 rounded-[8px] text-[11px] font-semibold";
             const btnText = hasBadge ? "Remove" : "Unlock";
@@ -871,7 +863,7 @@ async function populateDebugBadgesMenu() {
                             <p class="text-[#8E8E93] text-[10px] truncate leading-none mt-0.5">${badge.category} (Lvl ${badge.level})</p>
                         </div>
                     </div>
-                    <button onclick="triggerHapticFeedback(); toggleDebugBadge('${badge.id}', ${hasBadge}, this)" 
+                    <button onclick="triggerHapticFeedback(); toggleDebugBadge('${badge.id}', ${hasBadge}, this)"
                         class="${btnClass} active:scale-95 transition-transform flex-shrink-0">
                         ${btnText}
                     </button>
@@ -896,7 +888,7 @@ async function toggleDebugBadge(badgeId, hasBadge, btn) {
         if (!user) return alert("No user session");
 
         if (hasBadge) {
-            // Remove badge
+
             const { data, error } = await supabaseClient
                 .from('user_badges')
                 .delete()
@@ -911,7 +903,7 @@ async function toggleDebugBadge(badgeId, hasBadge, btn) {
 
             globalUserBadges.delete(badgeId);
         } else {
-            // Unlock badge
+
             const { error } = await supabaseClient
                 .from('user_badges')
                 .insert([{ user_id: user.id, badge_id: badgeId }]);
@@ -921,14 +913,11 @@ async function toggleDebugBadge(badgeId, hasBadge, btn) {
             globalUserBadges.add(badgeId);
         }
 
-        // Save to cache
         localStorage.setItem('cached_user_badges', JSON.stringify([...globalUserBadges]));
 
-        // Refresh Badge Strips and UI
         if (typeof updateBadgesStrip === 'function') updateBadgesStrip();
         if (typeof renderFeaturedBadgeOverlay === 'function') renderFeaturedBadgeOverlay();
 
-        // Repopulate menu to reflect updated state
         await populateDebugBadgesMenu();
     } catch (err) {
         console.error("Error toggling badge:", err);
@@ -962,7 +951,7 @@ function debugUnlockByID() {
     if (!val) return alert("Please enter a valid Snus ID.");
     const id = parseInt(val);
     if (isNaN(id)) return alert("ID must be a number.");
-    
+
     simulateScan('unlock ID ' + id);
     closeDebugPortal();
 }
@@ -971,7 +960,7 @@ window.debugUnlockByID = debugUnlockByID;
 function debugUnlockByEAN() {
     const val = document.getElementById('debug-unlock-ean').value.trim();
     if (!val) return alert("Please enter a valid EAN.");
-    
+
     simulateScan('unlock EAN ' + val);
     closeDebugPortal();
 }
@@ -980,7 +969,7 @@ window.debugUnlockByEAN = debugUnlockByEAN;
 function debugRawScan() {
     const val = document.getElementById('debug-raw-scan').value.trim();
     if (!val) return alert("Please enter command text.");
-    
+
     simulateScan(val);
     closeDebugPortal();
 }
@@ -990,14 +979,13 @@ async function debugAddXP() {
     try {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return alert("No active user session. Please log in first.");
-        
+
         const { error } = await supabaseClient.rpc('increment_badge_xp', { uid: user.id, xp_amount: 1000 });
         if (error) throw error;
-        
-        // Refresh local stats if available
+
         if (typeof loadUserStats === 'function') await loadUserStats(user.id);
         if (typeof updateLivePerformance === 'function') updateLivePerformance();
-        
+
         alert("Successfully added 1000 XP!");
     } catch (err) {
         console.error("Error adding debug XP:", err);
@@ -1010,10 +998,10 @@ async function debugResetUsernameChanges() {
     try {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return alert("No active user session. Please log in first.");
-        
+
         const { error } = await supabaseClient.from('profiles').update({ username_changes: 0 }).eq('id', user.id);
         if (error) throw error;
-        
+
         alert("Username changes successfully reset to 0!");
     } catch (err) {
         console.error("Error resetting username changes:", err);
@@ -1038,7 +1026,6 @@ function debugClearCache() {
 }
 window.debugClearCache = debugClearCache;
 
-// Setup console access keyword
 const debugPortalFn = function() {
     openDebugPortal();
     return "Opening Debug Portal...";
