@@ -1,8 +1,3 @@
-// ==========================================
-// 9. TOP SNUS OF THE WEEK & SOCIAL
-// ==========================================
-
-// Rendert den gecachten Social-Inhalt sofort ohne Netzwerkzugriff
 function renderSocialFromCache() {
     const container = document.getElementById('top-snus-container');
     if (!container || !_socialCacheData) return;
@@ -13,8 +8,6 @@ async function loadTopSnusOfWeek() {
     const container = document.getElementById('top-snus-container');
     if (!container) return;
 
-    // Two featured cards (each has mb-5 built-in matching renderSocialCard)
-    // + list section matching renderSocialListUI wrapper structure
     container.innerHTML = `
         ${skeletonHTML('social-featured', 2)}
         <div class="mb-6">
@@ -39,18 +32,16 @@ async function loadTopSnusOfWeek() {
         return;
     }
 
-    // Start with empty container
     container.innerHTML = '';
 
     if (!data || (!data.top_rated && !data.most_popular_today)) {
-        // Render nothing for these cards, but continue to load Most Scanned
+
     } else {
         const {
             top_rated,
             most_popular_today
         } = data;
 
-        // Render Top Rated card
         if (top_rated && top_rated.snus_id) {
             const snusInfo = globalSnusData.find(s => s.id == top_rated.snus_id);
             if (snusInfo) {
@@ -68,7 +59,6 @@ async function loadTopSnusOfWeek() {
             }
         }
 
-        // Render Most Popular Today card
         if (most_popular_today && most_popular_today.snus_id) {
             const snusInfo = globalSnusData.find(s => s.id == most_popular_today.snus_id);
             if (snusInfo) {
@@ -82,7 +72,6 @@ async function loadTopSnusOfWeek() {
                     strength: 'N/A'
                 };
 
-                // Check if there are any ratings for the most popular snus
                 if (most_popular_today.rating_count && most_popular_today.rating_count > 0) {
                     popAvgRatings = {
                         visuals: (most_popular_today.avg_ratings.visuals || 0).toFixed(1),
@@ -100,16 +89,10 @@ async function loadTopSnusOfWeek() {
         }
     }
 
-    // Load Creator's Picks Carousel
     await loadCreatorsPicks();
 
-    // Load Most Scanned List Wrapper & Data
     await loadMostScannedThisWeek();
 }
-
-// ==========================================
-// 9.1. CREATOR'S PICK CAROUSEL
-// ==========================================
 
 let _creatorPicksData = [];
 
@@ -130,7 +113,6 @@ function renderCreatorsPickCard(pick, index = 0) {
     const imgUrl = snus.image ? `${GITHUB_BASE}${snus.image}` : '';
     const rarity = (snus.rarity || 'common').toLowerCase().trim();
 
-    // Calculate overall score dynamically from the 6 sub-ratings
     const ratingsVal = [
         parseFloat(pick.rating_visuals),
         parseFloat(pick.rating_smell),
@@ -140,11 +122,10 @@ function renderCreatorsPickCard(pick, index = 0) {
         parseFloat(pick.rating_strength)
     ];
     const validRatings = ratingsVal.filter(v => !isNaN(v));
-    const overall = validRatings.length > 0 
-        ? (validRatings.reduce((sum, v) => sum + v, 0) / validRatings.length).toFixed(1) 
+    const overall = validRatings.length > 0
+        ? (validRatings.reduce((sum, v) => sum + v, 0) / validRatings.length).toFixed(1)
         : 'N/A';
 
-    // Avatar: initials fallback if no avatar_url
     const avatarStyle = pick.creator_avatar_url
         ? `background-image:url('${pick.creator_avatar_url}');background-size:cover;background-position:center;`
         : `background: linear-gradient(135deg, #2C2C2E, #3A3A3C);`;
@@ -154,8 +135,8 @@ function renderCreatorsPickCard(pick, index = 0) {
         : `<span class="text-[12px] font-bold text-white/85">${(pick.creator_name || '?').charAt(0).toUpperCase()}</span>`;
 
     const creatorName = pick.creator_name || 'Creator';
-    const handleText = pick.creator_handle 
-        ? (pick.creator_handle.startsWith('@') ? pick.creator_handle : '@' + pick.creator_handle) 
+    const handleText = pick.creator_handle
+        ? (pick.creator_handle.startsWith('@') ? pick.creator_handle : '@' + pick.creator_handle)
         : '';
 
     const createCircle = (label, val) => `
@@ -249,7 +230,6 @@ function renderCreatorsPickCarousel(picks) {
 
     carousel.innerHTML = cardsHTML;
 
-    // Apply persisted compact state
     const isCompact = localStorage.getItem('creatorsPickCompact') === 'true';
     if (isCompact) {
         carousel.classList.add('compact');
@@ -259,7 +239,6 @@ function renderCreatorsPickCarousel(picks) {
         wrapper.classList.remove('compact-active');
     }
 
-    // Scroll buttons visibility setup
     updateCreatorsPickScrollButtons();
     setTimeout(updateCreatorsPickScrollButtons, 100);
     setTimeout(updateCreatorsPickScrollButtons, 300);
@@ -282,7 +261,7 @@ window.scrollCreatorsPick = function (direction) {
     if (!card) return;
 
     const cardWidth = card.offsetWidth;
-    const gap = 16; // gap-4 is 16px
+    const gap = 16;
     const scrollAmount = cardWidth + gap;
 
     if (direction === 'left') {
@@ -311,7 +290,6 @@ window.updateCreatorsPickScrollButtons = function () {
     const scrollLeft = carousel.scrollLeft;
     const maxScrollLeft = carousel.scrollWidth - carousel.clientWidth;
 
-    // Show left button if we are scrolled to the right (so there's content to the left)
     if (scrollLeft > 15) {
         btnLeft.classList.remove('opacity-0', 'pointer-events-none');
         btnLeft.classList.add('opacity-100');
@@ -320,7 +298,6 @@ window.updateCreatorsPickScrollButtons = function () {
         btnLeft.classList.remove('opacity-100');
     }
 
-    // Show right button if we are not at the end yet (use 35px tolerance for subpixel/padding scroll limit)
     if (scrollLeft < maxScrollLeft - 35) {
         btnRight.classList.remove('opacity-0', 'pointer-events-none');
         btnRight.classList.add('opacity-100');
@@ -370,7 +347,7 @@ async function loadCreatorsPicks() {
     }
 }
 
-let _socialListMode = 0; // 0: 7 Days, 1: Today, 2: Top Rated
+let _socialListMode = 0;
 let _socialListData = { days7: [], today: [], topRated: [] };
 
 window.cycleSocialListMode = function () {
@@ -386,46 +363,40 @@ window.toggleListScore = function (btn, id) {
         const isHidden = detailsDiv.classList.contains('hidden') || window.getComputedStyle(detailsDiv).display === 'none';
 
         if (isHidden) {
-            // Zeige das Element an und setze Startwerte für die Animation
+
             detailsDiv.classList.remove('hidden');
             detailsDiv.style.display = 'block';
-            
+
             detailsDiv.style.transition = 'none';
             detailsDiv.style.height = '0px';
             detailsDiv.style.borderTopWidth = '0px';
             detailsDiv.style.opacity = '0';
             detailsDiv.style.transform = 'translateY(-10px)';
 
-            // Force reflow
             void detailsDiv.offsetHeight;
 
-            // Miss die tatsächliche Höhe des Inhalts (inklusive padding)
             const targetHeight = detailsDiv.scrollHeight;
 
-            // Starte Animation
             detailsDiv.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-top-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
             detailsDiv.style.height = targetHeight + 'px';
             detailsDiv.style.borderTopWidth = '1px';
             detailsDiv.style.opacity = '1';
             detailsDiv.style.transform = 'translateY(0)';
         } else {
-            // Setze aktuelle Höhe explizit vor dem Einklappen
+
             const currentHeight = detailsDiv.offsetHeight;
             detailsDiv.style.height = currentHeight + 'px';
             detailsDiv.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-top-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
 
-            // Force reflow
             void detailsDiv.offsetHeight;
 
-            // Starte Animation zum Einklappen
             detailsDiv.style.height = '0px';
             detailsDiv.style.borderTopWidth = '0px';
             detailsDiv.style.opacity = '0';
             detailsDiv.style.transform = 'translateY(-10px)';
 
-            // Nach der Animation ausblenden
             setTimeout(() => {
-                // Nur ausblenden, falls nicht in der Zwischenzeit wieder ausgeklappt wurde
+
                 if (detailsDiv.style.height === '0px') {
                     detailsDiv.style.display = 'none';
                     detailsDiv.classList.add('hidden');
@@ -439,7 +410,6 @@ window.toggleListScore = function (btn, id) {
             svg.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
         }
 
-        // Cache aktualisieren, da sich das DOM verändert hat
         setTimeout(() => {
             const topContainer = document.getElementById('top-snus-container');
             if (topContainer) _socialCacheData = topContainer.innerHTML;
@@ -451,12 +421,10 @@ async function loadMostScannedThisWeek() {
     const container = document.getElementById('top-snus-container');
     if (!container) return;
 
-    // Wrapper anhängen falls noch nicht vorhanden
     if (!document.getElementById('social-dynamic-list-wrapper')) {
         container.innerHTML += `<div id="social-dynamic-list-wrapper"></div>`;
     }
 
-    // Skeleton für die Liste zeigen, solange der RPC läuft
     const listWrapper = document.getElementById('social-dynamic-list-wrapper');
     if (listWrapper && !listWrapper.innerHTML.trim()) {
         listWrapper.innerHTML = `
@@ -472,7 +440,6 @@ async function loadMostScannedThisWeek() {
         `;
     }
 
-    // Call the RPC that bypasses RLS and returns all 3 lists with ratings
     const { data, error } = await supabaseClient.rpc('get_social_list_stats');
 
     if (error) {
@@ -641,13 +608,11 @@ function renderSocialListUI() {
     listHTML += `</div></div>`;
     wrapper.innerHTML = listHTML;
 
-    // Update Cache
     const topContainer = document.getElementById('top-snus-container');
     if (topContainer) {
         _socialCacheData = topContainer.innerHTML;
         _socialCacheTime = Date.now();
 
-        // Update baseline metadata so we don't do silent reload immediately
         if (typeof getSocialDbMetadata === 'function') {
             getSocialDbMetadata().then(meta => {
                 if (meta) {
@@ -722,10 +687,6 @@ function renderSocialCard(title, snus, ratings, overall, count, countLabel = 'Sc
     `;
 }
 
-// ==========================================
-// 9.2. SILENT BACKGROUND RELOADING
-// ==========================================
-
 async function getSocialDbMetadata() {
     try {
         const collectionsPromise = supabaseClient
@@ -743,13 +704,13 @@ async function getSocialDbMetadata() {
         const [collectionsRes, picksRes] = await Promise.all([collectionsPromise, picksPromise]);
 
         const collectionsCount = collectionsRes.count || 0;
-        const collectionsMaxTime = collectionsRes.data && collectionsRes.data[0] 
-            ? collectionsRes.data[0].collected_at 
+        const collectionsMaxTime = collectionsRes.data && collectionsRes.data[0]
+            ? collectionsRes.data[0].collected_at
             : null;
 
         const picksCount = picksRes.count || 0;
-        const picksMaxTime = picksRes.data && picksRes.data[0] 
-            ? picksRes.data[0].created_at 
+        const picksMaxTime = picksRes.data && picksRes.data[0]
+            ? picksRes.data[0].created_at
             : null;
 
         return {
@@ -789,7 +750,6 @@ async function checkAndReloadSocialSilently() {
 
         console.log("[Social] Silent check: New data detected. Loading silently in background...");
 
-        // Fetch everything in parallel
         const [statsRes, picksRes, listStatsRes] = await Promise.all([
             supabaseClient.rpc('get_social_stats'),
             supabaseClient.rpc('get_creator_picks'),
@@ -800,10 +760,8 @@ async function checkAndReloadSocialSilently() {
         if (picksRes.error) throw picksRes.error;
         if (listStatsRes.error) throw listStatsRes.error;
 
-        // Render silently and update cache
         renderSocialTabFromData(statsRes.data, picksRes.data, listStatsRes.data);
 
-        // Update baseline metadata
         _lastSocialMetadata = currentMeta;
         console.log("[Social] Silent reload complete. UI and cache updated.");
     } catch (err) {
@@ -817,7 +775,6 @@ function renderSocialTabFromData(statsData, picksData, listStatsData) {
     const container = document.getElementById('top-snus-container');
     if (!container) return;
 
-    // 1. Render Featured Cards
     let featuredHTML = '';
     if (statsData) {
         const { top_rated, most_popular_today } = statsData;
@@ -862,21 +819,18 @@ function renderSocialTabFromData(statsData, picksData, listStatsData) {
         }
     }
 
-    // 2. Save scroll position of the carousel
     const carousel = document.getElementById('creators-pick-carousel');
     const scrollPos = carousel ? carousel.scrollLeft : 0;
 
-    // 3. Render Creator's Picks Carousel
     if (picksData) {
         _creatorPicksData = picksData;
         renderCreatorsPickCarousel(picksData);
         if (carousel) {
-            // Restore scroll position
+
             carousel.scrollLeft = scrollPos;
         }
     }
 
-    // 4. Process and Map Lists
     if (listStatsData) {
         const mapToSnus = (items, countField) => {
             if (!items) return [];
@@ -903,18 +857,12 @@ function renderSocialTabFromData(statsData, picksData, listStatsData) {
         _socialListData.topRated = mapToSnus(listStatsData.top_rated_all_time, 'rating_count');
     }
 
-    // 5. Update the Community Picks / Lists inside `#top-snus-container` silently
     container.innerHTML = featuredHTML + `<div id="social-dynamic-list-wrapper"></div>`;
     renderSocialListUI();
 
-    // 6. Update cached cache variables
     _socialCacheData = container.innerHTML;
     _socialCacheTime = Date.now();
 }
-
-// ==========================================
-// 9.5. BADGES SYSTEM
-// ==========================================
 
 let globalBadges = [];
 let globalUserBadges = new Set();
@@ -965,7 +913,6 @@ async function loadBadges() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
 
-    // Alle 3 Queries parallel starten – spart ~60-80% Wartezeit
     const [{ data: allBadges }, { data: userBadges }, { data: collections }] = await Promise.all([
         supabaseClient.from('badges').select('*').order('level', { ascending: true }),
         supabaseClient.from('user_badges').select('badge_id').eq('user_id', user.id),
@@ -976,7 +923,6 @@ async function loadBadges() {
     globalUserBadges = new Set(userBadges ? userBadges.map(ub => ub.badge_id) : []);
     globalBadgeProgress = collections ? new Set(collections.map(c => c.snus_id)).size : 0;
 
-    // Save to cache
     localStorage.setItem('cached_badges', JSON.stringify(globalBadges));
     localStorage.setItem('cached_user_badges', JSON.stringify([...globalUserBadges]));
     localStorage.setItem('cached_badge_progress', globalBadgeProgress);
@@ -985,16 +931,15 @@ async function loadBadges() {
     renderFeaturedBadgeOverlay();
     preloadBadgeImages();
 
-    // Check if the user has the Supporter Badge and if the overlay has been shown
     const supporterBadgeId = 'da77f766-3d23-41c3-ab0e-d716cf9bdf7b';
     if (globalUserBadges.has(supporterBadgeId)) {
         const shownKey = `supporter_badge_shown_${user.id}`;
         if (localStorage.getItem(shownKey) !== 'true') {
             const badge = globalBadges.find(b => b.id === supporterBadgeId);
             if (badge) {
-                // Mark as shown first to avoid duplicate triggers
+
                 localStorage.setItem(shownKey, 'true');
-                // Wait slightly for the app UI/transitions to stabilize before popping the overlay
+
                 setTimeout(() => {
                     showBadgeUnlock(badge, 1000);
                 }, 800);
@@ -1156,7 +1101,7 @@ async function selectFeaturedBadge(badgeId, el) {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
         await supabaseClient.from('profiles').update({ featured_badge_id: badgeId }).eq('id', user.id);
-    } catch (e) { /* ignore */ }
+    } catch (e) {  }
 }
 
 async function evaluateBadges() {
@@ -1183,7 +1128,6 @@ async function evaluateBadges() {
         }
     }
 
-    // Nur UI aktualisieren wenn neue Badges freigeschaltet wurden – kein zweites loadBadges()
     if (anyUnlocked) {
         updateBadgesStrip();
         renderFeaturedBadgeOverlay();
@@ -1229,7 +1173,6 @@ function showBadgeUnlock(badge, xp) {
     overlay.classList.add('flex');
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('success');
 
-    // Close on click
     overlay.onclick = () => closeBadgeUnlock();
 }
 
@@ -1237,7 +1180,6 @@ function closeBadgeUnlock() {
     const overlay = document.getElementById('badge-unlock-overlay');
     if (!overlay) return;
 
-    // Smooth Fade-Out Animation
     overlay.style.transition = 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
     overlay.style.opacity = '0';
 
@@ -1248,7 +1190,6 @@ function closeBadgeUnlock() {
         overlay.style.opacity = '';
         overlay.onclick = null;
 
-        // Reset styles we modified on close
         const nameText = document.getElementById('badge-unlock-name');
         const statusText = document.getElementById('badge-unlock-status');
         if (nameText) {
@@ -1266,10 +1207,6 @@ function closeBadgeUnlock() {
         });
     }
 }
-
-// ==========================================
-// 9.6. SOCIAL FEATURES (FRIENDS & SEARCH)
-// ==========================================
 
 let userSearchTimeout;
 
@@ -1297,13 +1234,13 @@ async function searchUsersConnections() {
     const clearBtn = document.getElementById('conn-search-clear');
 
     if (query.length === 0) {
-        // Wenn komplett leer, rufe clearConnectionSearch auf (welches alles zurücksetzt)
+
         clearConnectionSearch();
         return;
     }
 
     if (query.length < 2) {
-        // Wenn 1 Buchstabe: Zeige Search Panel mit "Bitte mehr tippen", aber lösche NICHT den Input!
+
         clearBtn.classList.remove('hidden');
         mainPanel.classList.add('hidden');
         searchPanel.classList.remove('hidden');
@@ -1320,7 +1257,6 @@ async function searchUsersConnections() {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
 
-        // Suche Profile
         const { data: profiles, error: pError } = await supabaseClient
             .from('profiles')
             .select('id, username, avatar_url, xp')
@@ -1333,7 +1269,6 @@ async function searchUsersConnections() {
             return;
         }
 
-        // Finde Follow-Status des aktuellen Users zu diesen Profilen
         const { data: follows } = await supabaseClient
             .from('user_follows')
             .select('following_id, status')
@@ -1384,13 +1319,12 @@ async function toggleFollow(targetId, btnElement) {
     const currentStatus = btnElement.getAttribute('data-status');
     btnElement.disabled = true;
 
-    // Visuelles Feedback sofort
     const originalText = btnElement.innerText;
     const originalClass = btnElement.className;
     btnElement.innerText = "...";
 
     if (currentStatus === 'accepted' || currentStatus === 'pending') {
-        // UNFOLLOW / ANFRAGE ZURÜCKZIEHEN
+
         const { error } = await supabaseClient
             .from('user_follows')
             .delete()
@@ -1406,13 +1340,13 @@ async function toggleFollow(targetId, btnElement) {
             btnElement.innerText = originalText;
         }
     } else {
-        // FOLLOW / ANFRAGE SENDEN
+
         const { error } = await supabaseClient
             .from('user_follows')
             .insert([{
                 follower_id: user.id,
                 following_id: targetId,
-                status: 'pending' // Instagram-style: immer erst pending
+                status: 'pending'
             }]);
 
         if (!error) {
@@ -1426,19 +1360,15 @@ async function toggleFollow(targetId, btnElement) {
     }
 
     btnElement.disabled = false;
-    // Wenn wir nicht in der Suche sind, lade Daten neu
+
     const searchPanel = document.getElementById('connections-search-panel');
     if (searchPanel && searchPanel.classList.contains('hidden')) {
         loadConnectionsData();
     }
 }
 
-// ==========================================
-// 9.6. CONNECTIONS PAGE TABS & DATA LOGIC
-// ==========================================
-
 function switchConnTab(tabName) {
-    // 1. Update Buttons
+
     const tabs = ['friends', 'followers', 'following', 'requests'];
     tabs.forEach(t => {
         const btn = document.getElementById(`conn-tab-${t}`);
@@ -1452,7 +1382,6 @@ function switchConnTab(tabName) {
             }
         }
 
-        // 2. Update Panels
         const panel = document.getElementById(`conn-panel-${t}`);
         if (panel) {
             if (t === tabName) panel.classList.remove('hidden');
@@ -1466,7 +1395,6 @@ async function acceptFollowRequest(requestId, targetId) {
     const btn = event.currentTarget;
     const parentDiv = btn.closest('.request-item-row');
 
-    // Optimistic UI
     if (parentDiv) parentDiv.style.opacity = '0.5';
 
     const { error } = await supabaseClient
@@ -1476,7 +1404,7 @@ async function acceptFollowRequest(requestId, targetId) {
 
     if (!error) {
         if (parentDiv) parentDiv.remove();
-        loadConnectionsData(); // Refresh all lists
+        loadConnectionsData();
     } else {
         if (parentDiv) parentDiv.style.opacity = '1';
         alert(t('error.acceptFailed'));
@@ -1488,7 +1416,6 @@ async function declineFollowRequest(requestId) {
     const btn = event.currentTarget;
     const parentDiv = btn.closest('.request-item-row');
 
-    // Optimistic UI
     if (parentDiv) parentDiv.style.opacity = '0.5';
 
     const { error } = await supabaseClient
@@ -1498,7 +1425,7 @@ async function declineFollowRequest(requestId) {
 
     if (!error) {
         if (parentDiv) parentDiv.remove();
-        loadConnectionsData(); // Refresh counts
+        loadConnectionsData();
     } else {
         if (parentDiv) parentDiv.style.opacity = '1';
         alert(t('error.declineFailed'));
@@ -1515,7 +1442,6 @@ async function loadConnectionsData() {
         const followingList = document.getElementById('following-list-container');
         const requestsList = document.getElementById('requests-list-container');
 
-        // 1. Lade eingehende Anfragen & Follower
         const { data: incoming, error: incomingError } = await supabaseClient
             .from('user_follows')
             .select(`
@@ -1526,7 +1452,6 @@ async function loadConnectionsData() {
 
         if (incomingError) throw incomingError;
 
-        // 2. Lade ausgehende Follows
         const { data: outgoing, error: outgoingError } = await supabaseClient
             .from('user_follows')
             .select(`
@@ -1537,20 +1462,16 @@ async function loadConnectionsData() {
 
         if (outgoingError) throw outgoingError;
 
-        // Filtere alle Einträge heraus, bei denen das verknüpfte Profil null ist (z.B. durch RLS/Block/Löschung)
         const validIncoming = (incoming || []).filter(c => c && c.follower);
         const validOutgoing = (outgoing || []).filter(c => c && c.following);
 
-        // Verarbeiten
         const pendingRequests = validIncoming.filter(c => c.status === 'pending');
         const myFollowers = validIncoming.filter(c => c.status === 'accepted');
         const iAmFollowing = validOutgoing.filter(c => c.status === 'accepted');
 
-        // Freunde (Mutuals) = Die, denen ich folge UND die mir folgen
         const myFollowersIds = new Set(myFollowers.map(f => f.follower.id));
         const friends = iAmFollowing.filter(f => myFollowersIds.has(f.following_id));
 
-        // --- RENDER PENDING REQUESTS ---
         const banner = document.getElementById('conn-pending-banner');
         const badge = document.getElementById('conn-requests-badge');
         const countText = document.getElementById('conn-pending-count-text');
@@ -1595,25 +1516,21 @@ async function loadConnectionsData() {
             if (requestsList) requestsList.innerHTML = `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noRequests')}</div>`;
         }
 
-        // --- RENDER FRIENDS ---
         if (friendsList) {
             friendsList.innerHTML = friends.length > 0
                 ? friends.map(f => renderConnectionItem(f.following, 'accepted', f.following_id)).join('')
                 : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFriends')}</div>`;
         }
 
-        // Erstelle ein Map mit Status der Leute, denen ich folge
         const myOutgoingFollows = new Map();
         validOutgoing.forEach(f => myOutgoingFollows.set(f.following_id, f.status));
 
-        // --- RENDER FOLLOWERS ---
         if (followersList) {
             followersList.innerHTML = myFollowers.length > 0
                 ? myFollowers.map(f => renderConnectionItem(f.follower, myOutgoingFollows.get(f.follower.id) || 'none', f.follower.id)).join('')
                 : `<div class="py-10 text-center text-[#8E8E93] text-[14px]">${t('connections.noFollowers')}</div>`;
         }
 
-        // --- RENDER FOLLOWING ---
         if (followingList) {
             followingList.innerHTML = iAmFollowing.length > 0
                 ? iAmFollowing.map(f => renderConnectionItem(f.following, 'accepted', f.following_id)).join('')
@@ -1633,7 +1550,6 @@ async function loadConnectionsData() {
     }
 }
 
-// Helper zum Rendern von Profil-Reihen in den Listen
 function renderConnectionItem(profile, followStatus, profileId) {
     if (!profile) return '';
     const avatar = profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff`;
@@ -1673,20 +1589,18 @@ function renderConnectionItem(profile, followStatus, profileId) {
     `;
 }
 
-// Swipe-Logik für die Connections-Seite
 let connStartX = 0;
 let connStartY = 0;
 let connCurrentX = 0;
 let isConnDragging = false;
-let isHorizontalIntent = null; // Prüft, ob der User scrollt oder wischt
+let isHorizontalIntent = null;
 
 function setupConnectionsSwipe() {
     const page = document.getElementById('connections-page');
     if (!page) return;
 
     page.addEventListener('touchstart', (e) => {
-        // WICHTIG: Ignoriere Swipes, die auf einem Input-Feld starten,
-        // da sonst iOS Safari den Fokus-Event abbrechen kann.
+
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
             isConnDragging = false;
             return;
@@ -1696,9 +1610,9 @@ function setupConnectionsSwipe() {
         connStartY = e.touches[0].clientY;
         connCurrentX = connStartX;
         isConnDragging = true;
-        isHorizontalIntent = null; // Intent bei jedem neuen Touch zurücksetzen
+        isHorizontalIntent = null;
 
-        page.style.transition = 'none'; // Sofortiges Tracking
+        page.style.transition = 'none';
     }, { passive: true });
 
     page.addEventListener('touchmove', (e) => {
@@ -1710,9 +1624,8 @@ function setupConnectionsSwipe() {
         const deltaX = connCurrentX - connStartX;
         const deltaY = currentY - connStartY;
 
-        // 1. Finde heraus, ob der User vertikal oder horizontal wischt (nur beim ersten Bewegen)
         if (isHorizontalIntent === null) {
-            // Wenn die Bewegung nach oben/unten größer ist als nach links/rechts -> abbrechen
+
             if (Math.abs(deltaY) > Math.abs(deltaX)) {
                 isHorizontalIntent = false;
                 isConnDragging = false;
@@ -1722,12 +1635,11 @@ function setupConnectionsSwipe() {
             }
         }
 
-        // 2. Wenn es ein horizontaler Swipe ist, folge dem Finger (nur nach rechts)
         if (isHorizontalIntent && deltaX > 0) {
-            if (e.cancelable) e.preventDefault(); // Verhindert Browser-Back-Swipe Konflikte
+            if (e.cancelable) e.preventDefault();
             page.style.transform = `translateX(${deltaX}px)`;
         }
-    }, { passive: false }); // false, damit wir preventDefault nutzen können
+    }, { passive: false });
 
     page.addEventListener('touchend', () => {
         if (!isConnDragging) return;
@@ -1735,13 +1647,12 @@ function setupConnectionsSwipe() {
 
         const deltaX = connCurrentX - connStartX;
 
-        // Die Apple-Bezier-Kurve für das Zurückschnappen
         page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
 
-        if (deltaX > 100) { // Schwellenwert: Wenn mehr als 100px gezogen, dann schließen
+        if (deltaX > 100) {
             closeConnectionsPage();
         } else {
-            // Zurück in die Ausgangsposition
+
             page.style.transform = 'translateX(0px)';
             setTimeout(() => {
                 page.style.transition = '';
@@ -1750,7 +1661,6 @@ function setupConnectionsSwipe() {
     });
 }
 
-// Einmal initialisieren
 setupConnectionsSwipe();
 setupFriendProfileSwipe();
 setupBlockedUsersSwipe();
@@ -1759,22 +1669,18 @@ function openConnectionsPage() {
     const page = document.getElementById('connections-page');
     if (!page) return;
 
-    // 1. Reset & Lade Daten
     clearConnectionSearch();
-    switchConnTab('friends'); // Default Tab
+    switchConnTab('friends');
     loadConnectionsData();
 
-    // 2. Setup (Unsichtbar nach rechts schieben)
     page.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 
     page.style.transition = 'none';
     page.style.transform = 'translateX(100%)';
 
-    // 3. Force Reflow (zwingt den Browser, die Startposition zu übernehmen)
     page.offsetHeight;
 
-    // 4. Animation abspielen
     page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
     page.style.transform = 'translateX(0)';
 }
@@ -1783,16 +1689,13 @@ function closeConnectionsPage() {
     const page = document.getElementById('connections-page');
     if (!page) return;
 
-    // 1. Animation nach rechts weg
     page.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
     page.style.transform = 'translateX(100%)';
 
-    // 2. Aufräumen nach der Animation
     setTimeout(() => {
         page.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
 
-        // Reset Styles für den nächsten Start
         page.style.transform = '';
         page.style.transition = '';
     }, 350);
@@ -1896,34 +1799,33 @@ window.loadActivityHeatmap = async function() {
             const date = new Date(today.getFullYear(), today.getMonth() - m, 1);
             const month = date.getMonth();
             const year = date.getFullYear();
-            
+
             html += `<div class="flex flex-col min-w-[max-content] snap-start">`;
             html += `<span class="text-[10px] text-[#8E8E93] font-semibold mb-2 ml-1">${monthsStr[month]}</span>`;
-            
+
             html += `<div class="grid grid-rows-7 gap-[3px] grid-flow-col">`;
-            
+
             const firstDayDate = new Date(year, month, 1);
-            let firstDay = firstDayDate.getDay(); 
+            let firstDay = firstDayDate.getDay();
             firstDay = firstDay === 0 ? 6 : firstDay - 1;
-            
+
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-            
+
             for(let i=0; i<firstDay; i++) {
                 html += `<div class="w-3 h-3 rounded-[3px] bg-transparent"></div>`;
             }
-            
+
             let currentMonthWeeks = Math.ceil((daysInMonth + firstDay) / 7);
-            
+
             for(let d=1; d<=daysInMonth; d++) {
                 const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const amount = consumptionMap[dateStr] || 0;
-                
-                // Random delay between 0 and 4 seconds for "game of life" / twinkling effect
+
                 let delay = (Math.random() * 4).toFixed(2);
-                
+
                 let colorClass = 'heatmap-hole';
                 let styleStr = `style="animation-delay: -${delay}s"`;
-                
+
                 if (amount > 0) {
                     styleStr = '';
                     if (amount <= 2) colorClass = 'bg-[#4a1c1c]';
@@ -1932,16 +1834,16 @@ window.loadActivityHeatmap = async function() {
                     else if (amount <= 11) colorClass = 'bg-[#e62e2e]';
                     else colorClass = 'bg-[#FF3B30]';
                 }
-                
+
                 html += `<div class="w-3 h-3 rounded-[3px] ${colorClass}" ${styleStr}></div>`;
             }
-            
+
             globalWeekCount += currentMonthWeeks;
             html += `</div></div>`;
         }
 
         container.innerHTML = html;
-        
+
         setTimeout(() => {
             container.scrollLeft = container.scrollWidth;
         }, 100);
@@ -1950,10 +1852,6 @@ window.loadActivityHeatmap = async function() {
         console.error("Heatmap error:", err);
     }
 };
-
-// ==========================================
-// 9.7. FRIEND PROFILE PAGE & BLOCK SYSTEM
-// ==========================================
 
 let currentFriendProfileId = null;
 
@@ -1968,13 +1866,11 @@ async function openFriendProfile(friendId) {
 
     if (!page) return;
 
-    // Show spinner, hide content
     if (spinner) spinner.classList.remove('hidden');
     if (blockedState) blockedState.classList.add('hidden');
     if (infoSection) infoSection.classList.add('hidden');
     if (actionsMenu) actionsMenu.classList.add('hidden');
 
-    // Slide in animation
     page.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
     page.style.transition = 'none';
@@ -1987,7 +1883,6 @@ async function openFriendProfile(friendId) {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return;
 
-        // Fetch profile
         let profile = null;
         let error = null;
 
@@ -2025,7 +1920,6 @@ async function openFriendProfile(friendId) {
             console.error("Error loading friend profile details:", error);
         }
 
-        // Check block relationship
         const { data: blockData } = await supabaseClient
             .from('user_blocks')
             .select('id')
@@ -2036,21 +1930,18 @@ async function openFriendProfile(friendId) {
         const weBlockedThem = !!blockData;
 
         if (error || !profile) {
-            // Profile not accessible (e.g. because they blocked us)
+
             if (spinner) spinner.classList.add('hidden');
             if (blockedState) blockedState.classList.remove('hidden');
             return;
         }
 
-        // Hide spinner and show info
         if (spinner) spinner.classList.add('hidden');
         if (infoSection) infoSection.classList.remove('hidden');
 
-        // Username
         const usernameEl = document.getElementById('friend-username');
         if (usernameEl) usernameEl.innerText = profile.username || 'Unknown';
 
-        // Avatar fallback to UI Avatars if blocked/empty
         const avatarImg = document.getElementById('friend-avatar');
         const avatarPlaceholder = document.getElementById('friend-avatar-placeholder');
 
@@ -2066,7 +1957,6 @@ async function openFriendProfile(friendId) {
             }
         }
 
-        // Featured Badge
         const badgeOverlay = document.getElementById('friend-badge-overlay');
         const badgeImg = document.getElementById('friend-badge-img');
         if (badgeOverlay && badgeImg) {
@@ -2085,11 +1975,9 @@ async function openFriendProfile(friendId) {
             }
         }
 
-        // Stats & Collector Card Setup
         const xpVal = weBlockedThem ? 0 : (profile.xp || 0);
         const lvlVal = weBlockedThem ? 1 : (Math.floor(xpVal / 300) + 1);
 
-        // Collector Card fields
         const cardLvlEl = document.getElementById('friend-card-level');
         const cardUserEl = document.getElementById('friend-card-username');
         const cardScoreEl = document.getElementById('friend-card-score');
@@ -2098,7 +1986,6 @@ async function openFriendProfile(friendId) {
         if (cardUserEl) cardUserEl.innerHTML = `COLLECTOR, <span class="text-white font-semibold">${profile.username || 'Unknown'}</span>`;
         if (cardScoreEl) cardScoreEl.innerHTML = weBlockedThem ? `- <span class="font-medium text-[20px] text-white/50">XP</span>` : `${xpVal} <span class="font-medium text-[20px] text-white/50">XP</span>`;
 
-        // Apply card appearance from the friend's profile details
         const cardContainer = document.getElementById('friend-metal-card-container');
         if (cardContainer) {
             applyCardAppearance(cardContainer, profile.card_appearance || {
@@ -2115,7 +2002,6 @@ async function openFriendProfile(friendId) {
         const xpEl = document.getElementById('friend-stat-xp');
         if (xpEl) xpEl.innerText = weBlockedThem ? '-' : xpVal;
 
-        // Fetch follow status
         let followStatus = 'none';
         if (!weBlockedThem) {
             const { data: followRel } = await supabaseClient
@@ -2127,7 +2013,6 @@ async function openFriendProfile(friendId) {
             followStatus = followRel ? followRel.status : 'none';
         }
 
-        // Setup Follow/Unblock Button
         const followBtn = document.getElementById('friend-follow-btn');
         if (followBtn) {
             followBtn.setAttribute('data-status', followStatus);
@@ -2151,7 +2036,6 @@ async function openFriendProfile(friendId) {
             }
         }
 
-        // Setup Dropdown Block Action Button
         const blockBtn = document.getElementById('friend-block-btn');
         if (blockBtn) {
             if (weBlockedThem) {
@@ -2188,7 +2072,7 @@ async function openFriendProfile(friendId) {
                 `;
             }
         } else {
-            // Unlocked cans grid
+
             const { data: collections } = await supabaseClient
                 .from('user_collections')
                 .select('snus_id, collected_at')
@@ -2273,7 +2157,7 @@ function toggleFriendActionsMenu() {
 
     if (menu.classList.contains('hidden')) {
         menu.classList.remove('hidden');
-        menu.offsetHeight; // force reflow
+        menu.offsetHeight;
         menu.classList.remove('scale-95', 'opacity-0');
         menu.classList.add('scale-100', 'opacity-100');
     } else {
@@ -2300,7 +2184,7 @@ async function handleFriendBlockAction() {
         .maybeSingle();
 
     if (blockData) {
-        // Unblock
+
         const { error } = await supabaseClient
             .from('user_blocks')
             .delete()
@@ -2316,7 +2200,7 @@ async function handleFriendBlockAction() {
             alert("Error unblocking user: " + error.message);
         }
     } else {
-        // Block
+
         const confirmBlock = confirm("Are you sure you want to block this user?");
         if (!confirmBlock) return;
 
@@ -2386,7 +2270,6 @@ async function handleFriendProfileFollowToggle() {
     btn.disabled = false;
     loadConnectionsData();
 }
-
 
 function openBlockedUsersPage() {
     const page = document.getElementById('blocked-users-page');
@@ -2628,4 +2511,3 @@ function setupBlockedUsersSwipe() {
         }
     });
 }
-

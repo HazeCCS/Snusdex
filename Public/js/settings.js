@@ -42,7 +42,7 @@ function toggleGridGlow(element) {
 
 function toggleDefaultSort(element) {
     toggleSetting(element);
-    const isActive = element.classList.contains('bg-white'); // true = Nach Marke, false = Nach ID
+    const isActive = element.classList.contains('bg-white');
     localStorage.setItem('dexDefaultSort', isActive ? 'alpha' : 'id');
 }
 
@@ -50,7 +50,7 @@ function toggleHapticGlobal(element) {
     toggleSetting(element);
     const isOn = element.classList.contains('bg-white');
     localStorage.setItem('hapticGlobal', isOn ? 'on' : 'off');
-    // direkt am element arbeiten statt ganzen subpage neu rendern — so läuft die transition
+
     const dexToggle = document.getElementById('haptic-dex-toggle');
     if (dexToggle) {
         dexToggle.classList.toggle('opacity-40', !isOn);
@@ -243,14 +243,11 @@ function setMetalCardPattern(id) {
     syncCardAppearanceToCloud();
 }
 
-// Refreshes button active states and pattern classes in the Darstellung subpage
-// without re-rendering the whole page (which would push history and reset canvas)
 function _refreshAppearanceButtonStates() {
     if (window._currentSubpageType !== 'Darstellung') return;
 
     const app = getLocalCardAppearance();
 
-    // Update animation buttons
     document.querySelectorAll('[onclick*="setMetalCardAnim"]').forEach(btn => {
         const match = btn.getAttribute('onclick').match(/setMetalCardAnim\('([^']+)'\)/);
         if (!match) return;
@@ -264,7 +261,6 @@ function _refreshAppearanceButtonStates() {
         }
     });
 
-    // Update pattern buttons
     document.querySelectorAll('[onclick*="setMetalCardPattern"]').forEach(btn => {
         const match = btn.getAttribute('onclick').match(/setMetalCardPattern\('([^']+)'\)/);
         if (!match) return;
@@ -278,7 +274,6 @@ function _refreshAppearanceButtonStates() {
         }
     });
 
-    // Update font buttons
     document.querySelectorAll('[onclick*="setMetalCardFont"]').forEach(btn => {
         const match = btn.getAttribute('onclick').match(/setMetalCardFont\('([^']+)'\)/);
         if (!match) return;
@@ -292,7 +287,6 @@ function _refreshAppearanceButtonStates() {
         }
     });
 
-    // Update color ring highlights
     document.querySelectorAll('[onclick*="setMetalCardColor"]').forEach(btn => {
         const match = btn.getAttribute('onclick').match(/setMetalCardColor\('([^']+)'/);
         if (!match) return;
@@ -318,8 +312,6 @@ function toggleCardPin() {
     if (!wrapper) return;
     wrapper.dataset.pinned = wrapper.dataset.pinned === '1' ? '0' : '1';
 }
-
-// ── GitHub subpage helpers ─────────────────────────────────────────────────
 
 function _ghRelTime(isoStr) {
     const diff = Date.now() - new Date(isoStr).getTime();
@@ -348,10 +340,8 @@ function _ghMarkdown(md) {
     return `<p style="color:#8E8E93;font-size:15px;line-height:1.6;margin:0 0 8px">${h}</p>`;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 function openSettingsSubpage(type, _pushHistory) {
-    // Destroy previous preview canvas if any to prevent memory leaks
+
     const previewContainer = document.getElementById('preview-metal-card-container');
     if (previewContainer && typeof CardCanvasRenderer !== 'undefined') {
         CardCanvasRenderer.destroy(previewContainer);
@@ -383,21 +373,18 @@ function openSettingsSubpage(type, _pushHistory) {
     if (type === 'Edit Profile') {
         const cache = window._profileCache;
 
-        // Use cached username as placeholder, cached email as value – both instant
         const cachedRemaining = cache?.remaining ?? window._cachedUsernameChangesRemaining ?? null;
         const cachedEmail = cache?.email || '';
-        // Always read the username directly from the profile card in the DOM – it's always correct
+
         const liveUsername = document.getElementById('profile-email')?.innerText?.trim() || '';
         const cachedUsername = liveUsername || cache?.username || '';
 
-        // Default avatar: Merz photo
         const defaultAvatarSvg = `<svg viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
             <rect width="96" height="96" fill="#3A3A3C"/>
             <circle cx="48" cy="38" r="16" fill="#636366"/>
             <path d="M16 80c0-17.673 14.327-32 32-32s32 14.327 32 32" fill="#636366"/>
         </svg>`;
 
-        // Changes badge: shows "X/3" format – grey=3, orange=1, red=0
         const changesLabel = cachedRemaining === null
             ? ''
             : cachedRemaining === 0
@@ -462,7 +449,6 @@ function openSettingsSubpage(type, _pushHistory) {
             </div>
         `;
 
-        // Always fetch fresh from server to ensure username + changes badge are up-to-date
         setTimeout(async () => {
             try {
                 const { data: { user } } = await supabaseClient.auth.getUser();
@@ -476,7 +462,6 @@ function openSettingsSubpage(type, _pushHistory) {
                     .select('username, username_changes, username_last_reset, avatar_url')
                     .eq('id', user.id).single();
 
-                // Use user_metadata.username – same source as setupProfile – always correct
                 const correctUsername = user.user_metadata?.username || profile?.username || '';
 
                 const usernameInput = document.getElementById('edit-username');
@@ -509,7 +494,7 @@ function openSettingsSubpage(type, _pushHistory) {
                             ? `<span class="text-[11px] text-[#FF9500] font-medium">1/3</span>`
                             : `<span class="text-[11px] text-[#8E8E93] font-medium">${remaining}/3</span>`;
                 }
-            } catch (e) { /* ignore */ }
+            } catch (e) {  }
         }, 100);
     } else if (type === 'Stats') {
         const brandStats = getBrandStats();
@@ -711,8 +696,7 @@ function openSettingsSubpage(type, _pushHistory) {
             </div>
         `;
     } else if (type === 'Theme') {
-        // Light / Dark / System theme selector (moved out of Personalisierung
-        // so users find it under its own top-level "Darstellung" entry).
+
         const currentTheme = (window.SnusTheme && window.SnusTheme.getTheme())
             || localStorage.getItem('snusTheme') || 'system';
         const themeOptions = [
@@ -755,19 +739,16 @@ function openSettingsSubpage(type, _pushHistory) {
         const glowHandleTransform = glow ? 'translate-x-5' : '';
         const glowHandleBg = glow ? 'bg-black' : 'bg-white';
 
-        // NEU: Status für Standard-Sortierung auslesen
         const defaultSort = localStorage.getItem('dexDefaultSort') || 'id';
         const isAlphaDefault = defaultSort === 'alpha';
         const sortToggleBg = isAlphaDefault ? 'bg-white' : 'bg-[#3A3A3C]';
         const sortHandleTransform = isAlphaDefault ? 'translate-x-5' : '';
         const sortHandleBg = isAlphaDefault ? 'bg-black' : 'bg-white';
 
-        // Get actual user credentials for the preview card
         const homeLevelVal = document.getElementById('home-level')?.innerText || 'LVL 1';
         const scoreVal = document.getElementById('score')?.innerHTML || '0 <span style="font-weight:500;font-size:20px;color:rgba(255,255,255,0.55);">XP</span>';
         const greetingVal = document.getElementById('greeting')?.innerHTML || 'COLLECTOR';
 
-        // --- NEW ---
         const metalColors = [
             { id: 'white', name: 'White', color: '#ffffff', reqRarity: null },
             { id: 'gray', name: 'Gray', color: '#8e8e93', reqRarity: null },
@@ -779,19 +760,19 @@ function openSettingsSubpage(type, _pushHistory) {
         ];
 
         const activeColorId = localStorage.getItem('metalCardColorId') || 'white';
-        
+
         const colorOptionsHTML = metalColors.map(c => {
             let isUnlocked = true;
             if (c.reqRarity) {
-                isUnlocked = typeof globalSnusData !== 'undefined' && typeof globalUserCollection !== 'undefined' && globalSnusData.some(s => 
-                    globalUserCollection[s.id] && 
+                isUnlocked = typeof globalSnusData !== 'undefined' && typeof globalUserCollection !== 'undefined' && globalSnusData.some(s =>
+                    globalUserCollection[s.id] &&
                     (s.rarity || 'common').toLowerCase().trim() === c.reqRarity
                 );
             }
-            
+
             const isActive = activeColorId === c.id;
             const ringClass = isActive ? 'border-white' : 'border-transparent';
-            
+
             if (isUnlocked) {
                 return `
                     <div onclick="triggerHapticFeedback(); setMetalCardColor('${c.id}', '${c.color}')" class="flex flex-col items-center gap-1 cursor-pointer flex-shrink-0">
@@ -1032,7 +1013,7 @@ function openSettingsSubpage(type, _pushHistory) {
         `;
 
     } else if (type === 'Creator Code') {
-        // Load already-redeemed codes from localStorage for display
+
         const redeemedRaw = localStorage.getItem('creatorCodesRedeemed');
         let redeemed = [];
         try { redeemed = JSON.parse(redeemedRaw) || []; } catch(e) { redeemed = []; }
@@ -1103,7 +1084,6 @@ function openSettingsSubpage(type, _pushHistory) {
             ${redeemedListHTML}
         `;
 
-        // Allow submitting via Enter key
         setTimeout(() => {
             const input = document.getElementById('creator-code-input');
             if (input) {
@@ -1195,8 +1175,6 @@ function openSettingsSubpage(type, _pushHistory) {
         }, 10);
     }
 
-    // Apply card appearance after hidden is removed so getBoundingClientRect()
-    // returns real dimensions (canvas patterns initialize at 0x0 on hidden elements).
     if (type === 'Darstellung') {
         requestAnimationFrame(() => {
             applyCardAppearance('preview-metal-card-container', getLocalCardAppearance());
@@ -1229,10 +1207,6 @@ function refreshLangPage() {
 }
 window.refreshLangPage = refreshLangPage;
 
-// ── Theme switch handler ───────────────────────────────────────────────────
-// Called from the Light/Dark/System buttons in the Appearance subpage.
-// Updates the visual selection in-place to avoid a full re-render of the page
-// (the appearance page contains a canvas preview that would flicker).
 function setAppTheme(pref) {
     if (window.SnusTheme && typeof window.SnusTheme.setTheme === 'function') {
         window.SnusTheme.setTheme(pref);
@@ -1259,16 +1233,15 @@ function showCardRequirementsModal(type) {
 
     if (!modal || !backdrop || !card || !titleEl || !contentEl) return;
 
-    // Helper counts
     const getCollectedCount = () => {
         if (typeof globalSnusData === 'undefined' || typeof globalUserCollection === 'undefined') return 0;
         return globalSnusData.filter(s => globalUserCollection[s.id]).length;
     };
-    
+
     const getRarityCount = (rarity) => {
         if (typeof globalSnusData === 'undefined' || typeof globalUserCollection === 'undefined') return 0;
-        return globalSnusData.filter(s => 
-            globalUserCollection[s.id] && 
+        return globalSnusData.filter(s =>
+            globalUserCollection[s.id] &&
             (s.rarity || 'common').toLowerCase().trim() === rarity
         ).length;
     };
@@ -1304,7 +1277,7 @@ function showCardRequirementsModal(type) {
     }
 
     titleEl.innerText = titleText;
-    
+
     let html = "";
     items.forEach(item => {
         const checkIcon = `
@@ -1321,7 +1294,7 @@ function showCardRequirementsModal(type) {
                 </svg>
             </div>
         `;
-        
+
         html += `
             <div class="flex items-center gap-3 py-1 ${item.unlocked ? 'opacity-100' : 'opacity-60'}">
                 ${item.unlocked ? checkIcon : lockIcon}
@@ -1336,11 +1309,9 @@ function showCardRequirementsModal(type) {
 
     contentEl.innerHTML = html;
 
-    // Open Modal animations
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    
-    // Trigger animations in next frame
+
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             backdrop.classList.remove('opacity-0');
@@ -1395,17 +1366,14 @@ function closeSettingsSubpage() {
     subpage.classList.remove('translate-x-0');
     subpage.classList.add('translate-x-full');
 
-    // Hide subpage after slide-out animation (300ms)
     setTimeout(() => {
         subpage.classList.add('hidden');
-        // Keep body scroll-locked if a parent page (settings/github) is still open behind us
+
         if (!_isOverlayPageOpen()) {
             document.body.classList.remove('overflow-hidden');
         }
     }, 300);
 
-    // Destroy preview canvas and refresh homepage card 500ms after closing —
-    // after the subpage is fully out of view and homepage card has real dimensions.
     setTimeout(() => {
         const previewContainer = document.getElementById('preview-metal-card-container');
         if (previewContainer && typeof CardCanvasRenderer !== 'undefined') {
@@ -1478,26 +1446,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Lock gestures during exit animation
         _swipeLock = true;
         const hasHistory = !!(window._subpageHistory?.length);
 
-        // Animate fully off-screen (user may have already dragged partway)
         settingsSubpage.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
         settingsSubpage.style.transform = `translateX(${window.innerWidth}px)`;
 
         setTimeout(() => {
-            // Kill inline styles — element is off-screen, safe to reset
+
             settingsSubpage.style.transition = 'none';
             settingsSubpage.style.transform = '';
 
             if (hasHistory) {
-                // Load previous page without slide-in animation (element is at translate-x-0 CSS class)
+
                 const prev = window._subpageHistory.pop();
                 window._currentSubpageType = null;
                 window._skipSubpageAnimation = true;
                 openSettingsSubpage(prev, false);
-                // Re-enable CSS transitions after one paint frame
+
                 requestAnimationFrame(() => {
                     settingsSubpage.style.transition = '';
                     _swipeLock = false;
@@ -1507,7 +1473,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window._currentSubpageType = null;
                 settingsSubpage.classList.remove('translate-x-0');
                 settingsSubpage.classList.add('translate-x-full', 'hidden');
-                // Keep body scroll-locked if a parent page (settings/github) is still open behind us
+
                 if (!_isOverlayPageOpen()) {
                     document.body.classList.remove('overflow-hidden');
                 }
@@ -1517,8 +1483,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 300);
     });
 });
-
-// ==========================================
 
 document.addEventListener('DOMContentLoaded', () => {
     const splashScreen = document.getElementById('splash-screen');
@@ -1550,8 +1514,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (splashScreen && splashVideo) {
         splashVideo.play().then(() => {
-            // Jingle nativ abspielen — die App entscheidet über Stumm-Modus und
-            // laufende Musik. Browser-Fallback nutzt das <audio>-Element.
+
             playAppSound('splash');
         }).catch(e => console.log("Video-Autoplay blockiert:", e));
 
@@ -1560,7 +1523,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// ── Profile Sub-Tab ────────────────────────────────────────────────────────
 function switchProfileSubtab(tab) {
     const overviewEl  = document.getElementById('prof-tab-overview');
     const settingsEl  = document.getElementById('prof-tab-settings');
@@ -1587,7 +1549,6 @@ function switchProfileSubtab(tab) {
 }
 window.switchProfileSubtab = switchProfileSubtab;
 
-// ── Settings Search Filter ─────────────────────────────────────────────────
 function filterSettingsItems(query) {
     const q        = query.trim().toLowerCase();
     const sections = document.querySelectorAll('.settings-search-section');
@@ -1607,7 +1568,6 @@ function filterSettingsItems(query) {
             if (visible) { sectionVisible = true; lastVisible = row; }
         });
 
-        // Hide the bottom divider of the last visible row to avoid orphan line
         rows.forEach(row => {
             const divider = row.querySelector('.settings-divider');
             if (divider) divider.style.display = (row === lastVisible) ? 'none' : '';
@@ -1622,7 +1582,6 @@ function filterSettingsItems(query) {
 }
 window.filterSettingsItems = filterSettingsItems;
 
-// ── Settings Page open / close ─────────────────────────────────────────────
 function openSettingsPage() {
     const page = document.getElementById('settings-page');
     if (!page) return;
@@ -1630,7 +1589,6 @@ function openSettingsPage() {
     const searchInput = document.getElementById('settings-search-input');
     if (searchInput) { searchInput.value = ''; filterSettingsItems(''); }
 
-    // Freeze background: profile tab becomes non-interactive while settings is open
     const profileTab = document.getElementById('tab-profile');
     if (profileTab) profileTab.style.pointerEvents = 'none';
 
@@ -1658,7 +1616,6 @@ function closeSettingsPage() {
 }
 window.closeSettingsPage = closeSettingsPage;
 
-// ── Settings Page swipe-to-close ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     const settingsPage = document.getElementById('settings-page');
     if (!settingsPage) return;
@@ -1738,9 +1695,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ── Overlay page helper ────────────────────────────────────────────────────
-// True if a persistent full-screen page (settings/github) is still open behind
-// a closing subpage — so we keep the body scroll-lock instead of releasing it.
 function _isOverlayPageOpen() {
     return ['settings-page', 'github-page'].some(id => {
         const el = document.getElementById(id);
@@ -1748,7 +1702,6 @@ function _isOverlayPageOpen() {
     });
 }
 
-// ── GitHub Page open / close ───────────────────────────────────────────────
 function _loadGithubCommits() {
     const el = document.getElementById('gh-commits-container');
     if (!el) return;
@@ -1792,23 +1745,17 @@ function openGithubPage() {
     const page = document.getElementById('github-page');
     if (!page) return;
 
-    // README / Architecture open as subpages above this page — start with a clean
-    // stack so their back-swipe reveals the GitHub page, not a stale subpage.
     window._subpageHistory = [];
     window._currentSubpageType = null;
 
     const profileTab = document.getElementById('tab-profile');
     if (profileTab) profileTab.style.pointerEvents = 'none';
 
-    // Appear with a quick fade instead of a slide-in (it opens right after the
-    // passcode unlock, where a slide-in feels wrong). Position the page on-screen
-    // instantly with no transition, then fade opacity in. Inline transition/opacity
-    // are cleared afterwards so the back-button / swipe close still slide out.
     page.style.transition = 'none';
     page.classList.remove('hidden', 'translate-x-full');
     page.classList.add('translate-x-0');
     page.style.opacity = '0';
-    void page.offsetWidth;                       // commit the no-transition state
+    void page.offsetWidth;
     document.body.classList.add('overflow-hidden');
     _loadGithubCommits();
     page.style.transition = 'opacity .2s ease';
@@ -1832,7 +1779,6 @@ function closeGithubPage() {
 }
 window.closeGithubPage = closeGithubPage;
 
-// ── GitHub Page swipe-to-close ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     const githubPage = document.getElementById('github-page');
     if (!githubPage) return;
@@ -1909,11 +1855,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CREATOR CODE SYSTEM
-// ─────────────────────────────────────────────────────────────────────────────
-
-// Render already-redeemed codes inline below the input field
 function renderCreatorCodeRedeemed() {
     const list = document.getElementById('creator-code-redeemed-list');
     if (!list) return;
@@ -1938,7 +1879,6 @@ function renderCreatorCodeRedeemed() {
 }
 window.renderCreatorCodeRedeemed = renderCreatorCodeRedeemed;
 
-// Run on DOMContentLoaded so the list is populated when profile tab opens
 document.addEventListener('DOMContentLoaded', renderCreatorCodeRedeemed);
 
 function showCreatorCodePopup(state, data) {
@@ -2046,7 +1986,6 @@ function closeCreatorCodePopup() {
 }
 window.closeCreatorCodePopup = closeCreatorCodePopup;
 
-// ── Creator Code Popup: swipe-down to dismiss ──────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     const card = document.getElementById('creator-code-popup-card');
     if (!card) return;
@@ -2075,7 +2014,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Only start drag if moving more vertically than horizontally
         if (diffY > 8 && diffY > diffX) {
             if (e.cancelable) e.preventDefault();
             isDragging = true;
@@ -2096,7 +2034,7 @@ document.addEventListener('DOMContentLoaded', () => {
         touchStartX = 0;
 
         if (!shouldClose) {
-            // Snap back
+
             card.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
             card.style.transform = 'translateY(0)';
             setTimeout(() => {
@@ -2106,7 +2044,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Dismiss
         swipeLock = true;
         card.style.transition = 'transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)';
         card.style.transform = `translateY(${cardHeight + 40}px)`;
@@ -2134,7 +2071,7 @@ async function redeemCreatorCode() {
 
     const rawCode = input.value.trim().toUpperCase();
     if (!rawCode) {
-        // Shake the input card briefly
+
         const card = input.closest('div');
         if (card) {
             card.style.transition = 'transform 0.08s ease';
@@ -2144,7 +2081,6 @@ async function redeemCreatorCode() {
         return;
     }
 
-    // Loading spinner in button
     const origHTML = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `<svg class="animate-spin w-3.5 h-3.5 text-[#8E8E93]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
@@ -2153,7 +2089,6 @@ async function redeemCreatorCode() {
         const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) throw new Error('not_logged_in');
 
-        // ── Aktuellen aktiven Code abfragen ──────────────────────────────────
         const { data: currentRedemption, error: curRedemptionError } = await supabaseClient
             .from('creator_code_redemptions')
             .select('id, code_id, creator_codes(code, activates_animation, activates_badge)')
@@ -2171,7 +2106,6 @@ async function redeemCreatorCode() {
             return;
         }
 
-        // ── Cooldown-Prüfung via Supabase profiles (nur bei Änderung) ─────────
         const { data: profile, error: profileError } = await supabaseClient
             .from('profiles')
             .select('creator_code_last_redeemed')
@@ -2195,7 +2129,6 @@ async function redeemCreatorCode() {
             }
         }
 
-        // ── Neuen Code aus Supabase laden ────────────────────────────────────
         const { data: codeData, error: codeError } = await supabaseClient
             .from('creator_codes')
             .select('id, code, activates_animation, activates_badge, credits, text')
@@ -2209,9 +2142,8 @@ async function redeemCreatorCode() {
             return;
         }
 
-        // ── Alten Code deaktivieren (falls vorhanden und geändert) ───────────
         if (isChanging && currentRedemption) {
-            // Badge entfernen
+
             if (currentRedemption.creator_codes?.activates_badge) {
                 const oldBadgeId = currentRedemption.creator_codes.activates_badge;
                 const { error: deleteBadgeError } = await supabaseClient
@@ -2221,7 +2153,6 @@ async function redeemCreatorCode() {
                     .eq('badge_id', oldBadgeId);
                 if (deleteBadgeError) throw deleteBadgeError;
 
-                // Falls dieses Badge als featured ausgewählt war, setzen wir es auf NULL zurück
                 if (window._featuredBadgeId === oldBadgeId) {
                     window._featuredBadgeId = null;
                     const { error: updateProfileError } = await supabaseClient
@@ -2236,26 +2167,23 @@ async function redeemCreatorCode() {
             }
         }
 
-        // ── Neuen Redemption-Record anlegen (upsert auf user_id) ──────────────
         const { error: upsertError } = await supabaseClient
             .from('creator_code_redemptions')
             .upsert({ user_id: user.id, code_id: codeData.id }, { onConflict: 'user_id' });
 
         if (upsertError) throw upsertError;
 
-        // ── Neue Animation freischalten / alte überschreiben ─────────────────
         if (codeData.activates_animation) {
             localStorage.setItem('creatorUnlockedAnimations', JSON.stringify([codeData.activates_animation]));
         } else {
             localStorage.removeItem('creatorUnlockedAnimations');
         }
 
-        // ── Neues Badge vergeben ─────────────────────────────────────────────
         if (codeData.activates_badge) {
             const { data: existingBadge, error: selectBadgeError } = await supabaseClient
                 .from('user_badges').select('id')
                 .eq('user_id', user.id).eq('badge_id', codeData.activates_badge).maybeSingle();
-            
+
             if (selectBadgeError) throw selectBadgeError;
 
             if (!existingBadge) {
@@ -2266,7 +2194,6 @@ async function redeemCreatorCode() {
             }
         }
 
-        // ── Validate and clean up card appearance ────────────────────────────
         let currentAnim = localStorage.getItem('metalCardAnim') || 'sweep';
         let currentPattern = localStorage.getItem('metalCardPattern') || 'none';
         let appearanceChanged = false;
@@ -2291,7 +2218,6 @@ async function redeemCreatorCode() {
             await syncCardAppearanceToCloud();
         }
 
-        // ── Eingelösten Code lokal für die Anzeige-Liste persistieren ─────────
         const redeemed = [{ code: rawCode, credits: codeData.credits || null, text: codeData.text || null, redeemedAt: new Date().toISOString() }];
         localStorage.setItem('creatorCodesRedeemed', JSON.stringify(redeemed));
 
@@ -2299,13 +2225,11 @@ async function redeemCreatorCode() {
         btn.disabled = false;
         btn.innerHTML = origHTML;
 
-        // Badges-System neu laden und UI aktualisieren
         if (typeof loadBadges === 'function') {
             await loadBadges();
         }
         renderCreatorCodeRedeemed();
 
-        // Erfolgs-Popup
         showCreatorCodePopup('success', codeData);
 
     } catch(err) {
@@ -2313,7 +2237,6 @@ async function redeemCreatorCode() {
         btn.disabled = false;
         btn.innerHTML = origHTML;
 
-        // Check for Postgres trigger exception
         if (err.message && err.message.includes('once every 14 days')) {
             try {
                 const { data: profile } = await supabaseClient
@@ -2338,4 +2261,3 @@ async function redeemCreatorCode() {
     }
 }
 window.redeemCreatorCode = redeemCreatorCode;
-

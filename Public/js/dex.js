@@ -1,22 +1,6 @@
-// ==========================================
-// 4. DATEN LADEN & RENDERN — REWRITE v2
-// ==========================================
-//
-// PERFORMANCE-PRINZIPIEN:
-// - filterDex() cancelt ausstehende Timer + RAFs bevor neu gerendert wird
-// - renderDexGrouped() nutzt DocumentFragment + einen einzigen Flush statt
-//   setTimeout-pro-Brand (der Hauptgrund für Stotter auf iOS)
-// - Brand-Pulse-Animation läuft via CSS animation-delay auf dem Element,
-//   kein setTimeout-Spam im JS mehr
-// - Lazy-Observer wird EINMAL initialisiert, nicht pro Render neu gebaut
-// ==========================================
-
 let globalSnusData = [];
 let globalUserCollection = {};
 
-// ==========================================
-// SESSION CACHE FÜR SOCIAL TAB
-// ==========================================
 let _socialCacheData = null;
 let _socialCacheTime = 0;
 let _lastSocialMetadata = {
@@ -26,22 +10,16 @@ let _lastSocialMetadata = {
     picksMaxTime: null
 };
 let _isCheckingSocialDb = false;
-const SOCIAL_CACHE_TTL = 5 * 60 * 1000; // 5 Minuten
+const SOCIAL_CACHE_TTL = 5 * 60 * 1000;
 
-// ==========================================
-// SKELETON LOADING HELPER
-// ==========================================
 const _skeletonTemplates = {
-    // Matches loadMoreDexItems() exactly: one div per grid cell, aspect-square image, same padding
+
     'dex-card': `<div class="flex flex-col bg-[#2A2A2E] rounded-[20px] overflow-hidden" style="border:1px solid rgba(255,255,255,0.05)"><div class="flex justify-between items-center w-full px-2.5 pt-2.5"><div class="sk h-3 w-7 rounded-full"></div><div class="sk w-2.5 h-2.5 rounded-full"></div></div><div class="sk w-full aspect-square mt-1"></div><div class="px-2 pt-1 pb-3 flex-1 flex items-center justify-center"><div class="sk h-3 w-[70%] rounded-full"></div></div></div>`,
 
-    // Matches renderSocialCard() exactly
     'social-featured': `<div class="bg-[#1C1C1E] rounded-[24px] p-5 shadow-lg border border-white/10 mb-5"><div class="mb-4 flex justify-between items-center"><div class="sk h-7 w-36 rounded-full"></div><div class="sk h-6 w-14 rounded-md"></div></div><div class="flex items-center gap-4 mb-5"><div class="sk w-24 h-24 rounded-2xl flex-shrink-0"></div><div class="flex-1 flex flex-col justify-center gap-2"><div class="sk h-[22px] w-[85%] rounded-md"></div><div class="sk h-[22px] w-[60%] rounded-md"></div><div class="sk h-[14px] w-[45%] rounded-full"></div><div class="flex items-end gap-1.5 mt-1"><div class="sk h-[26px] w-12 rounded-md"></div><div class="sk h-[14px] w-16 rounded-full mb-0.5"></div></div></div></div><div class="pt-4 border-t border-white/5 grid grid-cols-6 gap-1">${Array(6).fill('<div class="flex flex-col items-center"><div class="sk w-10 h-10 rounded-full mb-1"></div><div class="sk h-[9px] w-7 rounded-full"></div></div>').join('')}</div></div>`,
 
-    // Matches renderSocialListUI() list item exactly
     'social-list-item': `<div class="border-b border-white/5 last:border-0"><div class="flex items-center gap-3 p-3"><div class="sk w-5 h-[14px] rounded flex-shrink-0"></div><div class="sk w-10 h-10 rounded-xl flex-shrink-0"></div><div class="flex-1 min-w-0 flex flex-col gap-1.5"><div class="sk h-[18px] w-[65%] rounded-full"></div><div class="sk h-[13px] w-[40%] rounded-full"></div></div><div class="flex-shrink-0 min-w-[48px] px-2 py-1.5 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center gap-1"><div class="sk h-[17px] w-8 rounded-md"></div><div class="sk h-[9px] w-7 rounded-full"></div></div></div></div>`,
 
-    // Matches renderCreatorsPickCard() exactly
     'creator-pick': `<div class="cp-card opacity-60"><div class="cp-card-inner"><div class="flex items-center justify-between mb-4"><div class="flex items-center gap-2.5 min-w-0"><div class="w-9 h-9 rounded-full sk flex-shrink-0"></div><div class="flex flex-col gap-1.5"><div class="sk h-3.5 w-24 rounded-full"></div><div class="sk h-2.5 w-16 rounded-full"></div></div></div><div class="sk h-4 w-28 rounded-full"></div></div><div class="flex items-center gap-4 mb-5"><div class="sk w-20 h-20 rounded-full flex-shrink-0"></div><div class="flex-1 flex flex-col justify-center gap-2"><div class="sk h-4 w-[75%] rounded-full"></div><div class="sk h-3 w-[50%] rounded-full"></div><div class="flex items-end gap-1"><div class="sk h-6 w-10 rounded-md"></div><div class="sk h-3 w-12 rounded-full mb-0.5"></div></div></div></div><div class="pt-3.5 border-t border-white/5 grid grid-cols-6 gap-1 mb-3.5">${Array(6).fill('<div class="flex flex-col items-center"><div class="sk w-8 h-8 rounded-full mb-1"></div><div class="sk h-[8px] w-6 rounded-full"></div></div>').join('')}</div></div></div>`,
 };
 
@@ -50,11 +28,6 @@ function skeletonHTML(type, count) {
     return Array(count || 1).fill(tpl).join('');
 }
 
-// ==========================================
-// ROBUSTES LADEN: Retry gegen Netzaussetzer
-// ==========================================
-// Lädt den kompletten Katalog in EINEM Request (Katalog liegt unter dem
-// Supabase-1000-Zeilen-Limit, daher ist keine Paginierung nötig).
 async function fetchSnusProducts() {
     const { data, error } = await supabaseClient
         .from('snus_products')
@@ -64,8 +37,6 @@ async function fetchSnusProducts() {
     return data || [];
 }
 
-// Wiederholt eine async-Funktion bei Fehlern (z.B. kurze Netzaussetzer) mit
-// ansteigender Wartezeit. Wirft erst, wenn alle Versuche gescheitert sind.
 async function fetchWithRetry(fn, attempts = 3, baseDelayMs = 800) {
     let lastErr;
     for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -91,8 +62,6 @@ async function loadDex() {
 
     const { data: { user } } = await supabaseClient.auth.getUser();
 
-    // Produkte (mit Retry) und Collection parallel laden. Beide so gekapselt,
-    // dass ein Fehler des einen die Daten des anderen nicht blockiert.
     const productsPromise = fetchWithRetry(fetchSnusProducts).catch(err => {
         console.error("Snus-Katalog konnte nicht geladen werden:", err);
         return null;
@@ -105,8 +74,6 @@ async function loadDex() {
 
     const [products, collectionData] = await Promise.all([productsPromise, collectionPromise]);
 
-    // Bestehende Daten NICHT überschreiben, wenn das Laden fehlschlug – sonst
-    // würde ein einzelner Aussetzer den ganzen Katalog leeren.
     if (products && products.length) {
         globalSnusData = products;
     } else if (!globalSnusData.length) {
@@ -143,9 +110,6 @@ async function loadDex() {
     filterDex();
     renderSuggestions();
 
-    // Beide Modi' erste Bilder im Hintergrund cachen, damit ein Moduswechsel
-    // nie Lade-Platzhalter zeigt. Startet erst nach 500ms damit der initiale
-    // Paint und erste Chunk-Render nicht konkurrieren.
     setTimeout(() => {
         if (!globalSnusData.length) return;
         const byId = globalSnusData.slice().sort((a, b) => parseInt(a.id) - parseInt(b.id));
@@ -161,9 +125,6 @@ const DEX_CHUNK_SIZE = 30;
 let dexObserver = null;
 let imageLazyObserver = null;
 
-// ==========================================
-// GLOBALER IMAGE CACHE (Session-persistent)
-// ==========================================
 const dexImageCache = new Map();
 
 async function preloadBadgeImages() {
@@ -189,8 +150,6 @@ function preloadAllDexImages(items) {
 
     if (queue.length === 0) return;
 
-    // Sofort als 'pending' markieren – verhindert doppelte Netzwerk-Requests
-    // wenn preloadAllDexImages mehrfach mit denselben URLs aufgerufen wird.
     queue.forEach(url => dexImageCache.set(url, 'pending'));
 
     const MAX_CONCURRENT = 6;
@@ -207,7 +166,6 @@ function preloadAllDexImages(items) {
         }
     }
 
-    // Nach nächstem Frame starten – sichtbare DOM-Bilder haben Vorrang
     requestAnimationFrame(loadNext);
 }
 
@@ -232,9 +190,7 @@ function initImageLazyLoadObserver() {
             observer.unobserve(img);
 
             if (dexImageCache.get(src) === 'loaded') {
-                // Bild bereits vorgeladen → sofort anzeigen, keine 300ms Fade-Transition.
-                // transition-opacity duration-300 ist eine CSS-Klasse; style.transition
-                // überschreibt sie inline und macht den Übergang instantan.
+
                 img.style.transition = 'none';
                 img.src = src;
                 showImage();
@@ -315,7 +271,6 @@ function loadMoreDexItems(chunkOverride, shouldClear = false) {
 
         const placeholderHTML = `<div class="dex-placeholder absolute inset-0 flex items-center justify-center pointer-events-none"><div class="w-[60%] h-[60%] rounded-xl sk"></div></div>`;
 
-        // Erste Chunk: gestaffeltes Fade-in. Spätere Chunks: keine Animation → kein GPU-Layer-Overhead
         const animClass = isFirstChunk ? 'opacity-0' : '';
         const animStyle = isFirstChunk
             ? ` style="animation: fadeViewIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) both ${Math.floor(index / 3) * 70}ms"`
@@ -408,8 +363,7 @@ window.toggleFavoriteSnus = function(id) {
     }
     localStorage.setItem('dexFavoriteSnus', JSON.stringify(list));
     window.updateModalFavoriteBtnUI(snusId);
-    
-    // Refresh the Dex grid to reflect the change if active
+
     if (typeof filterDex === 'function') {
         filterDex();
     }
@@ -421,7 +375,6 @@ window.updateModalFavoriteBtnUI = function(id) {
 
     const isFav = window.isFavoriteSnus(id);
 
-    // Nur visuelle Klassen wechseln — Positions-Klassen bleiben im HTML untouched
     const favoriteClasses   = ['bg-[#FFD60A]/10', 'border-[#FFD60A]/20', 'text-[#FFD60A]', 'shadow-[0_0_14px_rgba(255,214,10,0.25)]'];
     const defaultClasses    = ['bg-white/10', 'border-white/5', 'text-[#8E8E93]'];
 
@@ -443,7 +396,6 @@ window.updateModalFavoriteBtnUI = function(id) {
         `;
     }
 
-    // Pop-Animation re-triggern
     btn.classList.remove('favorite-pop-anim');
     void btn.offsetWidth;
     btn.classList.add('favorite-pop-anim');
@@ -460,7 +412,7 @@ window.toggleDexFilterFavorites = function() {
     dexFilterFavorites = !dexFilterFavorites;
     const btn = document.getElementById('dex-filter-favorites-btn');
     if (!btn) return;
-    
+
     if (dexFilterFavorites) {
         btn.classList.add('bg-white', 'text-[#FFD60A]');
         btn.classList.remove('text-[#8E8E93]', 'bg-white/10');
@@ -481,18 +433,12 @@ window.toggleDexFilterFavorites = function() {
     filterDex();
 };
 
-// setupProfile: nur eine Definition weiter unten
-
 function triggerHapticFeedback() {
     if (localStorage.getItem('hapticGlobal') === 'off') return;
     if (window.webkit && window.webkit.messageHandlers.hapticHandler) window.webkit.messageHandlers.hapticHandler.postMessage("vibrate");
     else if (navigator.vibrate) navigator.vibrate(15);
 }
 
-// Spielt einen App-Sound. Auf iOS übernimmt die native Swift-App das Abspielen
-// (respektiert Stumm-Schalter, unterbricht keine laufende Musik). Im Browser
-// fallen wir auf die <audio>-Elemente zurück.
-// name: 'scan' | 'splash'
 function playAppSound(name) {
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.soundHandler) {
         window.webkit.messageHandlers.soundHandler.postMessage(name);
@@ -505,11 +451,6 @@ function playAppSound(name) {
     }
 }
 
-// ==========================================
-// FILTER DEX — Lag-freie Version
-// ==========================================
-// Zentrale Laufzeit-Guards, damit keine alten Render-Jobs
-// mit einem neuen Render-Aufruf kollidieren.
 let _filterDexRaf   = null;
 let _filterDexTimer = null;
 
@@ -540,13 +481,11 @@ function filterDex() {
     const grid = document.getElementById('dex-grid');
     if (!grid) return;
 
-    // ── Laufende Timer + RAFs canceln ────────────────────────────────────────
     if (_filterDexRaf)   { cancelAnimationFrame(_filterDexRaf);  _filterDexRaf = null; }
     if (_filterDexTimer) { clearTimeout(_filterDexTimer);         _filterDexTimer = null; }
 
     const hasRealContent = grid.querySelector('.dex-anim-card, .brand-section') !== null;
 
-    // ── Falls kein echter Inhalt: Skeleton sofort zeigen, dann rendern ────────
     if (!hasRealContent) {
         _injectDexSkeleton(grid);
         grid.style.opacity = '1';
@@ -554,8 +493,6 @@ function filterDex() {
             _filterDexRaf = null;
             _executeDexRender(grid, filtered);
 
-            // Sichtbarste Bilder nachladen – nach dem ersten Render, damit
-            // der initiale Paint nicht verzögert wird.
             setTimeout(() => {
                 if (dexSortMode === 'alpha') {
                     const previewGroups = groupAndSortByBrand(filtered);
@@ -570,13 +507,6 @@ function filterDex() {
         return;
     }
 
-    // ── Echter Inhalt: kurzes Fade-Out, dann austauschen ─────────────────────
-    // Grid-Klasse NICHT hier setzen – erst in _executeDexRender(), damit das
-    // alte Content während des Fade-Outs noch im korrekten Layout bleibt.
-
-    // Während des Fade-Outs die sichtbarsten Bilder vorladen (3 Marken × 3 Items
-    // bzw. erste 9 IDs), damit sie cache-ready sind wenn der neue Content erscheint.
-    // Nur beim Sort-Toggle – nicht beim initialen Render (hasRealContent = false).
     if (dexSortMode === 'alpha') {
         const previewGroups = groupAndSortByBrand(filtered);
         const previewItems  = previewGroups.slice(0, 3).flatMap(g => g.items.slice(0, 3));
@@ -630,15 +560,12 @@ function _injectDexSkeleton(grid) {
 }
 
 function _executeDexRender(grid, filtered) {
-    // Alten Image-Observer wegwerfen: verhindert Speicherlecks durch
-    // beobachtete Elemente die gleich aus dem DOM entfernt werden.
+
     if (imageLazyObserver) {
         imageLazyObserver.disconnect();
         imageLazyObserver = null;
     }
 
-    // Grid-Layout hier setzen (nicht in filterDex), damit altes Content
-    // während des Fade-Outs noch im korrekten Layout verbleibt.
     if (dexSortMode === 'alpha') {
         grid.className = 'flex flex-col w-full';
         if (dexObserver) dexObserver.disconnect();

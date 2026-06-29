@@ -1,7 +1,3 @@
-// ==========================================
-// SUGGESTIONS / NEU ENTDECKEN LOGIK
-// ==========================================
-
 function renderSuggestions() {
     const container = document.getElementById('suggestions-container');
     if (!container || globalSnusData.length === 0) return;
@@ -14,7 +10,7 @@ function renderSuggestions() {
     }
 
     const shuffled = uncollected.sort(() => 0.5 - Math.random());
-    const suggestions = shuffled.slice(0, 9); // 9 Dosen
+    const suggestions = shuffled.slice(0, 9);
 
     const glowActive = localStorage.getItem('dexGlow') === 'true';
 

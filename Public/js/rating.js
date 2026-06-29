@@ -1,7 +1,3 @@
-// ==========================================
-// 5. RATING ENGINE & MODAL LOGIK
-// ==========================================
-
 let detailStartY = 0;
 let detailCurrentY = 0;
 let isDetailDragging = false;
@@ -66,7 +62,6 @@ let tempRatings = {
 };
 let currentSelectedSnusId = null;
 
-// Creator's Pick state
 let _isCurrentUserCreator = false;
 let _isCreatorPickActive = false;
 
@@ -74,7 +69,6 @@ const BASE_RATING_STEPS = ['visuals', 'smell', 'taste', 'bite', 'drip', 'strengt
 let RATING_STEPS = [...BASE_RATING_STEPS];
 let currentRatingStepIndex = 0;
 
-// Zeige Creator-Pick Toggle wenn is_creator = true
 function setupCreatorPickToggle(isCreator) {
     _isCurrentUserCreator = isCreator;
     const row = document.getElementById('creator-pick-toggle-row');
@@ -106,7 +100,7 @@ window.toggleCreatorPickMode = function () {
             btn.classList.remove('bg-[#34C759]/10', 'border-[#34C759]/40');
         }
     }
-    // RATING_STEPS dynamisch anpassen
+
     if (_isCreatorPickActive) {
         RATING_STEPS = [...BASE_RATING_STEPS, 'creator-pick'];
     } else {
@@ -115,15 +109,14 @@ window.toggleCreatorPickMode = function () {
     triggerHapticFeedback();
 };
 
-
 function getRatingColor(val) {
-    // Returns a CSS color string transitioning red(1)→yellow(5)→green(7)→blue(10)
+
     const stops = [
-        { v: 1,  r: 255, g: 59,  b: 48  }, // iOS red
-        { v: 4,  r: 255, g: 159, b: 10  }, // iOS orange
-        { v: 6,  r: 255, g: 214, b: 10  }, // iOS yellow
-        { v: 8,  r: 52,  g: 199, b: 89  }, // iOS green
-        { v: 10, r: 10,  g: 132, b: 255 }  // iOS blue
+        { v: 1,  r: 255, g: 59,  b: 48  },
+        { v: 4,  r: 255, g: 159, b: 10  },
+        { v: 6,  r: 255, g: 214, b: 10  },
+        { v: 8,  r: 52,  g: 199, b: 89  },
+        { v: 10, r: 10,  g: 132, b: 255 }
     ];
     let lo = stops[0], hi = stops[stops.length - 1];
     for (let i = 0; i < stops.length - 1; i++) {
@@ -141,7 +134,6 @@ function initRatingWizard() {
     _isCreatorPickActive = false;
     RATING_STEPS = [...BASE_RATING_STEPS];
 
-    // Creator-Pick Toggle zurücksetzen
     const icon = document.getElementById('creator-pick-check-icon');
     const checkmark = document.getElementById('creator-pick-checkmark');
     const btn = document.getElementById('creator-pick-toggle-btn');
@@ -149,7 +141,6 @@ function initRatingWizard() {
     if (checkmark) checkmark.classList.add('hidden');
     if (btn) { btn.classList.add('bg-white/5', 'border-white/10'); btn.classList.remove('bg-[#34C759]/10', 'border-[#34C759]/40'); }
 
-    // Creator-Pick Felder leeren
     const headlineInput = document.getElementById('cp-headline-input');
     const reviewInput = document.getElementById('cp-review-input');
     if (headlineInput) headlineInput.value = '';
@@ -177,7 +168,6 @@ function initRatingWizard() {
         if (textEl) textEl.value = '';
     });
 
-    // Re-apply toggle visibility based on stored creator state
     setupCreatorPickToggle(_isCurrentUserCreator);
 
     updateRatingStepUI();
@@ -209,7 +199,7 @@ function setRating(category, value) {
         valIndicator.innerText = `${value}/10`;
         valIndicator.style.color = color;
     }
-    // Remove warning state if it was shown
+
     row.classList.remove('rating-row--warn');
     triggerHapticFeedback();
 }
@@ -270,7 +260,6 @@ function updateRatingStepUI() {
         nextIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />`;
     }
 
-    // Panel-IDs: BASE_RATING_STEPS + optionaler creator-pick Step
     const allPanelIds = [...BASE_RATING_STEPS, 'creator-pick'];
     allPanelIds.forEach((step, _i) => {
         const panel = document.getElementById(`step-${step}`);
@@ -279,7 +268,7 @@ function updateRatingStepUI() {
 
         const indexInCurrentSteps = RATING_STEPS.indexOf(step);
         if (indexInCurrentSteps === -1) {
-            // Nicht in aktuellem Flow: ganz nach rechts schieben
+
             panel.classList.add('translate-x-full', 'opacity-0', 'z-0', 'pointer-events-none');
         } else if (indexInCurrentSteps === currentRatingStepIndex) {
             panel.classList.add('translate-x-0', 'opacity-100', 'z-10');
@@ -294,18 +283,16 @@ function updateRatingStepUI() {
 function nextRatingStep() {
     const currentStep = RATING_STEPS[currentRatingStepIndex];
 
-    // Creator-Pick Step: keine Bewertungs-Pflicht
     if (currentStep === 'creator-pick') {
         collectCurrentSnus();
         return;
     }
 
-    // Guard: require a rating selection before proceeding
     if (tempRatings[currentStep] === null) {
         const row = document.getElementById(`row-${currentStep}`);
         if (row) {
             row.classList.remove('rating-row--warn');
-            void row.offsetWidth; // reflow to restart animation
+            void row.offsetWidth;
             row.classList.add('rating-row--warn');
         }
         return;
@@ -337,7 +324,6 @@ function showInfoView() {
     hideAllViews();
     document.getElementById('modal-view-info').classList.remove('hidden');
 
-    // Favorite- und Close-Button anzeigen + Pop-Animation triggern
     ['modal-favorite-btn', 'modal-close-btn'].forEach(id => {
         const btn = document.getElementById(id);
         if (!btn) return;
@@ -353,7 +339,6 @@ function showRatingView() {
     document.getElementById('modal-view-rating').classList.remove('hidden');
     document.getElementById('modal-view-rating').classList.add('flex');
 
-    // Favorite- und Close-Button während der Bewertung ausblenden
     ['modal-favorite-btn', 'modal-close-btn'].forEach(id => {
         const btn = document.getElementById(id);
         if (btn) btn.classList.add('hidden');
@@ -365,7 +350,6 @@ function showSavedRating() {
     document.getElementById('modal-view-saved-rating').classList.remove('hidden');
     document.getElementById('modal-view-saved-rating').classList.add('flex');
 
-    // Favorite- und Close-Button auch in der Bewertungs-Ansicht ausblenden
     ['modal-favorite-btn', 'modal-close-btn'].forEach(id => {
         const btn = document.getElementById(id);
         if (btn) btn.classList.add('hidden');
@@ -397,7 +381,6 @@ function showSavedRating() {
             </div>`;
     };
 
-
     document.getElementById('saved-rating-bars').innerHTML =
         createBar(t('rating.visuals'), ratings.visuals, ratings.visuals_text) +
         createBar(t('rating.smell'), ratings.smell, ratings.smell_text) +
@@ -422,8 +405,7 @@ function hideAllViews() {
 }
 
 function openSnusDetail(id, isFromScan = false) {
-    // 1. DATEN-CHECK
-    // Sicherstellen, dass die ID eine Zahl ist, falls sie als String kommt
+
     const snusId = parseInt(id);
     const snus = globalSnusData.find(s => parseInt(s.id) === snusId);
 
@@ -438,7 +420,6 @@ function openSnusDetail(id, isFromScan = false) {
         window.updateModalFavoriteBtnUI(snusId);
     }
 
-    // 2. ELEMENTE SICHER BEFÜLLEN (mit Fallbacks)
     const setText = (id, text) => {
         const el = document.getElementById(id);
         if (el) el.innerText = text;
@@ -449,11 +430,9 @@ function openSnusDetail(id, isFromScan = false) {
         if (el) el.innerHTML = html;
     };
 
-    // ID Formatieren (z.B. #001)
     setText('modal-id', '#' + String(snus.id).padStart(3, '0'));
     setText('modal-name', snus.name || t('common.unknownSnus'));
 
-    // Rarity & Nicotine
     const rarity = (snus.rarity || 'Common').trim();
     const rarityLower = rarity.toLowerCase();
     const nicotine = snus.nicotine || '??';
@@ -465,7 +444,6 @@ function openSnusDetail(id, isFromScan = false) {
         <span class="px-3 py-1.5 bg-[var(--${rarityLower},var(--common))]/10 border border-[var(--${rarityLower},var(--common))]/30 rounded-full text-[13px] font-bold uppercase tracking-wider" style="color: var(--${rarityLower}, var(--common)); text-shadow: 0px 0px 8px var(--${rarityLower}, var(--common));">${tRarity(rarity)}</span>
     `);
 
-    // Bild laden + Skeleton-Overlay steuern
     const modalImg = document.getElementById('modal-image');
     const imgSkeleton = document.getElementById('modal-img-skeleton');
     if (modalImg) {
@@ -482,8 +460,6 @@ function openSnusDetail(id, isFromScan = false) {
         modalImg.src = snus.image ? `${GITHUB_BASE}${snus.image}` : 'placeholder.png';
     }
 
-    // 2.5 NACHBESTELLEN LINK DYNAMISCH SETZEN
-    // Hier kannst du den Affiliate-Link anpassen:
     const affiliateLink = `https://snuzone.com/search?q=${encodeURIComponent(snus.name)}`;
 
     const orderBtn = document.getElementById('order-snus-btn');
@@ -492,40 +468,32 @@ function openSnusDetail(id, isFromScan = false) {
     const orderBtnUncollected = document.getElementById('order-snus-btn-uncollected');
     if (orderBtnUncollected) orderBtnUncollected.href = affiliateLink;
 
-    // 3. COLLECTION STATUS (Freigeschaltet oder nicht)
-    // isUnlocked already defined above
     const uncollectedGroup = document.getElementById('uncollected-action-group');
     const scannedGroup = document.getElementById('scanned-action-group');
     const statusGroup = document.getElementById('modal-collected-status');
     const dateEl = document.getElementById('modal-unlocked-date');
 
-    // Erstmal alles verstecken
     if (uncollectedGroup) uncollectedGroup.classList.add('hidden');
     if (scannedGroup) scannedGroup.classList.add('hidden');
     if (statusGroup) statusGroup.classList.add('hidden');
 
     if (isUnlocked) {
-        // Fall: Bereits gesammelt
+
         if (statusGroup) statusGroup.classList.remove('hidden');
         if (dateEl && isUnlocked.date) {
             const dateObj = new Date(isUnlocked.date);
             dateEl.innerText = dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
         }
 
-        // Live-Daten lokal aus dem Cache lesen (instant)
         const openedCountEl = document.getElementById('modal-opened-count');
 
-        // Alle Logs für diese Snus aus dem Cache filtern
         const snusLogs = globalAllLogs.filter(l => l.snus_id === snusId);
 
-        // Öffnungsanzahl updaten
         if (openedCountEl) {
             const count = snusLogs.length;
             openedCountEl.innerText = count > 0 ? `${count}x` : '0x';
         }
 
-        // "Unlocked at" mit dem ältesten (letzten im Array, da descending sortiert) opened_at überschreiben
-        // falls Logs existieren. (Wir gehen auf Nummer sicher und suchen das kleinste Datum)
         if (dateEl && snusLogs.length > 0) {
             const earliestLog = snusLogs.reduce((prev, curr) => {
                 return (new Date(prev.opened_at) < new Date(curr.opened_at)) ? prev : curr;
@@ -538,7 +506,7 @@ function openSnusDetail(id, isFromScan = false) {
             });
         }
     } else {
-        // Fall: Noch nicht gesammelt
+
         if (isFromScan) {
             if (scannedGroup) scannedGroup.classList.remove('hidden');
         } else {
@@ -546,11 +514,9 @@ function openSnusDetail(id, isFromScan = false) {
         }
     }
 
-    // 4. VIEWS AKTIVIEREN
     if (typeof showInfoView === "function") showInfoView();
     if (typeof initRatingWizard === "function") initRatingWizard();
 
-    // 5. MODAL ANZEIGEN & ANIMIEREN
     const modal = document.getElementById('snus-modal');
     const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
@@ -575,10 +541,8 @@ function closeSnusDetail(isDragging = false) {
     const backdrop = document.getElementById('modal-backdrop');
     const card = document.getElementById('snus-modal-card');
 
-    // 1. Haptik sofort auslösen wie beim Scanner
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
-    // 2. Animation
     card.classList.remove('translate-y-0');
     card.classList.add('translate-y-full');
 
@@ -590,7 +554,6 @@ function closeSnusDetail(isDragging = false) {
         card.style.transition = '';
     }
 
-    // 3. Reset
     setTimeout(() => {
         document.getElementById('snus-modal').classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
@@ -601,10 +564,6 @@ function closeSnusDetail(isDragging = false) {
         }
     }, 400);
 }
-
-// ==========================================
-// 6. DB INSERT (BUG GEFIXT)
-// ==========================================
 
 async function collectCurrentSnus() {
     const {
@@ -664,7 +623,6 @@ async function collectCurrentSnus() {
             savedDate = inserted.collected_at;
         }
 
-        // IP-Geolocation für neue Bewertung asynchron ermitteln (fire-and-forget)
         if (!error && inserted && inserted.id) {
             try {
                 supabaseClient.functions.invoke('rating-geo-lookup', {
@@ -694,11 +652,10 @@ async function collectCurrentSnus() {
             }
         }
         renderDexGrid(globalSnusData);
-        // Social Cache invalidieren, da neue Kollektion hinzugekommen ist
+
         _socialCacheData = null;
         _socialCacheTime = 0;
 
-        // Creator's Pick speichern falls aktiv
         if (_isCreatorPickActive && _isCurrentUserCreator) {
             try {
                 const headlineVal = (document.getElementById('cp-headline-input')?.value || '').trim();
@@ -714,14 +671,13 @@ async function collectCurrentSnus() {
                     p_rating_visuals:   tempRatings.visuals,
                     p_rating_strength:  tempRatings.strength
                 });
-                // Carousel refreshen
+
                 if (typeof loadCreatorsPicks === 'function') loadCreatorsPicks();
             } catch (cpErr) {
                 console.warn('[CreatorPick] Fehler beim Speichern:', cpErr);
             }
         }
 
-        // Show rating summary popup instead of closing directly
         showRatingSummary(currentSelectedSnusId, { ...tempRatings });
     } else {
         alert(t('error.saveFailed', { msg: error.message }));
@@ -751,10 +707,6 @@ function editRating() {
     showRatingView();
 }
 
-// ==========================================
-// RATING SUMMARY POPUP
-// ==========================================
-
 function getScoreColorClass(val) {
     const n = parseFloat(val);
     if (n <= 3.9) return '#FF3B30';
@@ -772,7 +724,6 @@ function showRatingSummary(snusId, ratings) {
     const snus = globalSnusData.find(s => parseInt(s.id) === parseInt(snusId));
     if (!snus) return;
 
-    // Populate image
     const img = document.getElementById('rating-summary-img');
     const glow = document.getElementById('rating-summary-glow');
     if (img) {
@@ -780,7 +731,6 @@ function showRatingSummary(snusId, ratings) {
         img.alt = snus.name || '';
     }
 
-    // Rarity glow color
     const rarity = (snus.rarity || 'common').toLowerCase().trim();
     if (glow) {
         const colorMap = { common: '#8E8E93', uncommon: '#34C759', rare: '#0A84FF', epic: '#BF5AF2', legendary: '#FF9F0A', exotic: '#FF375F', mythic: '#64D2FF' };
@@ -788,13 +738,11 @@ function showRatingSummary(snusId, ratings) {
         glow.style.background = glowColor;
     }
 
-    // Name & meta
     const nameEl = document.getElementById('rating-summary-name');
     const metaEl = document.getElementById('rating-summary-meta');
     if (nameEl) nameEl.innerText = snus.name || '';
     if (metaEl) metaEl.innerText = `${snus.nicotine || '??'} mg/g`;
 
-    // Overall score (average of all 6)
     const vals = BASE_RATING_STEPS.map(cat => ratings[cat]).filter(v => v !== null && v !== undefined);
     const overall = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
     const overallEl = document.getElementById('rating-summary-overall');
@@ -803,7 +751,6 @@ function showRatingSummary(snusId, ratings) {
         overallEl.style.color = getScoreColorClass(overall);
     }
 
-    // Circles
     const circlesEl = document.getElementById('rating-summary-circles');
     if (circlesEl) {
         const labels = {
@@ -828,7 +775,6 @@ function showRatingSummary(snusId, ratings) {
         }).join('');
     }
 
-    // Show overlay
     const overlay = document.getElementById('rating-summary-overlay');
     const card = document.getElementById('rating-summary-card');
     if (!overlay || !card) return;
@@ -854,14 +800,10 @@ function closeRatingSummary() {
         overlay.classList.remove('flex');
         overlay.classList.add('hidden');
         card.style.transform = 'translateY(100%)';
-        // Now close the snus detail modal
+
         closeSnusDetail();
     }, 420);
 }
-
-// ==========================================
-// 7. LEGALITY REDIRECT POP-UP LOGIC
-// ==========================================
 
 let pendingRedirectUrl = null;
 
@@ -874,7 +816,7 @@ window.handleOrderClick = function (url) {
     if (modal && backdrop && card) {
         document.body.classList.add('overflow-hidden');
         modal.classList.remove('hidden');
-        // Force reflow
+
         void modal.offsetWidth;
         backdrop.classList.remove('opacity-0');
         backdrop.classList.add('opacity-100');
@@ -897,8 +839,7 @@ window.closeLegalityModal = function () {
         setTimeout(() => {
             modal.classList.add('hidden');
             pendingRedirectUrl = null;
-            
-            // Restore scroll if snus modal is not open
+
             const snusModal = document.getElementById('snus-modal');
             const snusModalOpen = snusModal && !snusModal.classList.contains('hidden');
             if (!snusModalOpen) {
@@ -910,7 +851,7 @@ window.closeLegalityModal = function () {
 
 window.confirmLegalityRedirect = function () {
     if (pendingRedirectUrl) {
-        // Fallback für iOS WKWebView Wrapper: Wenn ein JS-Bridge Handler registriert ist, diesen nutzen
+
         if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.openExternal) {
             window.webkit.messageHandlers.openExternal.postMessage({ url: pendingRedirectUrl });
         } else {
@@ -919,4 +860,3 @@ window.confirmLegalityRedirect = function () {
     }
     closeLegalityModal();
 };
-

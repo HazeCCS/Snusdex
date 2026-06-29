@@ -1,7 +1,3 @@
-// ==========================================
-// 7. ADMIN PANEL (VOLLSTÄNDIG)
-// ==========================================
-
 async function adminAddSnus() {
     const name = document.getElementById('admin-name').value;
     const nicotine = document.getElementById('admin-nicotine').value;
@@ -14,7 +10,6 @@ async function adminAddSnus() {
         return alert("Bitte Name, Nicotine und Image angeben!");
     }
 
-    // Flavors formatieren (Komma-getrennt zu Array)
     const flavorArray = flavorsRaw ? flavorsRaw.split(',').map(s => s.trim()).filter(s => s) : [];
 
     const {
@@ -32,13 +27,13 @@ async function adminAddSnus() {
         alert("Fehler beim Hinzufügen: " + error.message);
     } else {
         alert("Snus erfolgreich hinzugefügt!");
-        // Felder leeren
+
         document.getElementById('admin-name').value = '';
         document.getElementById('admin-nicotine').value = '';
         document.getElementById('admin-flavor').value = '';
         document.getElementById('admin-barcode').value = '';
         document.getElementById('admin-image').value = '';
-        // Dex direkt neu laden, damit der neue Snus sichtbar ist
+
         loadDex();
     }
 }

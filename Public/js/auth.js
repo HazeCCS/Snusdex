@@ -1,9 +1,5 @@
-// ==========================================
-// 2. AUTHENTIFIZIERUNG, UI & GREETING
-// ==========================================
-
 let isLoginMode = true;
-let currentUsername = ''; // Globaler Cache für den aktuellen Usernamen
+let currentUsername = '';
 
 function updateGreeting() {
     const greetingElement = document.getElementById('greeting');
@@ -21,10 +17,6 @@ function updateGreeting() {
     greetingElement.innerHTML = `${message}, <span style="color:rgba(255,255,255,0.95);font-weight:600;">${displayIdent}</span>`;
 }
 
-// ==========================================
-// GOOGLE ANMELDUNG
-// ==========================================
-
 async function signInWithGoogle() {
     const btnText = document.getElementById('google-btn-text');
     const btn = document.getElementById('google-login-btn');
@@ -36,7 +28,7 @@ async function signInWithGoogle() {
     }
 
     try {
-        // UI Feedback
+
         btnText.innerText = t('auth.openingGoogle');
         btn.disabled = true;
         btn.style.opacity = "0.7";
@@ -63,16 +55,12 @@ async function signInWithGoogle() {
         console.error("Google Login Error:", error.message);
         alert("Login error: " + error.message);
 
-        // Reset label depending on current mode
         btnText.innerText = isLoginMode ? t('auth.signInWithGoogle') : t('auth.registerWithGoogle');
         btn.disabled = false;
         btn.style.opacity = "1";
     }
 }
 
-// ==========================================
-// DEINE ALTE CHECK USER LOGIK (Unverändert)
-// ==========================================
 async function checkUser() {
     try {
         const { data, error } = await supabaseClient.auth.getSession();
@@ -82,7 +70,7 @@ async function checkUser() {
         const overlay = document.getElementById('auth-overlay');
 
         if (session) {
-            // Check if username exists (important for Google Login)
+
             const hasUsername = session.user.user_metadata?.username;
 
             if (!hasUsername) {
@@ -92,7 +80,6 @@ async function checkUser() {
                     return;
                 }
 
-                // Show the auth card (in case email-check screen is showing)
                 document.getElementById('auth-card')?.classList.remove('hidden');
                 document.getElementById('email-check-screen')?.classList.add('hidden');
 
@@ -110,18 +97,14 @@ async function checkUser() {
                 if (nav) { nav.style.opacity = '1'; nav.style.pointerEvents = ''; }
                 const tabHome = document.getElementById('tab-home');
                 if (tabHome) tabHome.classList.remove('pre-auth');
-                // Re-apply card appearance now that the card is visible and has real dimensions.
-                // Canvas-based animations (ripple, GoL, cubes) size the canvas at init time,
-                // so if called while the card was hidden/zero-size they need a fresh init.
+
                 if (typeof applyCardAppearance !== 'undefined' && typeof getLocalCardAppearance !== 'undefined') {
                     applyCardAppearance('metal-card-container', getLocalCardAppearance());
                 }
             }, 500);
 
-            // Scroll home to top after login
             window.scrollTo(0, 0);
 
-            // Seed profile cache immediately on login
             (async () => {
                 try {
                     const { data: profile } = await supabaseClient
@@ -134,7 +117,7 @@ async function checkUser() {
                     const remaining = Math.max(0, 3 - (sameMonth ? (profile?.username_changes || 0) : 0));
                     window._profileCache = { email: session.user.email, username: profile?.username || session.user.user_metadata?.username || '', remaining };
                     window._cachedUsernameChangesRemaining = remaining;
-                } catch (e) { /* ignore */ }
+                } catch (e) {  }
             })();
 
             setupProfile(session.user);
@@ -152,9 +135,6 @@ async function checkUser() {
     }
 }
 
-// ==========================================
-// AUTH ERROR ANIMATIONS
-// ==========================================
 function showAuthFieldError(containerId, msgId, message, maxHeight) {
     const el = document.getElementById(containerId);
     if (!el) return;
@@ -217,7 +197,6 @@ window.hidePwGroupError = function() {
     hidePwMismatchError();
 };
 
-// ── Password strength checklist ──
 const _pwReqs = [
     { id: 'req-length', test: pw => pw.length >= 6 },
     { id: 'req-upper',  test: pw => /[A-Z]/.test(pw) },
@@ -297,7 +276,6 @@ window.onPwFocus = function() {
     if (pw) updatePwChecklist(pw.value);
 };
 
-// ── Username field error ──
 function showUsernameError(msg) {
     const group = document.getElementById('auth-username-group');
     if (group) group.style.borderColor = 'rgba(255,59,48,0.5)';
@@ -383,9 +361,6 @@ function hideSetupBirthdateError() {
 }
 window.hideSetupBirthdateError = hideSetupBirthdateError;
 
-// ==========================================
-// NEU: USERNAME SETUP NACH GOOGLE LOGIN
-// ==========================================
 async function saveSetupUsername() {
     const usernameInput = document.getElementById('setup-username').value.trim();
     const birthdateInput = document.getElementById('setup-birthdate').value;
@@ -425,7 +400,7 @@ async function saveSetupUsername() {
 
     try {
         const { error: updateError } = await supabaseClient.auth.updateUser({
-            data: { 
+            data: {
                 username: usernameInput,
                 birthdate: birthdateInput
             }
@@ -456,7 +431,7 @@ async function handleLogout(btn) {
         error
     } = await supabaseClient.auth.signOut();
     if (!error) {
-        // Clean up supporter badge overlay shown keys from localStorage
+
         for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
             if (key && key.startsWith('supporter_badge_shown_')) {
@@ -483,9 +458,6 @@ async function handleLogout(btn) {
     }
 }
 
-// ==========================================
-// NEU: UI TOGGLE (Login <-> Register)
-// ==========================================
 function toggleAuthMode() {
     isLoginMode = !isLoginMode;
 
@@ -526,9 +498,6 @@ function toggleAuthMode() {
     }
 }
 
-// ==========================================
-// NEU: DER MASTER BUTTON (Login & Register)
-// ==========================================
 async function handleLoginWrapper() {
     triggerHapticFeedback();
     const email = document.getElementById('auth-email').value.trim();
@@ -545,7 +514,7 @@ async function handleLoginWrapper() {
     mainBtn.innerHTML = `<div class="flex items-center justify-center h-[26px]"><svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></div>`;
 
     if (isLoginMode) {
-        // --- LOGIN ---
+
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
         if (error) {
@@ -558,12 +527,11 @@ async function handleLoginWrapper() {
             checkUser();
         }
     } else {
-        // --- REGISTER ---
+
         const username = document.getElementById('auth-username').value.trim();
         const passwordConfirm = document.getElementById('auth-password-confirm').value;
         const birthdate = document.getElementById('auth-birthdate').value;
 
-        // 1. Username must be present
         if (!username) {
             showAuthFieldError('auth-error', 'auth-error-msg', t('auth.fillAllFields'));
             mainBtn.disabled = false;
@@ -577,7 +545,6 @@ async function handleLoginWrapper() {
             return;
         }
 
-        // 1.5 Birthdate must be present and user must be at least 18
         if (!birthdate) {
             const birthGroup = document.getElementById('auth-birthdate-group');
             if (birthGroup) birthGroup.style.borderColor = 'rgba(255,59,48,0.5)';
@@ -605,7 +572,6 @@ async function handleLoginWrapper() {
         }
         hideBirthdateError();
 
-        // 2. Password requirements must all be met
         const unmetReqs = _pwReqs.filter(req => !req.test(password));
         if (unmetReqs.length > 0) {
             showPwChecklist();
@@ -618,7 +584,6 @@ async function handleLoginWrapper() {
             return;
         }
 
-        // 3. Passwords must match
         if (password !== passwordConfirm) {
             const pwGroup = document.getElementById('auth-pw-group');
             if (pwGroup) pwGroup.style.borderColor = 'rgba(255,59,48,0.5)';
@@ -630,7 +595,6 @@ async function handleLoginWrapper() {
             return;
         }
 
-        // Passwords match → clear any pw error before submit
         hidePwGroupError();
 
         const { data, error } = await supabaseClient.auth.signUp({
@@ -656,7 +620,6 @@ async function handleLoginWrapper() {
     }
 }
 
-// Show the email confirmation screen after successful sign-up
 function showEmailCheckScreen(email) {
     const authCard = document.getElementById('auth-card');
     const emailCheckScreen = document.getElementById('email-check-screen');
@@ -667,27 +630,22 @@ function showEmailCheckScreen(email) {
     if (emailCheckScreen) emailCheckScreen.classList.remove('hidden');
 }
 
-// Return to sign-in form from the email-check screen with email pre-filled
 function goToSignInFromEmailCheck() {
     const authCard = document.getElementById('auth-card');
     const emailCheckScreen = document.getElementById('email-check-screen');
     const emailInput = document.getElementById('auth-email');
     const emailAddressEl = document.getElementById('email-check-address');
 
-    // Pre-fill email
     if (emailInput && emailAddressEl) {
         emailInput.value = emailAddressEl.innerText;
     }
 
-    // Switch back to login mode if currently in register mode
     if (!isLoginMode) toggleAuthMode();
 
     if (emailCheckScreen) emailCheckScreen.classList.add('hidden');
     if (authCard) authCard.classList.remove('hidden');
 }
 
-// Legacy OTP-view stubs — the auth-verify-view HTML is kept for compatibility
-// but Email Link is the active flow; these prevent JS errors if the view is shown.
 function handleCodeVerification() {
     const code = document.getElementById('auth-verify-code')?.value?.trim();
     if (!code || code.length < 6) return;
@@ -699,4 +657,3 @@ function hideVerificationScreen() {
     document.getElementById('auth-main-view')?.classList.remove('hidden');
 }
 window.hideVerificationScreen = hideVerificationScreen;
-

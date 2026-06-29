@@ -71,6 +71,64 @@
             display: none !important;
         }
 
+        .scan-frame-ripples {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .scan-frame-ripple {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 16rem;
+            height: 8rem;
+            box-sizing: border-box;
+            border: 1.5px solid rgba(255, 255, 255, 0.85);
+            border-radius: 16px;
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            will-change: width, height, opacity, border-radius;
+            animation: scanFrameRipple 3.6s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+        }
+
+        .scan-frame-ripple:nth-child(2) {
+            animation-delay: 1.2s;
+        }
+
+        .scan-frame-ripple:nth-child(3) {
+            animation-delay: 2.4s;
+        }
+
+        @keyframes scanFrameRipple {
+            0% {
+                opacity: 0;
+                width: 16rem;
+                height: 8rem;
+                border-radius: 16px;
+            }
+
+            14% {
+                opacity: 0.55;
+            }
+
+            100% {
+                opacity: 0;
+                width: 18.5rem;
+                height: 10.5rem;
+                border-radius: 22px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .scan-frame-ripple {
+                animation: none;
+                display: none;
+            }
+        }
+
         @supports (font: -apple-system-body) {
             body {
                 font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -2782,6 +2840,12 @@
                         class="w-64 h-32 rounded-2xl border-2 border-white/80 shadow-[0_0_0_999px_rgba(0,0,0,0.5)] z-10 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 box-border pointer-events-none flex items-center justify-center">
                     </div>
 
+                    <div class="scan-frame-ripples">
+                        <span class="scan-frame-ripple"></span>
+                        <span class="scan-frame-ripple"></span>
+                        <span class="scan-frame-ripple"></span>
+                    </div>
+
                 </div>
 
                 <!-- Scanner Controls: Flashlight + Camera Cycle -->
@@ -4004,7 +4068,8 @@
     <script src="js/admin.js?v=181"></script>
     <script src="js/social.js?v=183"></script>
     <script src="js/usage.js?v=181"></script>
-    <script src="js/scanner.js?v=183"></script>
+    <script src="js/ean-scanner.js?v=1"></script>
+    <script src="js/scanner.js?v=184"></script>
     <script src="js/settings.js?v=185"></script>
     <script src="js/passcode.js?v=2"></script>
     <script src="js/profile.js?v=185"></script>

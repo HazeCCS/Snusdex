@@ -1,7 +1,3 @@
-// ==========================================
-// 12. RECENT SCANS & ALL SCANS MODAL LOGIK
-// ==========================================
-
 function createScanListItemHTML(snus, fromModal = false, customDateStr = null) {
     let dateStr = "";
     if (customDateStr) {
@@ -87,10 +83,8 @@ function openAllScansModal() {
     const listContainer = document.getElementById('all-scans-list-container');
     const scrollArea = document.getElementById('all-scans-scroll-area');
 
-    // Scroll immer auf Top zurücksetzen, damit Swipe-to-close sofort funktioniert
     if (scrollArea) scrollArea.scrollTop = 0;
 
-    // Card-Styles aus ggf. vorherigerGeste zurücksetzen
     card.style.transform = '';
     card.style.transition = '';
     card.style.willChange = 'auto';
@@ -149,10 +143,6 @@ function closeAllScansModal(isDragging = false) {
     }, 400);
 }
 
-// ==========================================
-// ALL-SCANS MODAL – GESTURE ENGINE (einzige Definition)
-// ==========================================
-
 function initAllScansGestures() {
     const card = document.getElementById('all-scans-card');
     const scrollArea = document.getElementById('all-scans-scroll-area');
@@ -183,7 +173,6 @@ function initAllScansGestures() {
         else snapBack();
     }
 
-    // --- Drag Handle: immer Drag-to-close ---
     let _hStartY = 0, _hStartTime = 0, _hDragging = false, _hRafId = null;
 
     dragHandle.addEventListener('touchstart', (e) => {
@@ -218,7 +207,6 @@ function initAllScansGestures() {
         snapBack();
     }, { passive: true });
 
-    // --- Scroll Area: Drag-to-close nur ab scrollTop 0 nach unten ---
     let _sStartY = 0, _sStartTop = 0, _sStartTime = 0;
     let _sDragging = false, _sIntentSet = false, _sRafId = null;
 

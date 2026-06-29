@@ -1,3 +1,8 @@
 {
-    "liveServer.settings.port": 5501
+    "liveServer.settings.port": 5501,
+    "explorer.excludeGitIgnore": true,
+    "files.exclude": {
+        "**/.DS_Store": true,
+        "**/* [0-9].*": true
+    }
 }
