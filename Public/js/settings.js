@@ -322,22 +322,22 @@ function _ghRelTime(isoStr) {
 function _ghMarkdown(md) {
     let h = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     h = h.replace(/```[\w]*\n([\s\S]*?)```/g, (_,c) =>
-        `<pre style="background:#1C1C1E;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px;overflow-x:auto;font-family:Menlo,monospace;font-size:12px;color:#e2e2e2;margin:8px 0;white-space:pre-wrap">${c.trim()}</pre>`);
-    h = h.replace(/^### (.+)$/gm, '<h3 style="color:#fff;font-size:15px;font-weight:700;margin:14px 0 4px">$1</h3>');
-    h = h.replace(/^## (.+)$/gm,  '<h2 style="color:#fff;font-size:18px;font-weight:700;margin:18px 0 6px">$1</h2>');
-    h = h.replace(/^# (.+)$/gm,   '<h1 style="color:#fff;font-size:21px;font-weight:800;margin:0 0 8px">$1</h1>');
-    h = h.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em style="color:#ddd">$1</em></strong>');
-    h = h.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#fff">$1</strong>');
-    h = h.replace(/\*(.+?)\*/g,    '<em style="color:#ccc">$1</em>');
-    h = h.replace(/`([^`\n]+)`/g,  '<code style="background:#2a2a35;color:#e2e2e2;padding:1px 6px;border-radius:4px;font-family:Menlo,monospace;font-size:12px">$1</code>');
-    h = h.replace(/^[\-\*\+] (.+)$/gm, '<li style="color:#8E8E93;font-size:15px;line-height:1.5;margin:2px 0;margin-left:16px;list-style-type:disc">$1</li>');
-    h = h.replace(/^\d+\. (.+)$/gm,    '<li style="color:#8E8E93;font-size:15px;line-height:1.5;margin:2px 0;margin-left:16px;list-style-type:decimal">$1</li>');
-    h = h.replace(/^---+$/gm,      '<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:14px 0">');
+        `<pre style="background:var(--surface-1);border:1px solid var(--fg-a10);border-radius:12px;padding:12px;overflow-x:auto;font-family:Menlo,monospace;font-size:12px;color:var(--fg-a90);margin:8px 0;white-space:pre-wrap">${c.trim()}</pre>`);
+    h = h.replace(/^### (.+)$/gm, '<h3 style="color:var(--app-fg);font-size:15px;font-weight:700;margin:14px 0 4px">$1</h3>');
+    h = h.replace(/^## (.+)$/gm,  '<h2 style="color:var(--app-fg);font-size:18px;font-weight:700;margin:18px 0 6px">$1</h2>');
+    h = h.replace(/^# (.+)$/gm,   '<h1 style="color:var(--app-fg);font-size:21px;font-weight:800;margin:0 0 8px">$1</h1>');
+    h = h.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em style="color:var(--fg-a90)">$1</em></strong>');
+    h = h.replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--app-fg)">$1</strong>');
+    h = h.replace(/\*(.+?)\*/g,    '<em style="color:var(--fg-a70)">$1</em>');
+    h = h.replace(/`([^`\n]+)`/g,  '<code style="background:var(--surface-2);color:var(--fg-a90);padding:1px 6px;border-radius:4px;font-family:Menlo,monospace;font-size:12px">$1</code>');
+    h = h.replace(/^[\-\*\+] (.+)$/gm, '<li style="color:var(--muted-fg);font-size:15px;line-height:1.5;margin:2px 0;margin-left:16px;list-style-type:disc">$1</li>');
+    h = h.replace(/^\d+\. (.+)$/gm,    '<li style="color:var(--muted-fg);font-size:15px;line-height:1.5;margin:2px 0;margin-left:16px;list-style-type:decimal">$1</li>');
+    h = h.replace(/^---+$/gm,      '<hr style="border:none;border-top:1px solid var(--fg-a08);margin:14px 0">');
     h = h.replace(/!\[[^\]]*\]\([^)]+\)/g, '');
     h = h.replace(/\[([^\]]+)\]\([^)]+\)/g, '<span style="color:#0A84FF">$1</span>');
-    h = h.replace(/\n\n/g, '</p><p style="color:#8E8E93;font-size:15px;line-height:1.6;margin:8px 0">');
+    h = h.replace(/\n\n/g, '</p><p style="color:var(--muted-fg);font-size:15px;line-height:1.6;margin:8px 0">');
     h = h.replace(/\n/g, '<br>');
-    return `<p style="color:#8E8E93;font-size:15px;line-height:1.6;margin:0 0 8px">${h}</p>`;
+    return `<p style="color:var(--muted-fg);font-size:15px;line-height:1.6;margin:0 0 8px">${h}</p>`;
 }
 
 function openSettingsSubpage(type, _pushHistory) {
@@ -1123,10 +1123,10 @@ function openSettingsSubpage(type, _pushHistory) {
     } else if (type === 'Architecture Map') {
         contentObj.className = 'flex-1 overflow-hidden p-0 relative';
         html = `
-            <div id="arch-map-loader" style="position:absolute;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;transition:opacity 0.4s ease">
-                <p style="color:rgba(255,255,255,.7);font-size:17px;font-weight:600;letter-spacing:-.3px;margin-bottom:20px">Architecture Map</p>
-                <div style="width:200px;height:3px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden">
-                    <div id="arch-map-bar" style="height:100%;width:0%;background:rgba(255,255,255,.85);border-radius:999px;transition:width 1.6s cubic-bezier(0.4,0,0.2,1)"></div>
+            <div id="arch-map-loader" style="position:absolute;inset:0;background:var(--app-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;transition:opacity 0.4s ease">
+                <p style="color:var(--fg-a70);font-size:17px;font-weight:600;letter-spacing:-.3px;margin-bottom:20px">Architecture Map</p>
+                <div style="width:200px;height:3px;background:var(--fg-a08);border-radius:999px;overflow:hidden">
+                    <div id="arch-map-bar" style="height:100%;width:0%;background:var(--fg-a80);border-radius:999px;transition:width 1.6s cubic-bezier(0.4,0,0.2,1)"></div>
                 </div>
             </div>
             <iframe id="arch-map-iframe" src="architecture-map.html"

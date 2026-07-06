@@ -159,6 +159,7 @@ html.light .bg-white\/30        { background-color: var(--fg-a30) !important; }
 html.light .bg-white\/90        { background-color: var(--fg-a90) !important; }
 
 html.light .text-black\/50      { color: rgba(var(--rgb-bg), 0.6) !important; }
+html.light .text-white\/25      { color: var(--fg-a25) !important; }
 html.light .text-white\/30      { color: var(--fg-a30) !important; }
 html.light .text-white\/40      { color: var(--fg-a40) !important; }
 html.light .text-white\/50      { color: var(--fg-a50) !important; }
@@ -178,6 +179,7 @@ html.light .border-white\/40    { border-color: var(--fg-a40) !important; }
 html.light .border-white\/80    { border-color: var(--fg-a80) !important; }
 
 html.light .placeholder-white\/25::placeholder { color: var(--fg-a25) !important; }
+html.light .decoration-white\/30 { text-decoration-color: var(--fg-a30) !important; }
 
 /* Gradients — from-black / from-white/5 ----------------------------------- */
 html.light .from-black          { --tw-gradient-from: var(--app-bg) var(--tw-gradient-from-position) !important;
@@ -223,6 +225,7 @@ html.light .bg-\[\#636366\]\/10  { background-color: var(--fg-a10) !important; }
 html.light .border-\[\#8E8E93\]\/40 { border-color: rgba(110, 110, 115, 0.4) !important; }
 html.light .text-\[\#8E8E93\]\/60   { color: rgba(110, 110, 115, 0.6) !important; }
 html.light .text-\[\#8E8E93\]\/70   { color: rgba(110, 110, 115, 0.7) !important; }
+html.light .placeholder\:text-\[\#8E8E93\]\/40::placeholder { color: rgba(110, 110, 115, 0.4) !important; }
 
 /* Accent (status) colors — #FF3B30, #34C759, #0A84FF, #FFCC00, #FF9F0A, #FF9500,
    #BF5AF2, #FF375F, #64D2FF, #32ADE6, #30D158, #4a1c1c, #7d2020, #b82323, #e62e2e
