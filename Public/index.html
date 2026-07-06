@@ -2949,7 +2949,7 @@
             onclick="triggerHapticFeedback(); closeScanHelpModal()"></div>
 
         <div id="scan-help-card"
-            class="relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1002] max-h-[92vh]">
+            class="relative rounded-t-[32px] bg-[#1C1C1E] border border-white/10 transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1002] max-h-[92vh]">
 
             <!-- Drag handle -->
             <div id="scan-help-handle"
@@ -2968,61 +2968,66 @@
 
                 <!-- Quick Fixes -->
                 <div>
-                    <p class="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider mb-2 px-1"
+                    <p class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-normal pl-4 mb-2"
                         data-i18n="scanHelp.quickFixes">Quick Fixes</p>
-                    <div class="bg-[#2C2C2E] rounded-[16px] overflow-hidden border border-white/5">
+                    <div class="bg-[#1C1C1E] rounded-[20px] overflow-hidden border border-white/10">
                         <button
                             onclick="triggerHapticFeedback(); closeScanHelpModal(); setTimeout(()=>window.location.reload(),420)"
-                            class="flex items-center gap-4 w-full px-4 py-3.5 active:bg-white/5 transition-colors border-b border-white/5">
-                            <div
-                                class="w-9 h-9 rounded-[10px] bg-[#FF9F0A]/20 flex items-center justify-center flex-shrink-0">
-                                <svg class="w-5 h-5 text-[#FF9F0A]" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
+                            class="flex items-center justify-between w-full p-4 active:bg-white/5 transition-colors text-left">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-[#FF9F0A]/10 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-[#FF9F0A]" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                </div>
+                                <span class="text-white text-[17px] font-medium"
+                                    data-i18n="scanHelp.restartApp">Restart the App</span>
                             </div>
-                            <span class="text-white text-[15px] font-medium flex-1 text-left"
-                                data-i18n="scanHelp.restartApp">Restart the App</span>
-                            <svg class="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                            <svg class="w-5 h-5 text-[#3A3A3C]" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                 stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                             </svg>
                         </button>
+                        <div class="h-[1px] bg-white/5 ml-[60px]"></div>
                         <button
-                            onclick="triggerHapticFeedback(); closeScanHelpModal(); setTimeout(toggleScanFlashlight, 420)"
-                            class="flex items-center gap-4 w-full px-4 py-3.5 active:bg-white/5 transition-colors border-b border-white/5">
-                            <div
-                                class="w-9 h-9 rounded-[10px] bg-[#FFD60A]/20 flex items-center justify-center flex-shrink-0">
-                                <svg class="w-5 h-5 text-[#FFD60A]" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
+                            onclick="triggerHapticFeedback(); closeScanHelpModal(); openScanModal(toggleScanFlashlight)"
+                            class="flex items-center justify-between w-full p-4 active:bg-white/5 transition-colors text-left">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-[#FFD60A]/10 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-[#FFD60A]" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                </div>
+                                <span class="text-white text-[17px] font-medium"
+                                    data-i18n="scanHelp.toggleFlashlight">Toggle Flashlight</span>
                             </div>
-                            <span class="text-white text-[15px] font-medium flex-1 text-left"
-                                data-i18n="scanHelp.toggleFlashlight">Toggle Flashlight</span>
-                            <svg class="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                            <svg class="w-5 h-5 text-[#3A3A3C]" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                 stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                             </svg>
                         </button>
+                        <div class="h-[1px] bg-white/5 ml-[60px]"></div>
                         <button
-                            onclick="triggerHapticFeedback(); closeScanHelpModal(); setTimeout(cycleScanCamera, 420)"
-                            class="flex items-center gap-4 w-full px-4 py-3.5 active:bg-white/5 transition-colors">
-                            <div
-                                class="w-9 h-9 rounded-[10px] bg-[#0A84FF]/20 flex items-center justify-center flex-shrink-0">
-                                <svg class="w-5 h-5 text-[#0A84FF]" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
+                            onclick="triggerHapticFeedback(); closeScanHelpModal(); openScanModal(cycleScanCamera)"
+                            class="flex items-center justify-between w-full p-4 active:bg-white/5 transition-colors text-left">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-[#0A84FF]/10 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-4 h-4 text-[#0A84FF]" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                </div>
+                                <span class="text-white text-[17px] font-medium"
+                                    data-i18n="scanHelp.switchCamera">Switch Camera</span>
                             </div>
-                            <span class="text-white text-[15px] font-medium flex-1 text-left"
-                                data-i18n="scanHelp.switchCamera">Switch Camera</span>
-                            <svg class="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                            <svg class="w-5 h-5 text-[#3A3A3C]" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                 stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                             </svg>
@@ -3032,23 +3037,23 @@
 
                 <!-- Catalog Check -->
                 <div>
-                    <p class="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider mb-2 px-1"
+                    <p class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-normal pl-4 mb-2"
                         data-i18n="scanHelp.catalogCheck">Is it in our catalog?</p>
-                    <div class="bg-[#2C2C2E] rounded-[16px] overflow-hidden border border-white/5">
+                    <div class="bg-[#1C1C1E] rounded-[20px] overflow-hidden border border-white/10">
                         <div class="flex items-center gap-3 px-4 py-3 border-b border-white/5">
-                            <svg class="w-4 h-4 text-white/30 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                            <svg class="w-4 h-4 text-[#3A3A3C] flex-shrink-0" fill="none" viewBox="0 0 24 24"
                                 stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                             <input id="scan-help-search" type="text" placeholder="Search brand or flavor..."
                                 data-i18n-placeholder="scanHelp.searchPlaceholder"
-                                class="flex-1 bg-transparent text-white text-[15px] placeholder-white/25 focus:outline-none"
+                                class="flex-1 bg-transparent text-white text-[15px] placeholder-[#636366] focus:outline-none"
                                 oninput="onScanHelpSearch(this.value)" autocomplete="off" autocorrect="off"
                                 spellcheck="false">
                         </div>
                         <div id="scan-help-results">
-                            <p class="text-[#8E8E93] text-[14px] text-center py-5 px-4"
+                            <p class="text-[#8E8E93] text-[15px] text-center py-5 px-4"
                                 data-i18n="scanHelp.typeToSearch">Type to search our full catalog</p>
                         </div>
                     </div>
@@ -3056,24 +3061,26 @@
 
                 <!-- Contact Support -->
                 <div>
-                    <p class="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider mb-2 px-1"
+                    <p class="text-[13px] text-[#8E8E93] uppercase tracking-wider font-normal pl-4 mb-2"
                         data-i18n="scanHelp.stillNeedHelp">Still need help?</p>
                     <a href="mailto:support@snusdex.com" onclick="triggerHapticFeedback()"
-                        class="flex items-center gap-4 w-full px-4 py-3.5 bg-[#2C2C2E] rounded-[16px] border border-white/5 active:bg-white/5 transition-colors">
-                        <div
-                            class="w-9 h-9 rounded-[10px] bg-[#30D158]/20 flex items-center justify-center flex-shrink-0">
-                            <svg class="w-5 h-5 text-[#30D158]" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
+                        class="flex items-center justify-between w-full p-4 bg-[#1C1C1E] rounded-[20px] border border-white/10 active:bg-white/5 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-8 h-8 rounded-full bg-[#30D158]/10 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4 text-[#30D158]" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <div class="text-left">
+                                <p class="text-white text-[17px] font-medium" data-i18n="scanHelp.contactSupport">Contact
+                                    Support</p>
+                                <p class="text-[#8E8E93] text-[13px]">support@snusdex.com</p>
+                            </div>
                         </div>
-                        <div class="flex-1 text-left">
-                            <p class="text-white text-[15px] font-medium" data-i18n="scanHelp.contactSupport">Contact
-                                Support</p>
-                            <p class="text-[#8E8E93] text-[13px]">support@snusdex.com</p>
-                        </div>
-                        <svg class="w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        <svg class="w-5 h-5 text-[#3A3A3C]" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                             stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                         </svg>

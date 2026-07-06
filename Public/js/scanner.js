@@ -49,7 +49,7 @@ if (scanModal) {
     });
 }
 
-async function openScanModal() {
+async function openScanModal(onReady) {
     if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback();
 
     const hasNativeSound = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.soundHandler;
@@ -170,6 +170,8 @@ async function openScanModal() {
                 scannerReader.classList.remove('opacity-0');
                 scannerReader.classList.add('opacity-100');
             }
+
+            if (typeof onReady === 'function') onReady();
         } catch (err) {
             console.error("Kamera-Zugriff verweigert:", err);
             const loadingScreen = document.getElementById('camera-loading');
@@ -687,6 +689,7 @@ function openScanHelpModal() {
     document.body.style.overflow = 'hidden';
     modal.classList.remove('hidden');
     _attachScanHelpVV();
+    if (scanModal && !scanModal.classList.contains('hidden')) closeScanModal();
     setTimeout(() => {
         backdrop.classList.remove('opacity-0');
         backdrop.classList.add('opacity-100');
@@ -752,7 +755,7 @@ function onScanHelpSearch(query) {
     if (!container) return;
     const q = query.trim().toLowerCase();
     if (!q) {
-        container.innerHTML = `<p class="text-[#8E8E93] text-[14px] text-center py-5 px-4">${t('scanHelp.typeToSearch')}</p>`;
+        container.innerHTML = `<p class="text-[#8E8E93] text-[15px] text-center py-5 px-4">${t('scanHelp.typeToSearch')}</p>`;
         return;
     }
     const matches = (globalSnusData || []).filter(s =>
@@ -761,15 +764,15 @@ function onScanHelpSearch(query) {
     if (!matches.length) {
         container.innerHTML = `
             <div class="px-4 pt-4 pb-5">
-                <p class="text-[#8E8E93] text-[14px] text-center mb-4 leading-snug">${t('scanHelp.notFound')}</p>
+                <p class="text-[#8E8E93] text-[15px] text-center mb-4 leading-snug">${t('scanHelp.notFound')}</p>
                 <div class="space-y-2 mb-3">
                     <input id="req-brand" type="text" placeholder="${t('scanHelp.brandPlaceholder')}"
-                        class="w-full bg-[#3A3A3C] text-white text-[15px] px-4 py-3 rounded-[12px] focus:outline-none placeholder-white/25" autocomplete="off">
+                        class="w-full bg-[#2C2C2E] border border-white/10 text-white text-[15px] px-4 py-3 rounded-[14px] focus:outline-none placeholder-[#636366]" autocomplete="off">
                     <input id="req-flavor" type="text" placeholder="${t('scanHelp.flavorPlaceholder')}"
-                        class="w-full bg-[#3A3A3C] text-white text-[15px] px-4 py-3 rounded-[12px] focus:outline-none placeholder-white/25" autocomplete="off">
+                        class="w-full bg-[#2C2C2E] border border-white/10 text-white text-[15px] px-4 py-3 rounded-[14px] focus:outline-none placeholder-[#636366]" autocomplete="off">
                 </div>
                 <button onclick="submitProductRequest()"
-                    class="w-full py-3 bg-white text-black text-[15px] font-semibold rounded-[12px] active:scale-95 transition-transform">
+                    class="w-full py-3 bg-white text-black text-[15px] font-semibold rounded-[14px] active:scale-95 transition-transform">
                     ${t('scanHelp.submitRequest')}
                 </button>
             </div>`;
@@ -778,7 +781,7 @@ function onScanHelpSearch(query) {
     container.innerHTML = matches.map((s, i) =>
         `<div class="flex items-center px-4 py-3${i < matches.length - 1 ? ' border-b border-white/5' : ''}">
             <div class="flex-1 min-w-0">
-                <span class="text-white text-[15px] font-medium">${s.brand}</span>
+                <span class="text-white text-[17px] font-medium">${s.brand}</span>
                 <span class="text-[#8E8E93] text-[15px]"> · ${s.name}</span>
             </div>
             <span class="text-[#8E8E93] text-[13px] ml-3 flex-shrink-0">${s.nicotine} mg/g</span>
