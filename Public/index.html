@@ -14,8 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="tailwind.css">
     <link rel="stylesheet" href="theme.css?v=1">
-    <!-- Early theme boot: applies `.light` / `.dark` to <html> before paint
-         to prevent a flash of the wrong theme. Full logic lives in js/theme.js. -->
+    <!-- Early theme boot: applies `.light` / `.dark` to <html> before paint to prevent a flash of the wrong theme. Full logic lives in js/theme.js. -->
     <script>
         (function () {
             try {
@@ -1070,7 +1069,7 @@
             inset: 0;
             top: auto;
             height: 75%;
-            background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 55%, #000 100%);
+            background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 55%, var(--app-bg) 100%);
             pointer-events: none;
             z-index: 2;
         }
