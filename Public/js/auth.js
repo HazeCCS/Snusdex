@@ -101,6 +101,9 @@ async function checkUser() {
                 if (typeof applyCardAppearance !== 'undefined' && typeof getLocalCardAppearance !== 'undefined') {
                     applyCardAppearance('metal-card-container', getLocalCardAppearance());
                 }
+                if (typeof CardCanvasRenderer !== 'undefined') {
+                    CardCanvasRenderer.destroy(document.getElementById('auth-metal-container'));
+                }
             }, 500);
 
             window.scrollTo(0, 0);
@@ -246,28 +249,18 @@ function updatePwChecklist(pw) {
     _pwReqs.forEach(req => setPwReqMet(req.id, req.test(pw)));
 }
 
+// Reuses the exact same expand/collapse timing as the register/login switch
+// animation (defined below) so both read as one consistent motion, instead of
+// this checklist just fading at its own, different-length pace.
 function showPwChecklist() {
     if (isLoginMode) return;
-    const el = document.getElementById('auth-pw-checklist');
-    if (!el || !el.classList.contains('hidden')) return;
-    el.classList.remove('hidden');
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            el.style.opacity = '1';
-            el.style.transform = 'translateY(0)';
-        });
-    });
+    expandAuthBlock(document.getElementById('auth-pw-checklist'));
 }
 
 function hidePwChecklist() {
-    const el = document.getElementById('auth-pw-checklist');
-    if (!el || el.classList.contains('hidden')) return;
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(-4px)';
-    setTimeout(() => {
-        el.classList.add('hidden');
+    collapseAuthBlock(document.getElementById('auth-pw-checklist'), 0, () => {
         _pwReqs.forEach(req => setPwReqMet(req.id, false));
-    }, 250);
+    });
 }
 
 window.onPwFocus = function() {
@@ -458,6 +451,141 @@ async function handleLogout(btn) {
     }
 }
 
+// Shared timing for every block that grows/shrinks in the auth card (register
+// fields, confirm-password, password checklist) so they all read as one
+// consistent motion language instead of a patchwork of slightly-off durations.
+const AUTH_EXPAND_MS = 500;
+const AUTH_COLLAPSE_MS = 320;
+const AUTH_EASE_BOUNCE = 'cubic-bezier(0.34, 1.15, 0.64, 1)';
+
+// will-change + backface-visibility hint the browser to promote these blocks
+// to their own compositor layer up front, instead of discovering mid-transition
+// that they need one — this is what removes the jank/lag on lower-power devices.
+function _primeAuthBlockLayer(el) {
+    el.style.willChange = 'max-height, opacity, transform';
+    el.style.backfaceVisibility = 'hidden';
+    el.style.webkitBackfaceVisibility = 'hidden';
+}
+
+function _clearAuthBlockLayer(el) {
+    el.style.willChange = '';
+    el.style.backfaceVisibility = '';
+    el.style.webkitBackfaceVisibility = '';
+}
+
+// Smoothly expands a collapsed ("hidden") block: grows from 0 height while
+// fading + sliding in, measuring the block's own natural height so it works
+// regardless of its (dynamic) content. The whole #auth-card recenters itself
+// automatically each frame since it's just normal layout (margin:auto).
+function expandAuthBlock(el, delay, onDone) {
+    if (!el || !el.classList.contains('hidden')) return;
+    delay = delay || 0;
+    el.classList.remove('hidden');
+    _primeAuthBlockLayer(el);
+    el.style.overflow = 'hidden';
+    el.style.transition = 'none';
+    el.style.maxHeight = '0px';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-10px) scaleY(0.95)';
+    el.style.transformOrigin = 'top';
+    const target = el.scrollHeight;
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            el.style.transition = `max-height ${AUTH_EXPAND_MS}ms ${delay}s ${AUTH_EASE_BOUNCE}, opacity ${AUTH_EXPAND_MS * 0.8}ms ${delay}s ease, transform ${AUTH_EXPAND_MS}ms ${delay}s ${AUTH_EASE_BOUNCE}`;
+            el.style.maxHeight = target + 'px';
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0) scaleY(1)';
+        });
+    });
+    setTimeout(() => {
+        el.style.maxHeight = 'none';
+        el.style.overflow = '';
+        el.style.transform = '';
+        el.style.transformOrigin = '';
+        _clearAuthBlockLayer(el);
+        if (onDone) onDone();
+    }, (delay * 1000) + AUTH_EXPAND_MS + 20);
+}
+
+// Reverse of expandAuthBlock: shrinks + fades the block out, then hides it.
+function collapseAuthBlock(el, delay, onDone) {
+    if (!el || el.classList.contains('hidden')) return;
+    delay = delay || 0;
+    const current = el.scrollHeight;
+    _primeAuthBlockLayer(el);
+    el.style.overflow = 'hidden';
+    el.style.transition = 'none';
+    el.style.maxHeight = current + 'px';
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0) scaleY(1)';
+    el.style.transformOrigin = 'top';
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            el.style.transition = `max-height ${AUTH_COLLAPSE_MS}ms ${delay}s ease, opacity ${AUTH_COLLAPSE_MS * 0.75}ms ${delay}s ease, transform ${AUTH_COLLAPSE_MS * 0.94}ms ${delay}s ease`;
+            el.style.maxHeight = '0px';
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(-10px) scaleY(0.95)';
+        });
+    });
+    setTimeout(() => {
+        el.classList.add('hidden');
+        el.style.overflow = '';
+        el.style.maxHeight = '';
+        el.style.opacity = '';
+        el.style.transform = '';
+        el.style.transformOrigin = '';
+        _clearAuthBlockLayer(el);
+        if (onDone) onDone();
+    }, (delay * 1000) + AUTH_COLLAPSE_MS + 20);
+}
+
+// Typewriter effect for the subtitle under the SNUSDEX logo: erases whatever
+// is currently showing character-by-character, then types the new text back
+// in, with a blinking cursor for the duration. Re-entrant safe — calling it
+// again mid-animation (e.g. rapid toggle clicks) just continues from
+// whatever partial text is on screen instead of garbling it.
+let _subtitleTypeTimer = null;
+
+function typewriteSubtitle(el, text) {
+    if (!el) return;
+    if (_subtitleTypeTimer) {
+        clearTimeout(_subtitleTypeTimer);
+        _subtitleTypeTimer = null;
+    }
+    el.classList.add('typewriter-cursor');
+
+    const ERASE_MS = 14;
+    const TYPE_MS = 26;
+
+    function typeForward(i) {
+        el.textContent = text.slice(0, i);
+        if (i < text.length) {
+            _subtitleTypeTimer = setTimeout(() => typeForward(i + 1), TYPE_MS);
+        } else {
+            _subtitleTypeTimer = setTimeout(() => {
+                el.classList.remove('typewriter-cursor');
+                _subtitleTypeTimer = null;
+            }, 550);
+        }
+    }
+
+    function eraseBackward(remaining) {
+        if (remaining > 0) {
+            el.textContent = el.textContent.slice(0, remaining - 1);
+            _subtitleTypeTimer = setTimeout(() => eraseBackward(remaining - 1), ERASE_MS);
+        } else {
+            typeForward(0);
+        }
+    }
+
+    const currentLength = el.textContent.length;
+    if (currentLength > 0) {
+        eraseBackward(currentLength);
+    } else {
+        typeForward(0);
+    }
+}
+
 function toggleAuthMode() {
     isLoginMode = !isLoginMode;
 
@@ -476,20 +604,20 @@ function toggleAuthMode() {
     hideUsernameError();
 
     if (isLoginMode) {
-        registerFields.classList.add('hidden');
-        registerConfirmWrap?.classList.add('hidden');
+        collapseAuthBlock(registerFields);
+        collapseAuthBlock(registerConfirmWrap, 0.05);
         subtitle.setAttribute('data-i18n', 'auth.welcomeBack');
-        subtitle.innerText = t('auth.welcomeBack');
+        typewriteSubtitle(subtitle, t('auth.welcomeBack'));
         mainBtn.innerText = t('auth.signIn');
         toggleText.innerText = t('auth.dontHaveAccount');
         if (toggleBtnText) toggleBtnText.innerText = t('auth.register');
         if (googleBtnText) googleBtnText.innerText = t('auth.signInWithGoogle');
         if (appleBtnText) appleBtnText.innerText = t('auth.signInWithApple');
     } else {
-        registerFields.classList.remove('hidden');
-        registerConfirmWrap?.classList.remove('hidden');
+        expandAuthBlock(registerConfirmWrap);
+        expandAuthBlock(registerFields, 0.06);
         subtitle.setAttribute('data-i18n', 'auth.createAccount');
-        subtitle.innerText = t('auth.createAccount');
+        typewriteSubtitle(subtitle, t('auth.createAccount'));
         mainBtn.innerText = t('auth.register');
         toggleText.innerText = t('auth.alreadyHaveAccount');
         if (toggleBtnText) toggleBtnText.innerText = t('auth.signIn');

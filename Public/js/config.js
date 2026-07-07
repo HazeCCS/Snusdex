@@ -292,6 +292,22 @@ const CardCanvasRenderer = {
         cardEl.addEventListener('mouseleave', onPointerLeave);
         cardEl.addEventListener('touchend', onPointerLeave);
 
+        // Browsers throttle/suspend requestAnimationFrame while the tab/app is
+        // hidden (battery-saving, out of our control) — but when the page comes
+        // back, resume clean: reset every absolute-time tracker to "now" so the
+        // loop doesn't try to fast-forward through the elapsed gap (which would
+        // show as a jump or a frozen-looking frame) and instead just continues.
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible') return;
+            const now = performance.now();
+            state.lastTime = now;
+            state.golLastPhysicsTime = now;
+            state.lastFireworkLaunch = now;
+            state._nextBgRippleTime = now + 500 + Math.random() * 1500;
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        window.addEventListener('pageshow', onVisible);
+
         state.cleanupEvents = () => {
             cardEl.removeEventListener('mousemove', onPointerMove);
             cardEl.removeEventListener('touchmove', onPointerMove);
@@ -300,9 +316,12 @@ const CardCanvasRenderer = {
             cardEl.removeEventListener('mouseleave', onPointerLeave);
             cardEl.removeEventListener('touchend', onPointerLeave);
             window.removeEventListener('resize', state.resize);
+            document.removeEventListener('visibilitychange', onVisible);
+            window.removeEventListener('pageshow', onVisible);
         };
 
         const loop = (time) => {
+          try {
             const dt = (time - state.lastTime) / 1000;
             state.lastTime = time;
 
@@ -365,7 +384,20 @@ const CardCanvasRenderer = {
                         }
                     }
 
-                    if (changes === 0) {
+                    // Real Conway's Game of Life on a random soup reliably converges
+                    // into mostly "still life" blocks (permanently static shapes)
+                    // within a couple hundred generations — that's normal GoL
+                    // behavior, not a bug. The problem was requiring changes===0
+                    // to count a generation as "stale": a single surviving blinker
+                    // (a 3-cell oscillator) keeps `changes` above zero forever, so
+                    // golStaticFramesCount never accumulated even once 99% of the
+                    // grid had already frozen solid into still lifes — the reseed
+                    // safety net below almost never fired. Using the *ratio* of
+                    // changed cells catches "nearly all still life" the same way,
+                    // regardless of a few lingering oscillators.
+                    const totalCells = state.cols * state.rows;
+                    const changeRatio = changes / totalCells;
+                    if (changeRatio < 0.01) {
                         state.golStaticFramesCount++;
                     } else {
                         state.golStaticFramesCount = 0;
@@ -725,6 +757,15 @@ const CardCanvasRenderer = {
             }
 
             ctx.restore();
+          } catch (err) {
+            // A single bad frame (e.g. a transient zero-size measurement) must
+            // never permanently kill the loop — without this, an uncaught
+            // exception here would stop requestAnimationFrame from ever being
+            // rescheduled below, leaving the canvas frozen on its last frame
+            // with no visible error. Log it and keep going.
+            console.error('CardCanvasRenderer: frame error, recovering', err);
+            try { ctx.restore(); } catch (_) {}
+          }
             state.animationFrameId = requestAnimationFrame(loop);
         };
 
@@ -864,6 +905,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadBadgesFromCache();
 
     applyCardAppearance('metal-card-container', getLocalCardAppearance());
+    applyCardAppearance('auth-metal-container', { colorHex: '#ffffff', anim: 'gol', pattern: 'cubes', intensity: '1', saturation: '1.3' });
 
     const trackingModeEl = document.getElementById('tracking-mode-preview');
     if (trackingModeEl) {
