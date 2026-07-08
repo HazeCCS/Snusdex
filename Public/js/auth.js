@@ -17,18 +17,6 @@ function updateGreeting() {
     greetingElement.innerHTML = `${message}, <span style="color:rgba(255,255,255,0.95);font-weight:600;">${displayIdent}</span>`;
 }
 
-function resetGoogleButton() {
-    const btnText = document.getElementById('google-btn-text');
-    const btn = document.getElementById('google-login-btn');
-    if (!btnText || !btn) return;
-
-    btnText.innerText = isLoginMode ? t('auth.signInWithGoogle') : t('auth.registerWithGoogle');
-    btn.disabled = false;
-    btn.style.opacity = "1";
-}
-
-window.addEventListener('sdx-oauth-cancelled', resetGoogleButton);
-
 async function signInWithGoogle() {
     const btnText = document.getElementById('google-btn-text');
     const btn = document.getElementById('google-login-btn');
@@ -50,7 +38,6 @@ async function signInWithGoogle() {
             provider: 'google',
             options: {
                 redirectTo: redirectUrl,
-                skipBrowserRedirect: true,
                 queryParams: {
                     prompt: 'select_account',
                     access_type: 'offline'
@@ -61,16 +48,16 @@ async function signInWithGoogle() {
         if (error) throw error;
 
         if (data?.url) {
-            if (!window.SDXBridge.openExternal(data.url, 'oauth')) {
-                window.location.href = data.url;
-            }
+            window.location.href = data.url;
         }
 
     } catch (error) {
         console.error("Google Login Error:", error.message);
         alert("Login error: " + error.message);
 
-        resetGoogleButton();
+        btnText.innerText = isLoginMode ? t('auth.signInWithGoogle') : t('auth.registerWithGoogle');
+        btn.disabled = false;
+        btn.style.opacity = "1";
     }
 }
 
