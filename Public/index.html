@@ -1,7 +1,5 @@
 <!DOCTYPE html>
-
 <html lang="eng" class="bg-black text-white antialiased selection:bg-zinc-800">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
@@ -14,8 +12,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="tailwind.css">
     <link rel="stylesheet" href="theme.css?v=1">
-    <!-- Early theme boot: applies `.light` / `.dark` to <html> before paint
-         to prevent a flash of the wrong theme. Full logic lives in js/theme.js. -->
     <script>
         (function () {
             try {
@@ -153,9 +149,6 @@
         }
 
         :root {
-            /* --ios-bg, --ios-card, --ios-separator, --ios-gray are defined in
-               theme.css and switch based on the active theme. Defining them
-               here too would shadow the theme overrides. */
             --common: #8E8E93;
             --uncommon: #34C759;
             --rare: #0A84FF;
@@ -169,12 +162,6 @@
             display: none !important;
         }
 
-
-
-        /* MARK: - Layout-erhaltende Versteckung für Dex
-           WICHTIG: kein opacity !important – JS steuert opacity für Fade-Animation.
-           Wir nutzen visibility+pointer-events, damit der Dex-Grid im Hintergrund
-           korrekt gemessen werden kann (kein Reflow beim Einblenden). */
         .tab-dex-hidden {
             visibility: hidden;
             pointer-events: none !important;
@@ -1051,6 +1038,80 @@
             display: none !important;
         }
 
+        #auth-wave-zone {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60vh;
+            z-index: 0;
+        }
+
+        #auth-wave-fade {
+            position: absolute;
+            inset: 0;
+            top: auto;
+            height: 75%;
+            background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 55%, var(--app-bg) 100%);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* #auth-content-zone holds the whole auth block (logo + subtitle + form)
+           as ONE group. margin-top/bottom:auto on #auth-card centers that whole
+           group together — logo included — and re-centers it automatically as it
+           grows/shrinks switching between login and register. If content ever
+           overflows the viewport, the auto margins simply collapse to 0 (safe
+           centering), so the top never gets clipped while scrolling. Written as
+           plain CSS rather than Tailwind utilities that may not be compiled yet. */
+        #auth-content-zone {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #auth-card {
+            margin-top: auto;
+            margin-bottom: auto;
+        }
+
+        /* Blinking caret shown on #auth-subtitle while it's being typewritten */
+        .typewriter-cursor::after {
+            content: '|';
+            display: inline-block;
+            margin-left: 2px;
+            animation: typewriterBlink 0.85s step-end infinite;
+        }
+
+        @keyframes typewriterBlink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        #auth-metal-container {
+            padding: 0;
+            height: 100%;
+        }
+
+        #auth-wave-card.metal-collector-card {
+            width: 100%;
+            height: 100%;
+            border-radius: 0;
+            border: none;
+            box-shadow: none;
+            padding: 0;
+        }
+
         /* ── Card Pin Button ───────────────────────────────────────────── */
         #preview-metal-card-container {
             position: relative;
@@ -1142,21 +1203,33 @@
     </audio>
 
     <div id="auth-overlay"
-        class="fixed inset-0 z-[999] bg-black flex items-center justify-center p-6 transition-opacity duration-500">
+        class="fixed inset-0 z-[999] bg-black transition-opacity duration-500">
 
         <!-- ═══════════════════════════════════════════════════ -->
-        <!-- LOGIN / REGISTER card                              -->
+        <!-- GAME OF LIFE BACKGROUND — reaches far down, gently fades into the UI,
+             and overlaps behind it (both layers are absolutely positioned)      -->
         <!-- ═══════════════════════════════════════════════════ -->
-        <div id="auth-card"
-            class="w-full max-w-sm bg-[#1C1C1E] rounded-[32px] shadow-2xl border border-white/10 overflow-hidden">
+        <div id="auth-wave-zone" class="w-full overflow-hidden">
+            <div class="metal-card-container w-full h-full" id="auth-metal-container" data-anim="gol"
+                data-pattern="cubes">
+                <div id="auth-wave-card" class="metal-collector-card"></div>
+            </div>
+            <div id="auth-wave-fade"></div>
+        </div>
 
-            <!-- SNUSDEX® Logo header -->
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- LOGIN / REGISTER UI — lower two-thirds             -->
+        <!-- ═══════════════════════════════════════════════════ -->
+        <div id="auth-content-zone">
+        <div id="auth-card" class="w-full max-w-sm mx-auto">
+
+            <!-- SNUSDEX® Logo header — part of the same centered group as the form below -->
             <div id="auth-logo-header" class="pt-10 pb-6 px-8 text-center">
                 <div class="inline-flex items-baseline gap-[2px]">
                     <span
-                        style="font-family: 'Inter', sans-serif; font-weight: 800; font-size: 40px; letter-spacing: -1.5px; color: var(--app-fg); line-height: 1;">SNUSDEX®</span>
+                        style="font-family: 'Inter', sans-serif; font-weight: 800; font-size: 56px; letter-spacing: -2.2px; color: var(--app-fg); line-height: 1;">SNUSDEX®</span>
                 </div>
-                <p id="auth-subtitle" class="text-white/40 text-[13px] mt-2" data-i18n="auth.welcomeBack">Welcome back
+                <p id="auth-subtitle" class="text-white mt-3" style="font-size:20px" data-i18n="auth.welcomeBack">Welcome back
                 </p>
             </div>
 
@@ -1428,12 +1501,13 @@
             </div>
 
         </div>
+        </div>
 
         <!-- ═══════════════════════════════════════════════════ -->
         <!-- EMAIL VERIFICATION SCREEN (after sign-up)         -->
         <!-- ═══════════════════════════════════════════════════ -->
-        <div id="email-check-screen" class="hidden w-full max-w-sm">
-            <div class="bg-[#1C1C1E] rounded-[32px] shadow-2xl border border-white/10 overflow-hidden">
+        <div id="email-check-screen" class="hidden absolute inset-0 flex items-center justify-center p-6">
+            <div class="w-full max-w-sm bg-[#1C1C1E] rounded-[32px] shadow-2xl border border-white/10 overflow-hidden">
                 <!-- Logo -->
                 <div class="pt-10 pb-4 px-8 text-center">
                     <div class="inline-flex items-baseline gap-[2px]">
@@ -4067,6 +4141,7 @@
     </script>
     <script src="i18n.js?v=182"></script>
     <script src="js/theme.js?v=1"></script>
+    <script src="js/native-bridge.js?v=1"></script>
     <script src="js/config.js?v=181"></script>
     <script src="js/auth.js?v=181"></script>
     <script src="js/navigation.js?v=183"></script>
