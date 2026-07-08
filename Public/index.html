@@ -1,7 +1,5 @@
 <!DOCTYPE html>
-
 <html lang="eng" class="bg-black text-white antialiased selection:bg-zinc-800">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport"
@@ -14,7 +12,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="tailwind.css">
     <link rel="stylesheet" href="theme.css?v=1">
-    <!-- Early theme boot: applies `.light` / `.dark` to <html> before paint to prevent a flash of the wrong theme. Full logic lives in js/theme.js. -->
     <script>
         (function () {
             try {
@@ -152,9 +149,6 @@
         }
 
         :root {
-            /* --ios-bg, --ios-card, --ios-separator, --ios-gray are defined in
-               theme.css and switch based on the active theme. Defining them
-               here too would shadow the theme overrides. */
             --common: #8E8E93;
             --uncommon: #34C759;
             --rare: #0A84FF;
@@ -168,12 +162,6 @@
             display: none !important;
         }
 
-
-
-        /* MARK: - Layout-erhaltende Versteckung für Dex
-           WICHTIG: kein opacity !important – JS steuert opacity für Fade-Animation.
-           Wir nutzen visibility+pointer-events, damit der Dex-Grid im Hintergrund
-           korrekt gemessen werden kann (kein Reflow beim Einblenden). */
         .tab-dex-hidden {
             visibility: hidden;
             pointer-events: none !important;
@@ -1050,11 +1038,6 @@
             display: none !important;
         }
 
-        /* ── Auth (Login/Register) — game-of-life+cubes banner sits behind the whole
-           screen as a background layer; the UI is overlaid on top of it and is free
-           to overlap the (gently fading) lower part of the effect instead of being
-           pushed below it. Both layers are absolutely positioned within the fixed
-           overlay so the screen never needs to scroll as a whole. ── */
         #auth-wave-zone {
             position: absolute;
             top: 0;
@@ -4158,6 +4141,7 @@
     </script>
     <script src="i18n.js?v=182"></script>
     <script src="js/theme.js?v=1"></script>
+    <script src="js/native-bridge.js?v=1"></script>
     <script src="js/config.js?v=181"></script>
     <script src="js/auth.js?v=181"></script>
     <script src="js/navigation.js?v=183"></script>
