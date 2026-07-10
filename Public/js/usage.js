@@ -3,6 +3,482 @@ let globalActiveLogs = [];
 let globalInactiveLogs = [];
 
 let currentStreakCount = 0;
+const MOUTRACK_DAILY_SIDE_KEY = 'mouTrackDailySide';
+const MOUTRACK_POSITIONS = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
+const MOUTRACK_OPPOSITES = {
+    topLeft: 'bottomRight',
+    topRight: 'bottomLeft',
+    bottomLeft: 'topRight',
+    bottomRight: 'topLeft'
+};
+const MOUTRACK_ARROW_ROTATIONS = {
+    topLeft: 225,
+    topRight: 315,
+    bottomLeft: 135,
+    bottomRight: 45
+};
+let mouTrackPlacementSnapshot = null;
+let mouTrackPendingPlacementPosition = null;
+let mouTrackSyncQueue = Promise.resolve();
+let mouTrackSheetStartY = 0;
+let mouTrackSheetCurrentY = 0;
+let isMouTrackSheetDragging = false;
+
+function isValidMouTrackPosition(position) {
+    return MOUTRACK_POSITIONS.includes(position);
+}
+
+function getMouTrackPositionLabel(position) {
+    const labels = {
+        topLeft: t('mouTrack.topLeft'),
+        topRight: t('mouTrack.topRight'),
+        bottomLeft: t('mouTrack.bottomLeft'),
+        bottomRight: t('mouTrack.bottomRight'),
+        left: t('mouTrack.left'),
+        right: t('mouTrack.right')
+    };
+    return labels[position] || '-';
+}
+
+function createEmptyMouTrackCounts() {
+    return MOUTRACK_POSITIONS.reduce((acc, position) => {
+        acc[position] = 0;
+        return acc;
+    }, {});
+}
+
+function normalizeMouTrackCounts(counts) {
+    const normalized = createEmptyMouTrackCounts();
+    if (!counts || typeof counts !== 'object') return normalized;
+    MOUTRACK_POSITIONS.forEach(position => {
+        const value = parseInt(counts[position], 10);
+        normalized[position] = Number.isFinite(value) && value > 0 ? value : 0;
+    });
+    return normalized;
+}
+
+function getMouTrackRecommendedPosition(counts, lastPosition) {
+    const normalizedCounts = normalizeMouTrackCounts(counts);
+    const minCount = Math.min(...MOUTRACK_POSITIONS.map(position => normalizedCounts[position]));
+    const candidates = MOUTRACK_POSITIONS.filter(position => normalizedCounts[position] === minCount);
+    const opposite = MOUTRACK_OPPOSITES[lastPosition];
+
+    if (opposite && candidates.includes(opposite)) return opposite;
+
+    const notLast = candidates.find(position => position !== lastPosition);
+    return notLast || candidates[0] || 'topLeft';
+}
+
+function getMouTrackDefaultState() {
+    return {
+        date: getMouTrackTodayKey(),
+        counts: createEmptyMouTrackCounts(),
+        lastPosition: null,
+        recommendedPosition: null
+    };
+}
+
+function saveMouTrackState(state) {
+    localStorage.setItem(MOUTRACK_DAILY_SIDE_KEY, JSON.stringify({
+        date: getMouTrackTodayKey(),
+        counts: normalizeMouTrackCounts(state?.counts),
+        lastPosition: isValidMouTrackPosition(state?.lastPosition) ? state.lastPosition : null,
+        recommendedPosition: isValidMouTrackPosition(state?.recommendedPosition) ? state.recommendedPosition : null
+    }));
+}
+
+function restoreMouTrackStateSnapshot(snapshot) {
+    if (!snapshot) {
+        localStorage.removeItem(MOUTRACK_DAILY_SIDE_KEY);
+    } else {
+        saveMouTrackState(snapshot);
+    }
+    renderMouTrackUI();
+}
+
+function syncMouTrackPosition(position, amount = 1) {
+    if (!isValidMouTrackPosition(position) || typeof supabaseClient === 'undefined') return;
+
+    mouTrackSyncQueue = mouTrackSyncQueue
+        .catch(() => {})
+        .then(async () => {
+            const { error } = await supabaseClient.rpc('increment_moutrack_side', {
+                p_side: position,
+                p_tracked_date: getMouTrackTodayKey(),
+                p_amount: amount
+            });
+
+            if (error) {
+                console.warn('[MouTrack] Could not sync side:', error);
+            }
+        });
+}
+
+function getMouTrackTodayKey(date = new Date()) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function getStoredMouTrackState() {
+    try {
+        const raw = localStorage.getItem(MOUTRACK_DAILY_SIDE_KEY);
+        if (!raw) return null;
+
+        const data = JSON.parse(raw);
+        if (data?.date !== getMouTrackTodayKey()) {
+            localStorage.removeItem(MOUTRACK_DAILY_SIDE_KEY);
+            return null;
+        }
+
+        const counts = normalizeMouTrackCounts(data?.counts);
+        const legacySide = data?.nextSide || data?.side || null;
+        const legacyLastSide = data?.lastSide || null;
+        const lastPosition = isValidMouTrackPosition(data?.lastPosition)
+            ? data.lastPosition
+            : (legacyLastSide === 'left' ? 'topLeft' : (legacyLastSide === 'right' ? 'topRight' : null));
+        const recommendedPosition = isValidMouTrackPosition(data?.recommendedPosition)
+            ? data.recommendedPosition
+            : (isValidMouTrackPosition(data?.nextPosition)
+                ? data.nextPosition
+                : (legacySide === 'left' ? 'topLeft' : (legacySide === 'right' ? 'topRight' : null)));
+
+        return {
+            date: data.date,
+            counts,
+            lastPosition,
+            recommendedPosition
+        };
+    } catch (_err) {
+        localStorage.removeItem(MOUTRACK_DAILY_SIDE_KEY);
+        return null;
+    }
+}
+
+function renderMouTrackUI() {
+    const widget = document.getElementById('moutrack-widget');
+    if (!widget) return;
+
+    const isIndividualTracking = (localStorage.getItem('snusTrackingMode') || 'full') === 'individual';
+    widget.classList.toggle('hidden', !isIndividualTracking);
+    if (!isIndividualTracking) return;
+
+    const state = getStoredMouTrackState();
+    const counts = normalizeMouTrackCounts(state?.counts);
+    const recommendedPosition = state?.recommendedPosition || null;
+    const lastPosition = state?.lastPosition || null;
+    const sideEl = document.getElementById('moutrack-next-side');
+    const helperEl = document.getElementById('moutrack-helper');
+    const lastEl = document.getElementById('moutrack-last-side');
+    const countGrid = document.getElementById('moutrack-count-grid');
+    const arrowCircle = document.getElementById('moutrack-arrow-circle');
+    const arrowIcon = document.getElementById('moutrack-arrow-icon');
+
+    if (sideEl) {
+        sideEl.removeAttribute('data-i18n');
+        sideEl.textContent = recommendedPosition ? getMouTrackPositionLabel(recommendedPosition) : t('mouTrack.chooseStart');
+    }
+
+    if (helperEl) {
+        helperEl.removeAttribute('data-i18n');
+        helperEl.textContent = recommendedPosition ? t('mouTrack.nextPouch') : t('mouTrack.chooseToday');
+    }
+
+    if (lastEl) {
+        lastEl.removeAttribute('data-i18n');
+        lastEl.textContent = lastPosition
+            ? t('mouTrack.lastSide', { side: getMouTrackPositionLabel(lastPosition) })
+            : t('mouTrack.lastEmpty');
+    }
+
+    if (arrowCircle) {
+        arrowCircle.classList.toggle('hidden', !recommendedPosition);
+        arrowCircle.classList.toggle('flex', !!recommendedPosition);
+    }
+
+    if (arrowIcon) {
+        arrowIcon.style.transform = `rotate(${MOUTRACK_ARROW_ROTATIONS[recommendedPosition] || 0}deg)`;
+    }
+
+    if (countGrid) {
+        countGrid.innerHTML = MOUTRACK_POSITIONS.map(position => `
+            <div class="rounded-[12px] bg-white/[0.04] border border-white/5 px-2 py-2 text-center">
+                <p class="text-[10px] text-[#8E8E93] font-medium leading-tight">${getMouTrackPositionLabel(position)}</p>
+                <p class="text-[15px] text-white font-semibold leading-tight mt-1">${counts[position]}</p>
+            </div>
+        `).join('');
+    }
+}
+
+function recordMouTrackPosition(position) {
+    if (!isValidMouTrackPosition(position)) return null;
+    if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('light');
+
+    const state = getStoredMouTrackState() || getMouTrackDefaultState();
+    const counts = normalizeMouTrackCounts(state.counts);
+    counts[position] += 1;
+    const recommendedPosition = getMouTrackRecommendedPosition(counts, position);
+
+    saveMouTrackState({
+        counts,
+        lastPosition: position,
+        recommendedPosition
+    });
+    renderMouTrackUI();
+    return recommendedPosition;
+}
+
+function setMouTrackSide(side) {
+    const mappedPosition = side === 'left' ? 'topLeft' : (side === 'right' ? 'topRight' : side);
+    const recommendedPosition = recordMouTrackPosition(mappedPosition);
+    if (recommendedPosition) showMouTrackRecommendationView(recommendedPosition);
+}
+
+function openMouTrackPlacementModal() {
+    if ((localStorage.getItem('snusTrackingMode') || 'full') !== 'individual') return;
+    mouTrackPlacementSnapshot = null;
+    mouTrackPendingPlacementPosition = null;
+
+    let overlay = document.getElementById('moutrack-placement-modal');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'moutrack-placement-modal';
+        overlay.className = 'fixed inset-0 z-[999] hidden flex flex-col justify-end';
+        document.body.appendChild(overlay);
+    }
+
+    overlay.innerHTML = `
+        <div id="moutrack-modal-backdrop" class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-400" onclick="closeMouTrackPlacementModal()"></div>
+        <div id="moutrack-modal-card"
+            class="relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] flex flex-col z-[1000] mt-auto w-full max-w-md mx-auto overflow-hidden"
+            style="transform: translateY(100%); padding-bottom: max(env(safe-area-inset-bottom), 24px);">
+            <div id="moutrack-modal-drag-handle" class="sticky top-0 bg-[#1C1C1E] z-50 pt-4 pb-3 flex justify-center flex-shrink-0 w-full rounded-t-[32px]">
+                <div class="w-10 h-1.5 bg-[#3A3A3C] rounded-full"></div>
+            </div>
+            <div id="moutrack-modal-track" class="flex transition-transform duration-300 ease-out" style="width: 200%; transform: translateX(0);">
+                <div class="shrink-0 px-6 pb-1" style="width: 50%;">
+                    <div class="text-center w-full overflow-hidden px-2" style="margin-bottom: 18px;">
+                        <span class="text-[13px] font-semibold text-[#8E8E93] tracking-wider mb-1 block">MouTrack™</span>
+                        <h2 class="text-[26px] font-bold tracking-tight text-white leading-tight" style="margin-bottom: 6px;">${t('mouTrack.modalTitle')}</h2>
+                        <p class="text-[#8E8E93] text-[14px] leading-relaxed max-w-[280px] mx-auto">${t('mouTrack.modalDesc')}</p>
+                    </div>
+                    <div class="grid grid-cols-2" style="gap: 10px;">
+                        ${MOUTRACK_POSITIONS.map(position => `
+                            <button type="button" onclick="chooseMouTrackPlacement('${position}')" class="rounded-[14px] bg-white/10 border border-white/5 active:scale-95 transition-transform flex flex-col items-center justify-center" style="height: 92px; padding: 12px 10px 10px;">
+                                <span class="rounded-full bg-white text-black flex items-center justify-center shadow-sm" style="width: 44px; height: 44px; margin-bottom: 8px;">
+                                    <svg style="width: 25px; height: 25px; transform: rotate(${MOUTRACK_ARROW_ROTATIONS[position]}deg)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                                    </svg>
+                                </span>
+                                <span class="text-[#D1D1D6] font-semibold leading-tight" style="font-size: 12px;">${getMouTrackPositionLabel(position)}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+                <div id="moutrack-recommendation-panel" class="shrink-0 px-6 pb-1 flex flex-col" style="width: 50%; min-height: 354px;"></div>
+            </div>
+        </div>
+    `;
+
+    overlay.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    setupMouTrackSheetSwipe();
+
+    requestAnimationFrame(() => {
+        const backdrop = document.getElementById('moutrack-modal-backdrop');
+        const card = document.getElementById('moutrack-modal-card');
+        if (backdrop) {
+            backdrop.classList.remove('opacity-0');
+            backdrop.classList.add('opacity-100');
+        }
+        if (card) card.style.transform = 'translateY(0)';
+    });
+}
+
+function closeMouTrackPlacementModal(isDragging = false) {
+    const overlay = document.getElementById('moutrack-placement-modal');
+    if (!overlay) return;
+
+    const backdrop = document.getElementById('moutrack-modal-backdrop');
+    const card = document.getElementById('moutrack-modal-card');
+    if (card) {
+        card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
+        card.style.transform = 'translateY(100%)';
+    }
+    if (backdrop) {
+        backdrop.classList.remove('opacity-100');
+        backdrop.classList.add('opacity-0');
+    }
+
+    setTimeout(() => {
+        overlay.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+        if (card) {
+            card.style.transform = 'translateY(100%)';
+            if (isDragging) card.style.transition = '';
+        }
+    }, 400);
+    mouTrackPlacementSnapshot = null;
+    mouTrackPendingPlacementPosition = null;
+}
+
+function setupMouTrackSheetSwipe() {
+    const card = document.getElementById('moutrack-modal-card');
+    if (!card || card.dataset.swipeReady === 'true') return;
+    card.dataset.swipeReady = 'true';
+
+    card.addEventListener('touchstart', (e) => {
+        mouTrackSheetStartY = e.touches[0].clientY;
+        mouTrackSheetCurrentY = mouTrackSheetStartY;
+        isMouTrackSheetDragging = true;
+        card.style.transition = 'none';
+    }, { passive: true });
+
+    card.addEventListener('touchmove', (e) => {
+        if (!isMouTrackSheetDragging) return;
+        mouTrackSheetCurrentY = e.touches[0].clientY;
+        const deltaY = mouTrackSheetCurrentY - mouTrackSheetStartY;
+        if (deltaY > 0) card.style.transform = `translateY(${deltaY}px)`;
+    }, { passive: true });
+
+    card.addEventListener('touchend', () => {
+        if (!isMouTrackSheetDragging) return;
+        isMouTrackSheetDragging = false;
+
+        const deltaY = mouTrackSheetCurrentY - mouTrackSheetStartY;
+        card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
+
+        if (deltaY > 100) {
+            closeMouTrackPlacementModal(true);
+        } else {
+            card.style.transform = 'translateY(0)';
+        }
+    });
+}
+
+function chooseMouTrackPlacement(position) {
+    if (!isValidMouTrackPosition(position)) return;
+    mouTrackPlacementSnapshot = getStoredMouTrackState();
+    mouTrackPendingPlacementPosition = position;
+    const recommendedPosition = recordMouTrackPosition(position);
+    syncMouTrackPosition(position, 1);
+    if (recommendedPosition) showMouTrackRecommendationInModal(recommendedPosition);
+}
+
+function backToMouTrackPlacementStep() {
+    restoreMouTrackStateSnapshot(mouTrackPlacementSnapshot);
+    if (mouTrackPendingPlacementPosition) {
+        syncMouTrackPosition(mouTrackPendingPlacementPosition, -1);
+    }
+    mouTrackPlacementSnapshot = null;
+    mouTrackPendingPlacementPosition = null;
+
+    const track = document.getElementById('moutrack-modal-track');
+    if (track) track.style.transform = 'translateX(0)';
+}
+
+function showMouTrackRecommendationInModal(position) {
+    if (!isValidMouTrackPosition(position)) return;
+
+    const panel = document.getElementById('moutrack-recommendation-panel');
+    const track = document.getElementById('moutrack-modal-track');
+    if (!panel || !track) {
+        showMouTrackRecommendationView(position);
+        return;
+    }
+
+    panel.innerHTML = `
+        <div class="flex items-center justify-between" style="margin-bottom: 12px;">
+            <button type="button" onclick="backToMouTrackPlacementStep()" class="w-10 h-10 rounded-full bg-white/10 border border-white/5 flex items-center justify-center text-[#8E8E93] active:scale-90 transition-all duration-200" aria-label="${t('mouTrack.back')}">
+                <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 18 9 12l6-6" />
+                </svg>
+            </button>
+            <button type="button" onclick="closeMouTrackPlacementModal()" class="w-10 h-10 rounded-full bg-white/10 border border-white/5 flex items-center justify-center text-[#8E8E93] active:scale-90 transition-all duration-200" aria-label="${t('mouTrack.done')}">
+                <svg class="w-[18px] h-[18px] text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-center text-center" style="padding-bottom: 22px;">
+            <div class="rounded-full bg-white text-black flex items-center justify-center" style="width: 104px; height: 104px; box-shadow: 0 16px 48px rgba(255,255,255,0.13); margin-bottom: 22px;">
+                <svg class="transition-transform" style="width: 58px; height: 58px; transform: rotate(${MOUTRACK_ARROW_ROTATIONS[position]}deg)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                </svg>
+            </div>
+            <span class="text-[13px] font-semibold text-[#8E8E93] tracking-wider block" style="margin-bottom: 4px;">${t('mouTrack.recommendationTitle')}</span>
+            <h2 class="text-[26px] font-bold tracking-tight text-white leading-tight" style="margin-bottom: 8px;">${getMouTrackPositionLabel(position)}</h2>
+            <div class="bg-white/5 border border-white/5 rounded-[14px]" style="padding: 12px 14px; max-width: 292px;">
+                <p class="text-[#D1D1D6] text-[14px] leading-relaxed">${t('mouTrack.recommendationSubtitle')}</p>
+            </div>
+        </div>
+        <button type="button" onclick="closeMouTrackPlacementModal()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] shadow-[0_4px_14px_rgba(255,255,255,0.1)] flex justify-center items-center active:scale-95 transition-transform">${t('mouTrack.done')}</button>
+    `;
+
+    requestAnimationFrame(() => {
+        track.style.transform = 'translateX(-50%)';
+    });
+}
+
+function closeMouTrackRecommendationView() {
+    const view = document.getElementById('moutrack-recommendation-view');
+    if (!view) return;
+    view.style.transform = 'translateX(100%)';
+    view.style.opacity = '0.96';
+    setTimeout(() => {
+        view.classList.add('hidden');
+        view.classList.remove('flex');
+        view.style.transform = '';
+        view.style.opacity = '';
+    }, 260);
+}
+
+function showMouTrackRecommendationView(position) {
+    if (!isValidMouTrackPosition(position)) return;
+
+    let view = document.getElementById('moutrack-recommendation-view');
+    if (!view) {
+        view = document.createElement('div');
+        view.id = 'moutrack-recommendation-view';
+        view.className = 'fixed inset-0 z-[150] hidden flex-col text-white transition-all duration-300 ease-out';
+        view.style.backgroundColor = '#0B0B0C';
+        document.body.appendChild(view);
+    }
+
+    view.innerHTML = `
+        <div class="flex items-center justify-between px-5" style="padding-top: max(env(safe-area-inset-top), 20px);">
+            <span class="text-[11px] text-[#8E8E93] uppercase tracking-wider font-semibold">MouTrack™</span>
+            <button type="button" onclick="closeMouTrackRecommendationView()" class="w-9 h-9 rounded-full bg-white/10 border border-white/5 flex items-center justify-center active:scale-95 transition-transform" aria-label="${t('mouTrack.done')}">
+                <svg class="w-[18px] h-[18px] text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div class="flex-1 flex flex-col items-center justify-center px-6 text-center pb-20">
+            <div class="rounded-full bg-white text-black flex items-center justify-center" style="width: 190px; height: 190px; box-shadow: 0 20px 70px rgba(255,255,255,0.16);">
+                <svg class="w-24 h-24 transition-transform" style="transform: rotate(${MOUTRACK_ARROW_ROTATIONS[position]}deg)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                </svg>
+            </div>
+            <p class="text-[#8E8E93] text-[12px] uppercase tracking-wider font-semibold mt-10">${t('mouTrack.recommendationTitle')}</p>
+            <h2 class="text-white text-[34px] font-semibold tracking-tight leading-tight mt-2">${getMouTrackPositionLabel(position)}</h2>
+            <p class="text-[#8E8E93] text-[14px] leading-relaxed mt-3 max-w-[280px]">${t('mouTrack.recommendationSubtitle')}</p>
+        </div>
+        <div class="px-5" style="padding-bottom: max(env(safe-area-inset-bottom), 20px);">
+            <button type="button" onclick="closeMouTrackRecommendationView()" class="w-full h-14 rounded-full bg-white text-black text-[16px] font-semibold active:scale-[0.98] transition-transform">${t('mouTrack.done')}</button>
+        </div>
+    `;
+
+    view.classList.remove('hidden');
+    view.classList.add('flex');
+    view.style.transform = 'translateX(100%)';
+    view.style.opacity = '0.96';
+    requestAnimationFrame(() => {
+        view.style.transform = 'translateX(0)';
+        view.style.opacity = '1';
+    });
+}
 
 function getStreakMilestoneXP(day) {
     if (day === 5) return 50;
@@ -369,6 +845,7 @@ async function finishSpecificCan(logId) {
 
 function renderActiveCansUI() {
     const container = document.getElementById('active-cans-list');
+    renderMouTrackUI();
     if (!container) return;
 
     container.innerHTML = '';
@@ -564,6 +1041,7 @@ function startAddPouch(logId, maxPouches, currentPouches) {
         } else {
             addPouchTimer = null;
             if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('success');
+            openMouTrackPlacementModal();
             executeAddPouch(logId, maxPouches, currentPouches + 1);
         }
     }
@@ -705,7 +1183,12 @@ function calculateUsageStats(allLogs) {
 }
 
 window.renderActiveCansUI = renderActiveCansUI;
+window.renderMouTrackUI = renderMouTrackUI;
+window.setMouTrackSide = setMouTrackSide;
 
 document.addEventListener('i18n:applied', () => {
     renderStreakUI();
+    renderMouTrackUI();
 });
+
+document.addEventListener('DOMContentLoaded', renderMouTrackUI);
