@@ -1129,6 +1129,161 @@
             padding: 0;
         }
 
+        .modal-cubes-sheet {
+            overflow: hidden;
+            isolation: isolate;
+            background: #1C1C1E;
+        }
+
+        .modal-cubes-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+            border-radius: inherit;
+            opacity: 0.86;
+            filter: blur(0.35px);
+            -webkit-mask-image: radial-gradient(ellipse at center, transparent 0%, transparent 39%, rgba(0, 0, 0, 0.22) 58%, #000 100%);
+            mask-image: radial-gradient(ellipse at center, transparent 0%, transparent 39%, rgba(0, 0, 0, 0.22) 58%, #000 100%);
+        }
+
+        .modal-cubes-layer::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at left center, rgba(255, 255, 255, 0.085), transparent 42%),
+                radial-gradient(ellipse at right center, rgba(255, 255, 255, 0.075), transparent 42%),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent 18%, transparent 82%, rgba(255, 255, 255, 0.04));
+            mix-blend-mode: screen;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .modal-cubes-layer::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, #1C1C1E 0%, rgba(28, 28, 30, 0.78) 43%, rgba(28, 28, 30, 0.12) 76%, transparent 100%);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            z-index: 1;
+        }
+
+        .modal-cubes-container,
+        .modal-cubes-container .metal-collector-card {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            border: 0;
+            border-radius: inherit;
+            background: transparent !important;
+            box-shadow: none;
+            pointer-events: none;
+        }
+
+        .modal-cubes-container.metal-card-container[data-pattern="cubes"] .metal-collector-card {
+            background: transparent !important;
+        }
+
+        .modal-cubes-container .metal-card-canvas {
+            border-radius: inherit;
+            opacity: 0.85;
+        }
+
+        .modal-cubes-container .metal-collector-card::after,
+        .modal-cubes-container .metal-card-ambient,
+        .modal-cubes-container .metal-card-pattern,
+        .modal-cubes-container .metal-card-glow {
+            display: none !important;
+        }
+
+        #modal-image-frame {
+            background: transparent !important;
+            overflow: visible;
+            isolation: isolate;
+        }
+
+        .dose-collector-cubes-layer {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: min(82vw, 350px);
+            height: min(82vw, 350px);
+            max-width: 350px;
+            max-height: 350px;
+            border-radius: 50%;
+            overflow: hidden;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.58;
+            filter: blur(0.2px);
+            -webkit-mask-image: radial-gradient(circle, #000 0%, #000 62%, rgba(0, 0, 0, 0.48) 76%, transparent 91%);
+            mask-image: radial-gradient(circle, #000 0%, #000 62%, rgba(0, 0, 0, 0.48) 76%, transparent 91%);
+        }
+
+        .dose-collector-cubes-layer::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, rgba(28, 28, 30, 0.08) 0%, rgba(28, 28, 30, 0.24) 58%, rgba(28, 28, 30, 0.5) 100%);
+            pointer-events: none;
+        }
+
+        .dose-collector-cubes-container,
+        .dose-collector-cubes-container .metal-collector-card {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            border: 0;
+            border-radius: inherit;
+            background: transparent !important;
+            box-shadow: none;
+            pointer-events: none;
+        }
+
+        .dose-collector-cubes-container.metal-card-container[data-pattern="cubes"] .metal-collector-card {
+            background: transparent !important;
+        }
+
+        .dose-collector-cubes-container .metal-card-canvas {
+            border-radius: inherit;
+        }
+
+        .dose-collector-cubes-container .metal-collector-card::after,
+        .dose-collector-cubes-container .metal-card-ambient,
+        .dose-collector-cubes-container .metal-card-pattern,
+        .dose-collector-cubes-container .metal-card-glow {
+            display: none !important;
+        }
+
+        #modal-close-btn,
+        #modal-favorite-btn {
+            z-index: 1010;
+        }
+
+        #modal-views-wrapper,
+        #all-scans-scroll-area,
+        #scan-modal-card > :not(.modal-cubes-layer),
+        #scan-help-scroll {
+            position: relative;
+            z-index: 2;
+        }
+
+        .modal-cubes-sheet #snus-modal-drag-handle,
+        .modal-cubes-sheet #all-scans-drag-handle,
+        .modal-cubes-sheet #scan-help-handle {
+            background: rgba(28, 28, 30, 0.82) !important;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
         /* ── Card Pin Button ───────────────────────────────────────────── */
         #preview-metal-card-container {
             position: relative;
@@ -1621,6 +1776,30 @@
         </div>
 
         <div class="px-5 flex flex-col gap-3 mb-8">
+            <div id="moutrack-widget" class="hidden bg-[#1C1C1E] rounded-[20px] p-4 border border-white/5 shadow-sm">
+                <div class="flex items-center justify-between gap-3">
+                    <span class="block text-[10px] text-[#8E8E93] font-semibold tracking-wider" style="opacity: 0.7;">MouTrack™</span>
+                    <span id="moutrack-last-side" class="px-2.5 py-1 rounded-full bg-white/5 border border-white/5 text-[11px] text-[#8E8E93] font-medium" data-i18n="mouTrack.lastEmpty">Last: -</span>
+                </div>
+                <div class="mt-3 flex flex-col items-center text-center">
+                    <div id="moutrack-arrow-circle" class="hidden w-14 h-14 rounded-full bg-white/10 border border-white/10 backdrop-blur-sm shadow-sm items-center justify-center mb-2">
+                        <svg id="moutrack-arrow-icon" class="w-7 h-7 text-white transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                        </svg>
+                    </div>
+                    <p id="moutrack-next-side" class="text-[24px] font-semibold text-white leading-tight truncate" data-i18n="mouTrack.chooseStart">Choose start</p>
+                    <p id="moutrack-helper" class="text-[12px] text-[#8E8E93] mt-1" data-i18n="mouTrack.chooseToday">Pick today's first side</p>
+                </div>
+                <div class="mt-4">
+                    <div class="flex items-center justify-between px-1 mb-2">
+                        <span class="text-[10px] text-[#8E8E93] uppercase tracking-wider font-semibold" data-i18n="mouTrack.counts">Today</span>
+                        <span class="text-[10px] text-[#8E8E93] uppercase tracking-wider font-semibold" data-i18n="mouTrack.recommended">Recommended</span>
+                    </div>
+                    <div id="moutrack-count-grid" class="grid gap-2" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
+                        <!-- Javascript generates this -->
+                    </div>
+                </div>
+            </div>
             <div class="flex gap-3">
                 <div class="flex-1 bg-[#1C1C1E] rounded-[20px] p-4 border border-white/5">
                     <h3 class="text-[13px] text-[#8E8E93] font-medium mb-1" data-i18n="home.collection">Collection</h3>
@@ -2215,8 +2394,7 @@
             onclick="triggerHapticFeedback(); closeSnusDetail()"></div>
 
         <div id="snus-modal-card"
-            class="relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1000] mt-auto pb-10 w-full max-w-md mx-auto">
-
+            class="modal-cubes-sheet relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1000] mt-auto pb-10 w-full max-w-md mx-auto">
             <!-- Favorite classes pre-compiled: bg-[#FFD60A]/10 border-[#FFD60A]/20 text-[#FFD60A] shadow-[0_0_14px_rgba(255,214,10,0.25)] -->
             <button id="modal-close-btn" onclick="triggerHapticFeedback(); closeSnusDetail()"
                 style="position:absolute; top:16px; left:16px;"
@@ -2242,7 +2420,17 @@
 
             <div id="modal-views-wrapper" class="w-full pt-2 px-6">
                 <div id="modal-view-info" class="fade-view">
-                    <div class="w-full flex justify-center mb-4 h-60 relative rounded-2xl bg-[#1C1C1E]">
+                    <div id="modal-image-frame" class="w-full flex justify-center mb-4 h-60 relative rounded-2xl bg-transparent">
+                        <div class="dose-collector-cubes-layer" aria-hidden="true">
+                            <div id="snus-modal-cubes-container" class="dose-collector-cubes-container metal-card-container" data-anim="gol" data-pattern="cubes">
+                                <div class="metal-collector-card">
+                                    <div class="metal-card-ambient"></div>
+                                    <div class="metal-card-pattern"></div>
+                                    <div class="metal-card-glow"></div>
+                                    <div class="metal-card-glow metal-card-glow-2"></div>
+                                </div>
+                            </div>
+                        </div>
                         <div id="modal-img-skeleton" class="sk absolute inset-0 rounded-2xl z-10"
                             style="transition:opacity 0.3s ease"></div>
                         <img id="modal-image" src="" alt="Snus"
@@ -2538,7 +2726,17 @@
             onclick="triggerHapticFeedback(); closeAllScansModal()"></div>
 
         <div id="all-scans-card"
-            class="relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1000] mt-auto pb-10 max-h-[90vh] h-[85vh]">
+            class="modal-cubes-sheet relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1000] mt-auto pb-10 max-h-[90vh] h-[85vh]">
+            <div class="modal-cubes-layer" aria-hidden="true">
+                <div id="all-scans-cubes-container" class="modal-cubes-container metal-card-container" data-modal-cubes="1" data-anim="gol" data-pattern="cubes">
+                    <div class="metal-collector-card">
+                        <div class="metal-card-ambient"></div>
+                        <div class="metal-card-pattern"></div>
+                        <div class="metal-card-glow"></div>
+                        <div class="metal-card-glow metal-card-glow-2"></div>
+                    </div>
+                </div>
+            </div>
 
             <div id="all-scans-drag-handle"
                 class="sticky top-0 bg-[#1C1C1E] z-50 pt-4 pb-2 flex flex-col items-center flex-shrink-0 w-full rounded-t-[32px]">
@@ -2898,7 +3096,17 @@
             onclick="triggerHapticFeedback(); closeScanModal()"></div>
 
         <div id="scan-modal-card"
-            class="relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1000] mt-auto pb-10">
+            class="modal-cubes-sheet relative rounded-t-[32px] bg-[#1C1C1E] transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1000] mt-auto pb-10">
+            <div class="modal-cubes-layer" aria-hidden="true">
+                <div id="scan-modal-cubes-container" class="modal-cubes-container metal-card-container" data-modal-cubes="1" data-anim="gol" data-pattern="cubes">
+                    <div class="metal-collector-card">
+                        <div class="metal-card-ambient"></div>
+                        <div class="metal-card-pattern"></div>
+                        <div class="metal-card-glow"></div>
+                        <div class="metal-card-glow metal-card-glow-2"></div>
+                    </div>
+                </div>
+            </div>
 
             <div class="w-10 h-1.5 bg-[#3A3A3C] rounded-full mx-auto mt-3 mb-2"></div>
 
@@ -3040,7 +3248,17 @@
             onclick="triggerHapticFeedback(); closeScanHelpModal()"></div>
 
         <div id="scan-help-card"
-            class="relative rounded-t-[32px] bg-[#1C1C1E] border border-white/10 transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1002] max-h-[92vh]">
+            class="modal-cubes-sheet relative rounded-t-[32px] bg-[#1C1C1E] border border-white/10 transition-transform duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] translate-y-full flex flex-col z-[1002] max-h-[92vh]">
+            <div class="modal-cubes-layer" aria-hidden="true">
+                <div id="scan-help-cubes-container" class="modal-cubes-container metal-card-container" data-modal-cubes="1" data-anim="gol" data-pattern="cubes">
+                    <div class="metal-collector-card">
+                        <div class="metal-card-ambient"></div>
+                        <div class="metal-card-pattern"></div>
+                        <div class="metal-card-glow"></div>
+                        <div class="metal-card-glow metal-card-glow-2"></div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Drag handle -->
             <div id="scan-help-handle"
@@ -4156,22 +4374,22 @@
             setTimeout(() => svg.classList.remove(animClass), 700);
         }
     </script>
-    <script src="i18n.js?v=182"></script>
+    <script src="i18n.js?v=187"></script>
     <script src="js/theme.js?v=1"></script>
-    <script src="js/config.js?v=181"></script>
+    <script src="js/config.js?v=185"></script>
     <script src="js/auth.js?v=181"></script>
     <script src="js/navigation.js?v=183"></script>
     <script src="js/dex.js?v=181"></script>
-    <script src="js/rating.js?v=183"></script>
+    <script src="js/rating.js?v=186"></script>
     <script src="js/admin.js?v=181"></script>
     <script src="js/social.js?v=183"></script>
-    <script src="js/usage.js?v=181"></script>
+    <script src="js/usage.js?v=184"></script>
     <script src="js/ean-scanner.js?v=1"></script>
-    <script src="js/scanner.js?v=184"></script>
-    <script src="js/settings.js?v=185"></script>
+    <script src="js/scanner.js?v=185"></script>
+    <script src="js/settings.js?v=191"></script>
     <script src="js/passcode.js?v=2"></script>
     <script src="js/profile.js?v=185"></script>
-    <script src="js/scans.js?v=181"></script>
+    <script src="js/scans.js?v=182"></script>
     <script src="js/suggestions.js?v=181"></script>
     <script src="js/version.js?v=181"></script>
     <script src="js/dex-scroll.js?v=181"></script>

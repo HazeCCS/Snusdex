@@ -109,6 +109,7 @@ function openAllScansModal() {
 
         card.classList.remove('translate-y-full');
         card.classList.add('translate-y-0');
+        if (typeof initModalCubes === 'function') initModalCubes('all-scans-cubes-container');
     }, 10);
 }
 

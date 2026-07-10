@@ -89,6 +89,7 @@ async function openScanModal(onReady) {
 
         scanModalCard.classList.remove('translate-y-full');
         scanModalCard.classList.add('translate-y-0');
+        if (typeof initModalCubes === 'function') initModalCubes('scan-modal-cubes-container');
     }, 10);
 
     setTimeout(() => {
@@ -695,6 +696,7 @@ function openScanHelpModal() {
         backdrop.classList.add('opacity-100');
         card.style.transition = 'transform 0.4s cubic-bezier(0.32,0.72,0,1)';
         card.style.transform = 'translateY(0)';
+        if (typeof initModalCubes === 'function') initModalCubes('scan-help-cubes-container');
     }, 10);
     initScanHelpGestures();
 }

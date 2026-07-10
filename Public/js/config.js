@@ -153,9 +153,9 @@ const CardCanvasRenderer = {
                     peak.ty = Math.random() * rect.height;
                 });
 
-                const cellSize = 8;
-                const gap = 2;
-                const margin = 10;
+                const cellSize = appearance.cubeCellSize || 8;
+                const gap = appearance.cubeGap || 2;
+                const margin = appearance.cubeMargin || 10;
                 const availW = state.width - 2 * margin;
                 const availH = state.height - 2 * margin;
                 const newCols = Math.max(4, Math.floor((availW + gap) / (cellSize + gap)));
@@ -258,9 +258,9 @@ const CardCanvasRenderer = {
             const anim = appearance.anim || 'sweep';
             const pattern = appearance.pattern || 'none';
             if (anim === 'firework' && pattern === 'cubes') {
-                const cellSize = 8;
-                const gap = 2;
-                const margin = 10;
+                const cellSize = appearance.cubeCellSize || 8;
+                const gap = appearance.cubeGap || 2;
+                const margin = appearance.cubeMargin || 10;
                 const availW = state.width - 2 * margin;
                 const availH = state.height - 2 * margin;
                 const gridW = state.cols * cellSize + (state.cols - 1) * gap;
@@ -345,7 +345,7 @@ const CardCanvasRenderer = {
             ctx.roundRect(0, 0, state.width, state.height, 24);
             ctx.clip();
 
-            if (pattern === 'cubes') {
+            if (pattern === 'cubes' && !appearance.transparentBackground) {
                 ctx.fillStyle = '#000000';
                 ctx.fillRect(0, 0, state.width, state.height);
             }
@@ -512,9 +512,9 @@ const CardCanvasRenderer = {
             }
 
             if (pattern === 'cubes') {
-                const cellSize = 8;
-                const gap = 2;
-                const margin = 10;
+                const cellSize = appearance.cubeCellSize || 8;
+                const gap = appearance.cubeGap || 2;
+                const margin = appearance.cubeMargin || 10;
                 const availW = state.width - 2 * margin;
                 const availH = state.height - 2 * margin;
                 const gridW = state.cols * cellSize + (state.cols - 1) * gap;
@@ -656,7 +656,7 @@ const CardCanvasRenderer = {
                             const op = Math.min(0.95, baseOp + Math.pow(f, 0.75) * intensity * 0.88);
                             ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${op})`;
                         } else {
-                            const baseOpacity = 0.06;
+                            const baseOpacity = appearance.cubeBaseOpacity ?? 0.06;
                             let op = Math.min(0.95, baseOpacity + f * intensity * 0.22);
                             if (isSparkling) {
                                 if (Math.random() < 0.45) {
@@ -873,6 +873,36 @@ function applyCardAppearance(container, appearance) {
         CardCanvasRenderer.destroy(container);
     }
 }
+
+function initModalCubes(containerId, options = {}) {
+    const initOne = (container) => {
+        if (!container || typeof applyCardAppearance !== 'function') return;
+        applyCardAppearance(container, {
+            colorHex: options.colorHex || '#8E8E93',
+            anim: 'gol',
+            pattern: 'cubes',
+            intensity: '0.65',
+            saturation: '1',
+            cubeCellSize: 11,
+            cubeGap: 3,
+            cubeMargin: 8,
+            cubeBaseOpacity: 0,
+            transparentBackground: true
+        });
+    };
+
+    const run = () => {
+        if (containerId) {
+            initOne(document.getElementById(containerId));
+            return;
+        }
+        document.querySelectorAll('[data-modal-cubes="1"]').forEach(initOne);
+    };
+
+    requestAnimationFrame(() => requestAnimationFrame(run));
+}
+
+window.initModalCubes = initModalCubes;
 
 document.addEventListener('DOMContentLoaded', () => {
     const video  = document.getElementById('splash-video');
