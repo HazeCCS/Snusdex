@@ -853,10 +853,7 @@ window.closeLegalityModal = function () {
 
 window.confirmLegalityRedirect = function () {
     if (pendingRedirectUrl) {
-
-        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.openExternal) {
-            window.webkit.messageHandlers.openExternal.postMessage({ url: pendingRedirectUrl });
-        } else {
+        if (!window.SDXBridge.openExternal(pendingRedirectUrl, 'external')) {
             window.open(pendingRedirectUrl, '_blank');
         }
     }
