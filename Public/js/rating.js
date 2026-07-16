@@ -435,6 +435,7 @@ function openSnusDetail(id, isFromScan = false) {
 
     const rarity = (snus.rarity || 'Common').trim();
     const rarityLower = rarity.toLowerCase();
+    const rarityColor = getComputedStyle(document.documentElement).getPropertyValue(`--${rarityLower}`).trim() || '#8E8E93';
     const nicotine = snus.nicotine || '??';
 
     const isUnlocked = globalUserCollection[snusId];
@@ -531,6 +532,7 @@ function openSnusDetail(id, isFromScan = false) {
 
             card.classList.remove('translate-y-full');
             card.classList.add('translate-y-0');
+            if (typeof initModalCubes === 'function') initModalCubes('snus-modal-cubes-container', { colorHex: rarityColor });
         }, 10);
     }
 

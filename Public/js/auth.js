@@ -71,22 +71,13 @@ async function checkUser() {
 
         if (session) {
 
+            localStorage.setItem('hasCompletedOnboarding', 'true');
+
             const hasUsername = session.user.user_metadata?.username;
 
             if (!hasUsername) {
-                const usernameView = document.getElementById('auth-username-view');
-                if (!usernameView) {
-                    console.error("HTML element 'auth-username-view' missing!");
-                    return;
-                }
-
-                document.getElementById('auth-card')?.classList.remove('hidden');
-                document.getElementById('email-check-screen')?.classList.add('hidden');
-
-                document.getElementById('auth-main-view')?.classList.add('hidden');
-                document.getElementById('auth-verify-view')?.classList.add('hidden');
-                usernameView.classList.remove('hidden');
                 if (document.getElementById('auth-subtitle')) document.getElementById('auth-subtitle').innerText = t('auth.almostThere');
+                if (typeof Onboarding !== 'undefined') Onboarding.enterOAuthFlow();
                 return;
             }
 
@@ -131,6 +122,9 @@ async function checkUser() {
             updateGreeting();
         } else {
             overlay.classList.remove('hidden', 'opacity-0');
+            if (!localStorage.getItem('hasCompletedOnboarding') && typeof Onboarding !== 'undefined') {
+                Onboarding.showStart();
+            }
         }
     } catch (err) {
         console.error("Session check failed:", err);
@@ -249,9 +243,6 @@ function updatePwChecklist(pw) {
     _pwReqs.forEach(req => setPwReqMet(req.id, req.test(pw)));
 }
 
-// Reuses the exact same expand/collapse timing as the register/login switch
-// animation (defined below) so both read as one consistent motion, instead of
-// this checklist just fading at its own, different-length pace.
 function showPwChecklist() {
     if (isLoginMode) return;
     expandAuthBlock(document.getElementById('auth-pw-checklist'));
@@ -269,151 +260,14 @@ window.onPwFocus = function() {
     if (pw) updatePwChecklist(pw.value);
 };
 
-function showUsernameError(msg) {
-    const group = document.getElementById('auth-username-group');
-    if (group) group.style.borderColor = 'rgba(255,59,48,0.5)';
-    const el = document.getElementById('auth-username-error');
-    if (!el) return;
-    el.textContent = msg;
-    if (!el.classList.contains('hidden')) return;
-    el.classList.remove('hidden');
-    el.style.transition = 'none';
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(-4px)';
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-            el.style.opacity = '1';
-            el.style.transform = 'translateY(0)';
-        });
-    });
-}
-
-function hideUsernameError() {
-    const group = document.getElementById('auth-username-group');
-    if (group) group.style.borderColor = '';
-    const el = document.getElementById('auth-username-error');
-    if (!el || el.classList.contains('hidden')) return;
-    el.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(-4px)';
-    setTimeout(() => el.classList.add('hidden'), 180);
-}
-window.hideUsernameError = hideUsernameError;
-
 function checkAndHideAllFieldsError() {
     const email    = (document.getElementById('auth-email')?.value    || '').trim();
     const password = (document.getElementById('auth-password')?.value || '');
-    const username = !isLoginMode
-        ? (document.getElementById('auth-username')?.value || '').trim()
-        : 'ok';
-    const birthdate = !isLoginMode
-        ? (document.getElementById('auth-birthdate')?.value || '')
-        : 'ok';
-    if (email && password && username && birthdate) {
+    if (email && password) {
         hideAuthFieldError('auth-error');
-        hideBirthdateError();
     }
 }
 window.checkAndHideAllFieldsError = checkAndHideAllFieldsError;
-
-function showBirthdateError(msg) {
-    const group = document.getElementById('auth-birthdate-group');
-    if (group) group.style.borderColor = 'rgba(255,59,48,0.5)';
-    const el = document.getElementById('auth-birthdate-error');
-    if (!el) return;
-    el.textContent = msg;
-    if (!el.classList.contains('hidden')) return;
-    el.classList.remove('hidden');
-    el.style.transition = 'none';
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(-4px)';
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            el.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-            el.style.opacity = '1';
-            el.style.transform = 'translateY(0)';
-        });
-    });
-}
-
-function hideBirthdateError() {
-    const group = document.getElementById('auth-birthdate-group');
-    if (group) group.style.borderColor = '';
-    const el = document.getElementById('auth-birthdate-error');
-    if (!el || el.classList.contains('hidden')) return;
-    el.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(-4px)';
-    setTimeout(() => el.classList.add('hidden'), 180);
-}
-window.hideBirthdateError = hideBirthdateError;
-
-function hideSetupBirthdateError() {
-    hideAuthFieldError('setup-username-error');
-}
-window.hideSetupBirthdateError = hideSetupBirthdateError;
-
-async function saveSetupUsername() {
-    const usernameInput = document.getElementById('setup-username').value.trim();
-    const birthdateInput = document.getElementById('setup-birthdate').value;
-    const btn = document.getElementById('setup-username-btn');
-
-    if (!usernameInput) {
-        showAuthFieldError('setup-username-error', 'setup-username-error-msg', t('auth.enterUsername'));
-        return;
-    }
-
-    const usernameRegex = /^[a-zA-Z0-9_]{2,30}$/;
-    if (!usernameRegex.test(usernameInput)) {
-        showAuthFieldError('setup-username-error', 'setup-username-error-msg', t('auth.usernameFormat'));
-        return;
-    }
-
-    if (!birthdateInput) {
-        showAuthFieldError('setup-username-error', 'setup-username-error-msg', t('auth.birthdateRequired'));
-        return;
-    }
-
-    const birthDateObj = new Date(birthdateInput);
-    const today = new Date();
-    let age = today.getFullYear() - birthDateObj.getFullYear();
-    const m = today.getMonth() - birthDateObj.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
-        age--;
-    }
-
-    if (age < 18) {
-        showAuthFieldError('setup-username-error', 'setup-username-error-msg', t('auth.underage'));
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerText = t('editProfile.saving');
-
-    try {
-        const { error: updateError } = await supabaseClient.auth.updateUser({
-            data: {
-                username: usernameInput,
-                birthdate: birthdateInput
-            }
-        });
-        if (updateError) throw updateError;
-
-        const { data: userData } = await supabaseClient.auth.getUser();
-        if (userData?.user) {
-            await supabaseClient.from('profiles').update({ username: usernameInput }).eq('id', userData.user.id);
-            await supabaseClient.from('user_ages').upsert({ user_id: userData.user.id, birthdate: birthdateInput });
-        }
-
-        hideAuthFieldError('setup-username-error');
-        checkUser();
-    } catch (error) {
-        showAuthFieldError('setup-username-error', 'setup-username-error-msg', error.message);
-        btn.disabled = false;
-        btn.innerText = t('auth.continue');
-    }
-}
 
 async function handleLogout(btn) {
     if (btn) {
@@ -539,11 +393,6 @@ function collapseAuthBlock(el, delay, onDone) {
     }, (delay * 1000) + AUTH_COLLAPSE_MS + 20);
 }
 
-// Typewriter effect for the subtitle under the SNUSDEX logo: erases whatever
-// is currently showing character-by-character, then types the new text back
-// in, with a blinking cursor for the duration. Re-entrant safe — calling it
-// again mid-animation (e.g. rapid toggle clicks) just continues from
-// whatever partial text is on screen instead of garbling it.
 let _subtitleTypeTimer = null;
 
 function typewriteSubtitle(el, text) {
@@ -589,7 +438,6 @@ function typewriteSubtitle(el, text) {
 function toggleAuthMode() {
     isLoginMode = !isLoginMode;
 
-    const registerFields = document.getElementById('register-fields');
     const registerConfirmWrap = document.getElementById('register-confirm-wrap');
     const subtitle = document.getElementById('auth-subtitle');
     const mainBtn = document.getElementById('auth-main-btn');
@@ -601,10 +449,8 @@ function toggleAuthMode() {
     hideAuthFieldError('auth-error');
     hidePwGroupError();
     hidePwChecklist();
-    hideUsernameError();
 
     if (isLoginMode) {
-        collapseAuthBlock(registerFields);
         collapseAuthBlock(registerConfirmWrap, 0.05);
         subtitle.setAttribute('data-i18n', 'auth.welcomeBack');
         typewriteSubtitle(subtitle, t('auth.welcomeBack'));
@@ -613,9 +459,9 @@ function toggleAuthMode() {
         if (toggleBtnText) toggleBtnText.innerText = t('auth.register');
         if (googleBtnText) googleBtnText.innerText = t('auth.signInWithGoogle');
         if (appleBtnText) appleBtnText.innerText = t('auth.signInWithApple');
+        if (typeof _hideProgress === 'function') _hideProgress();
     } else {
         expandAuthBlock(registerConfirmWrap);
-        expandAuthBlock(registerFields, 0.06);
         subtitle.setAttribute('data-i18n', 'auth.createAccount');
         typewriteSubtitle(subtitle, t('auth.createAccount'));
         mainBtn.innerText = t('auth.register');
@@ -623,6 +469,7 @@ function toggleAuthMode() {
         if (toggleBtnText) toggleBtnText.innerText = t('auth.signIn');
         if (googleBtnText) googleBtnText.innerText = t('auth.registerWithGoogle');
         if (appleBtnText) appleBtnText.innerText = t('auth.registerWithApple');
+        if (typeof _updateProgress === 'function') _updateProgress(0, 4);
     }
 }
 
@@ -656,49 +503,7 @@ async function handleLoginWrapper() {
         }
     } else {
 
-        const username = document.getElementById('auth-username').value.trim();
         const passwordConfirm = document.getElementById('auth-password-confirm').value;
-        const birthdate = document.getElementById('auth-birthdate').value;
-
-        if (!username) {
-            showAuthFieldError('auth-error', 'auth-error-msg', t('auth.fillAllFields'));
-            mainBtn.disabled = false;
-            mainBtn.innerText = t('auth.register');
-            return;
-        }
-        if (!/^[a-zA-Z0-9_]{2,30}$/.test(username)) {
-            showUsernameError(t('auth.usernameFormat'));
-            mainBtn.disabled = false;
-            mainBtn.innerText = t('auth.register');
-            return;
-        }
-
-        if (!birthdate) {
-            const birthGroup = document.getElementById('auth-birthdate-group');
-            if (birthGroup) birthGroup.style.borderColor = 'rgba(255,59,48,0.5)';
-            showBirthdateError(t('auth.birthdateRequired'));
-            mainBtn.disabled = false;
-            mainBtn.innerText = t('auth.register');
-            return;
-        }
-
-        const birthDateObj = new Date(birthdate);
-        const today = new Date();
-        let age = today.getFullYear() - birthDateObj.getFullYear();
-        const m = today.getMonth() - birthDateObj.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
-            age--;
-        }
-
-        if (age < 18) {
-            const birthGroup = document.getElementById('auth-birthdate-group');
-            if (birthGroup) birthGroup.style.borderColor = 'rgba(255,59,48,0.5)';
-            showBirthdateError(t('auth.underage'));
-            mainBtn.disabled = false;
-            mainBtn.innerText = t('auth.register');
-            return;
-        }
-        hideBirthdateError();
 
         const unmetReqs = _pwReqs.filter(req => !req.test(password));
         if (unmetReqs.length > 0) {
@@ -724,43 +529,13 @@ async function handleLoginWrapper() {
         }
 
         hidePwGroupError();
-
-        const { data, error } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password,
-            options: { data: { username: username, birthdate: birthdate } }
-        });
-
-        if (error) {
-            showAuthFieldError('auth-error', 'auth-error-msg',
-                error.message.includes('already registered')
-                    ? t('auth.emailInUse')
-                    : error.message
-            );
-            triggerHapticFeedback();
-            mainBtn.disabled = false;
-            mainBtn.innerText = t('auth.register');
-        } else {
-            showEmailCheckScreen(email);
-            mainBtn.disabled = false;
-            mainBtn.innerText = t('auth.register');
-        }
+        mainBtn.disabled = false;
+        mainBtn.innerText = t('auth.register');
+        Onboarding.goToBirthdateStep({ email, password });
     }
 }
 
-function showEmailCheckScreen(email) {
-    const authCard = document.getElementById('auth-card');
-    const emailCheckScreen = document.getElementById('email-check-screen');
-    const emailAddressEl = document.getElementById('email-check-address');
-
-    if (emailAddressEl) emailAddressEl.innerText = email;
-    if (authCard) authCard.classList.add('hidden');
-    if (emailCheckScreen) emailCheckScreen.classList.remove('hidden');
-}
-
 function goToSignInFromEmailCheck() {
-    const authCard = document.getElementById('auth-card');
-    const emailCheckScreen = document.getElementById('email-check-screen');
     const emailInput = document.getElementById('auth-email');
     const emailAddressEl = document.getElementById('email-check-address');
 
@@ -768,10 +543,7 @@ function goToSignInFromEmailCheck() {
         emailInput.value = emailAddressEl.innerText;
     }
 
-    if (!isLoginMode) toggleAuthMode();
-
-    if (emailCheckScreen) emailCheckScreen.classList.add('hidden');
-    if (authCard) authCard.classList.remove('hidden');
+    Onboarding.goToSignIn('back');
 }
 
 function handleCodeVerification() {

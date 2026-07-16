@@ -162,16 +162,19 @@ document.addEventListener('keydown', (e) => {
         if (activeEl && activeEl.tagName === 'INPUT' && authOverlay && authOverlay.contains(activeEl)) {
             e.preventDefault();
 
-            const usernameView = document.getElementById('auth-username-view');
             const verifyView = document.getElementById('auth-verify-view');
             const mainView = document.getElementById('auth-main-view');
+            const birthdateView = document.getElementById('onboarding-birthdate-view');
+            const setupView = document.getElementById('onboarding-setup-view');
 
-            if (usernameView && !usernameView.classList.contains('hidden')) {
-                if (typeof saveSetupUsername === 'function') saveSetupUsername();
-            } else if (verifyView && !verifyView.classList.contains('hidden')) {
+            if (verifyView && !verifyView.classList.contains('hidden')) {
                 if (typeof handleCodeVerification === 'function') handleCodeVerification();
             } else if (mainView && !mainView.classList.contains('hidden')) {
                 if (typeof handleLoginWrapper === 'function') handleLoginWrapper();
+            } else if (birthdateView && !birthdateView.classList.contains('hidden')) {
+                if (typeof Onboarding !== 'undefined') Onboarding.submitBirthdate();
+            } else if (setupView && !setupView.classList.contains('hidden')) {
+                if (typeof Onboarding !== 'undefined') Onboarding.nextSetupStep();
             }
         }
     }

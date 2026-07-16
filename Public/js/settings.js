@@ -125,6 +125,153 @@ async function exportUserData() {
     }
 }
 
+const DELETE_ACCOUNT_WAIT_SECONDS = 10;
+let deleteAccountCountdownTimer = null;
+
+function setDeleteAccountError(message) {
+    const errEl = document.getElementById('delete-account-error');
+    if (!errEl) return;
+    errEl.textContent = message;
+    errEl.classList.remove('hidden');
+}
+
+function clearDeleteAccountTimer() {
+    if (deleteAccountCountdownTimer) {
+        clearInterval(deleteAccountCountdownTimer);
+        deleteAccountCountdownTimer = null;
+    }
+}
+
+function clearDeletedAccountLocalState() {
+    const keysToRemove = [
+        'cached_badges',
+        'cached_user_badges',
+        'cached_badge_progress',
+        'creatorCodesRedeemed',
+        'creatorUnlockedAnimations',
+        'dexFavoriteBrands',
+        'dexFavoriteSnus',
+        'lastTrackedDate',
+        'streakCount',
+        'metalCardColorId',
+        'metalCardColorHex',
+        'metalCardFont',
+        'metalCardAnim',
+        'metalCardSaturation',
+        'metalCardPattern',
+        'metalCardIntensity',
+        'snusTrackingMode',
+        'mouTrackLastSide',
+        'mouTrackDailySide',
+        'scanAutoOpen',
+    ];
+
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('supporter_badge_shown_')) {
+            localStorage.removeItem(key);
+        }
+    }
+}
+
+function startDeleteAccountCountdown() {
+    clearDeleteAccountTimer();
+    const button = document.getElementById('delete-account-final-btn');
+    const label = document.getElementById('delete-account-countdown-label');
+    if (!button || !label) return;
+
+    let secondsLeft = DELETE_ACCOUNT_WAIT_SECONDS;
+
+    const updateCountdown = () => {
+        if (secondsLeft > 0) {
+            button.disabled = true;
+            button.style.backgroundColor = 'rgba(255,59,48,0.5)';
+            button.style.color = 'rgba(255,255,255,0.6)';
+            button.classList.remove('active:scale-95');
+            label.textContent = t('deleteAccount.waitConfirm', { seconds: secondsLeft });
+            return;
+        }
+
+        clearDeleteAccountTimer();
+        button.disabled = false;
+        button.style.backgroundColor = '#FF3B30';
+        button.style.color = '#FFFFFF';
+        button.classList.add('active:scale-95');
+        label.textContent = t('deleteAccount.confirmFinal');
+    };
+
+    updateCountdown();
+    deleteAccountCountdownTimer = setInterval(() => {
+        secondsLeft -= 1;
+        updateCountdown();
+    }, 1000);
+}
+
+async function extractFunctionError(error) {
+    if (error?.context) {
+        try {
+            const body = await error.context.json();
+            if (body?.error) return body.error;
+        } catch (_err) { }
+    }
+    return error?.message || t('deleteAccount.error');
+}
+
+async function handleDeleteAccount(btn) {
+    if (!btn || btn.disabled) return;
+
+    const errorEl = document.getElementById('delete-account-error');
+    if (errorEl) {
+        errorEl.textContent = '';
+        errorEl.classList.add('hidden');
+    }
+
+    btn.disabled = true;
+    btn.classList.add('opacity-80');
+    btn.innerHTML = `
+        <svg class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+        <span>${t('deleteAccount.deleting')}</span>
+    `;
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session?.access_token) throw new Error(t('deleteAccount.loginRequired'));
+
+        const { data, error } = await supabaseClient.functions.invoke('delete-account', {
+            method: 'POST',
+            body: { confirm: true },
+            headers: {
+                Authorization: `Bearer ${session.access_token}`,
+            },
+        });
+
+        if (error) {
+            throw new Error(await extractFunctionError(error));
+        }
+
+        if (!data?.success) {
+            throw new Error(data?.error || t('deleteAccount.error'));
+        }
+
+        clearDeletedAccountLocalState();
+        try {
+            await supabaseClient.auth.signOut();
+        } catch (_err) { }
+        window.location.reload();
+    } catch (err) {
+        console.error('Account deletion failed:', err);
+        setDeleteAccountError(err.message || t('deleteAccount.error'));
+        btn.disabled = false;
+        btn.classList.remove('opacity-80');
+        btn.innerHTML = `<span>${t('deleteAccount.confirmFinal')}</span>`;
+    }
+}
+
 function toggleAutoOpenOnScan(element) {
     toggleSetting(element);
     const isOn = element.classList.contains('bg-white');
@@ -142,6 +289,7 @@ function toggleTrackingMode(element) {
         preview.innerText = t(key);
     }
     renderActiveCansUI();
+    if (typeof renderMouTrackUI === 'function') renderMouTrackUI();
 }
 
 const _CARD_FONT_MAP = {
@@ -998,14 +1146,17 @@ function openSettingsSubpage(type, _pushHistory) {
     } else if (type === 'Delete Account') {
         html = `
             <div class="text-center mt-6 mb-8">
-                <div class="w-16 h-16 bg-[#FF3B30]/10 border border-[#FF3B30]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8 text-[#FF3B30]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <div class="w-16 h-16 bg-[#FF3B30]/10 border border-[#FF3B30]/20 rounded-[20px] flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-[#FF3B30]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.35">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.75v5.25m0 3.25h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
                 </div>
                 <h2 class="text-white text-[22px] font-bold tracking-tight mb-2">${t('deleteAccount.title')}</h2>
                 <p class="text-[#8E8E93] text-[15px] px-4 leading-relaxed">${t('deleteAccount.desc')}</p>
             </div>
-            <button onclick="triggerHapticFeedback()" class="w-full bg-[#FF3B30] text-white font-semibold text-[17px] py-4 rounded-[14px] active:scale-95 transition-transform mb-3 shadow-[0_4px_14px_rgba(255,59,48,0.2)]">
-                ${t('deleteAccount.confirm')}
+            <p id="delete-account-error" class="hidden text-[#FF453A] text-[13px] leading-snug text-center mb-4"></p>
+            <button id="delete-account-final-btn" onclick="triggerHapticFeedback(); handleDeleteAccount(this)" disabled class="w-full bg-[#FF3B30] text-white font-semibold text-[17px] py-4 rounded-[14px] transition-all mb-3 shadow-[0_4px_14px_rgba(255,59,48,0.2)]" style="background-color: rgba(255,59,48,0.5); color: rgba(255,255,255,0.6);">
+                <span id="delete-account-countdown-label">${t('deleteAccount.waitConfirm', { seconds: DELETE_ACCOUNT_WAIT_SECONDS })}</span>
             </button>
             <button onclick="triggerHapticFeedback(); closeSettingsSubpage()" class="w-full bg-[#1C1C1E] border border-white/10 text-white font-medium text-[17px] py-4 rounded-[14px] active:bg-white/5 transition-colors">
                 ${t('deleteAccount.cancel')}
@@ -1159,6 +1310,10 @@ function openSettingsSubpage(type, _pushHistory) {
 
     if (type === 'Edit Profile') {
         renderBadgeSelectorItems();
+    }
+
+    if (type === 'Delete Account') {
+        startDeleteAccountCountdown();
     }
 
     subpage.classList.remove('hidden');
@@ -1353,6 +1508,9 @@ function closeSettingsSubpage() {
     }
 
     const wasAppearancePage = window._currentSubpageType === 'Darstellung';
+    if (window._currentSubpageType === 'Delete Account') {
+        clearDeleteAccountTimer();
+    }
 
     window._subpageHistory = [];
     window._currentSubpageType = null;
