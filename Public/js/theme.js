@@ -11,7 +11,12 @@
         } catch (_) { return 'system'; }
     }
 
+    function isNative() {
+        return window.__SDX_NATIVE__ === true;
+    }
+
     function systemPrefersLight() {
+        if (isNative()) return window.__SDX_SYSTEM_THEME__ === 'light';
         return typeof window.matchMedia === 'function'
             && window.matchMedia('(prefers-color-scheme: light)').matches;
     }
@@ -71,19 +76,25 @@
     function getTheme()         { return getStored(); }
     function getResolvedTheme() { return resolve(getStored()); }
 
+    function onSystemThemeChanged() {
+        if (getStored() === 'system') {
+            const resolved = resolve('system');
+            apply(resolved);
+            document.dispatchEvent(new CustomEvent('themechange', {
+                detail: { preference: 'system', resolved }
+            }));
+        }
+    }
+
+    window.addEventListener('sdx-native-theme-change', (e) => {
+        window.__SDX_SYSTEM_THEME__ = (e.detail && e.detail.theme === 'light') ? 'light' : 'dark';
+        onSystemThemeChanged();
+    });
+
     if (typeof window.matchMedia === 'function') {
         const mql = window.matchMedia('(prefers-color-scheme: light)');
-        const onChange = () => {
-            if (getStored() === 'system') {
-                const resolved = resolve('system');
-                apply(resolved);
-                document.dispatchEvent(new CustomEvent('themechange', {
-                    detail: { preference: 'system', resolved }
-                }));
-            }
-        };
-        if (mql.addEventListener) mql.addEventListener('change', onChange);
-        else if (mql.addListener) mql.addListener(onChange);
+        if (mql.addEventListener) mql.addEventListener('change', onSystemThemeChanged);
+        else if (mql.addListener) mql.addListener(onSystemThemeChanged);
     }
 
     apply(resolve(getStored()));

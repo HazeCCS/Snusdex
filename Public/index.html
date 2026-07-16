@@ -18,7 +18,9 @@
                 var pref = localStorage.getItem('snusTheme');
                 if (pref !== 'light' && pref !== 'dark' && pref !== 'system') pref = 'system';
                 var resolved = pref === 'system'
-                    ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+                    ? (window.__SDX_NATIVE__ === true
+                        ? (window.__SDX_SYSTEM_THEME__ === 'light' ? 'light' : 'dark')
+                        : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'))
                     : pref;
                 document.documentElement.classList.add(resolved);
                 window.__SNUS_THEME_INIT__ = true;
@@ -1076,6 +1078,77 @@
         #auth-card {
             margin-top: auto;
             margin-bottom: auto;
+            position: relative;
+        }
+
+        /* Onboarding step screens (birthdate / setup / email-check) have too few
+           elements to look right auto-centered as one compact group — the user
+           asked for these specifically to use the full screen height: subtitle
+           near the top, input content in the middle, Next/Back pinned to the
+           bottom. #auth-card switches from "centered compact group" to "stretched
+           full-height column" only while .onboarding-active is set, so the plain
+           login/start screens (which already read fine compact+centered) are
+           untouched. */
+
+        @keyframes onbTogglePulse {
+            0% { transform: scale(1); }
+            45% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+        .onb-toggle-pulse {
+            animation: onbTogglePulse 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        #auth-content-zone.onboarding-active #auth-card {
+            margin-top: 0;
+            margin-bottom: 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* No hardcoded offset here on purpose — onboarding.js's _freezeLogoPosition()
+           measures wherever the auto-centered register form actually left the logo
+           on THIS device/screen and sets that as an inline margin-top right before
+           switching into stretch mode, so it holds that exact spot responsively
+           instead of snapping to a fixed value that'd only be correct on one
+           screen size. flex-shrink:0 just keeps it from being squeezed. */
+        #auth-content-zone.onboarding-active #auth-logo-header {
+            flex-shrink: 0;
+        }
+
+        .onboarding-step-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* flex-start (not center) — centering in the full remaining screen
+           height left a huge empty gap above AND below short content (e.g. the
+           birthdate-only step). A fixed top offset instead keeps content in the
+           upper-middle area regardless of how much of it there is, so any extra
+           space naturally collects just above the bottom-pinned buttons. */
+        .onboarding-step-view > .onboarding-step-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding-top: 6vh;
+        }
+
+        .onboarding-step-view > .onboarding-step-actions {
+            margin-top: auto;
+            padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+        }
+
+        /* Progress bar always sits at the true top edge of the screen, independent
+           of whichever view/centering mode #auth-card is currently in. */
+        #onboarding-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 3;
+            padding: max(16px, env(safe-area-inset-top, 0px)) 24px 0;
         }
 
         /* Blinking caret shown on #auth-subtitle while it's being typewritten */
@@ -1372,6 +1445,9 @@
             <div id="auth-wave-fade"></div>
         </div>
 
+        <!-- ─── ONBOARDING PROGRESS — pinned to the true top edge of the screen ─── -->
+        <div id="onboarding-progress" class="hidden flex gap-1.5"></div>
+
         <!-- ═══════════════════════════════════════════════════ -->
         <!-- LOGIN / REGISTER UI — lower two-thirds             -->
         <!-- ═══════════════════════════════════════════════════ -->
@@ -1386,6 +1462,47 @@
                 </div>
                 <p id="auth-subtitle" class="text-white mt-3" style="font-size:20px" data-i18n="auth.welcomeBack">Welcome back
                 </p>
+            </div>
+
+            <!-- ─── START VIEW (Anmelden vs. Konto erstellen) ─── -->
+            <div id="onboarding-start-view" class="hidden transition-all duration-300 px-8 pb-8">
+                <p class="text-white/80 text-[15px] text-center mb-6 leading-relaxed" data-i18n="onboarding.haveAccountQuestion">
+                    Do you already have an account?
+                </p>
+
+                <div class="space-y-2 mb-5">
+                    <button id="onboarding-google-btn" onclick="signInWithGoogle()"
+                        class="w-full flex items-center justify-center gap-2 bg-white text-black font-semibold text-[15px] py-3 rounded-2xl active:scale-95 transition-transform">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24">
+                            <path fill="#4285F4"
+                                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                            <path fill="#34A853"
+                                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                            <path fill="#FBBC05"
+                                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                            <path fill="#EA4335"
+                                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                        </svg>
+                        <span data-i18n="auth.signInWithGoogle">Sign in with Google</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center mb-4">
+                    <hr class="flex-grow border-white/10">
+                    <span class="px-3 text-white/30 text-[12px] uppercase tracking-wider" data-i18n="auth.or">or</span>
+                    <hr class="flex-grow border-white/10">
+                </div>
+
+                <button id="onboarding-signin-btn" onclick="triggerHapticFeedback(); Onboarding.goToSignIn('forward')"
+                    class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-2xl active:scale-95 transition-transform mb-3"
+                    data-i18n="onboarding.signInCta">
+                    Sign In
+                </button>
+                <button id="onboarding-register-btn" onclick="triggerHapticFeedback(); Onboarding.goToRegister()"
+                    class="w-full border border-white/15 text-white font-semibold text-[17px] py-4 rounded-2xl active:scale-95 transition-transform hover:bg-white/5"
+                    data-i18n="onboarding.createAccountCta">
+                    Create Account
+                </button>
             </div>
 
             <!-- ─── MAIN VIEW (Login + Register) ─── -->
@@ -1528,32 +1645,6 @@
                     </div>
                 </div>
 
-                <!-- ── Username & Birthdate (Register only) ── -->
-                <div id="register-fields" class="hidden space-y-3 mb-3">
-                    <div id="auth-username-group"
-                        class="rounded-2xl overflow-hidden border border-white/10 bg-black focus-within:border-white/30 focus-within:bg-white/[0.01] transition-all duration-200"
-                        style="transition:border-color 0.2s ease">
-                        <input type="text" id="auth-username" placeholder="Username"
-                            data-i18n-placeholder="auth.usernamePlaceholder"
-                            class="w-full bg-transparent text-white px-4 py-[15px] text-[17px] focus:outline-none transition-all block"
-                            oninput="hideUsernameError(); checkAndHideAllFieldsError()">
-                    </div>
-                    <p id="auth-username-error" class="hidden text-[#FF3B30] text-[13px] font-medium pl-1 -mt-1 mb-2"
-                        style="opacity:0;transform:translateY(-4px)"></p>
-
-                    <div id="auth-birthdate-group"
-                        class="rounded-2xl overflow-hidden border border-white/10 bg-black focus-within:border-white/30 focus-within:bg-white/[0.01] transition-all duration-200"
-                        style="transition:border-color 0.2s ease">
-                        <input type="text" id="auth-birthdate" placeholder="Birthdate"
-                            data-i18n-placeholder="auth.birthdateLabel" onfocus="(this.type='date')"
-                            onblur="if(!this.value) this.type='text'"
-                            class="w-full bg-transparent text-white px-4 py-[15px] text-[17px] focus:outline-none block"
-                            oninput="hideBirthdateError(); checkAndHideAllFieldsError()">
-                    </div>
-                    <p id="auth-birthdate-error" class="hidden text-[#FF3B30] text-[13px] font-medium pl-1 -mt-1 mb-2"
-                        style="opacity:0;transform:translateY(-4px)"></p>
-                </div>
-
                 <!-- Main CTA button -->
                 <button id="auth-main-btn" onclick="handleLoginWrapper()"
                     class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-2xl active:scale-95 transition-transform mt-1"
@@ -1611,89 +1702,86 @@
                 </div>
             </div>
 
-            <!-- ─── USERNAME SETUP VIEW (after Google login) ─── -->
-            <div id="auth-username-view" class="hidden transition-all duration-300 px-8 pb-8">
-                <p class="text-white/80 text-[15px] text-center mb-6 leading-relaxed"
-                    data-i18n="auth.chooseUsernameDesc">
-                    Choose your Dex username.
-                </p>
-                <div class="space-y-4">
-                    <input type="text" id="setup-username" placeholder="Username"
-                        data-i18n-placeholder="auth.usernamePlaceholder"
-                        class="w-full bg-black border border-white/10 text-white rounded-2xl px-4 py-4 text-[17px] text-center focus:border-white/30 focus:bg-white/[0.01] outline-none transition-all">
-
-                    <div id="setup-birthdate-group"
-                        class="rounded-2xl overflow-hidden border border-white/10 bg-black focus-within:border-white/30 focus-within:bg-white/[0.01] transition-all duration-200"
+            <!-- ─── ONBOARDING: BIRTHDATE STEP ─── -->
+            <div id="onboarding-birthdate-view" class="hidden onboarding-step-view px-8 pb-8">
+                <div class="onboarding-step-body">
+                    <p class="text-white/80 text-[15px] text-center mb-6 leading-relaxed" data-i18n="onboarding.birthdateTitle">
+                        When were you born?
+                    </p>
+                    <div id="onboarding-birthdate-group"
+                        class="rounded-2xl overflow-hidden border border-white/10 bg-black focus-within:border-white/30 focus-within:bg-white/[0.01] transition-all duration-200 mb-1"
                         style="transition:border-color 0.2s ease">
-                        <input type="text" id="setup-birthdate" placeholder="Birthdate"
+                        <input type="text" id="onboarding-birthdate" placeholder="Birthdate"
                             data-i18n-placeholder="auth.birthdateLabel" onfocus="(this.type='date')"
                             onblur="if(!this.value) this.type='text'"
-                            class="w-full bg-transparent text-white px-4 py-4 text-[17px] focus:outline-none block"
-                            oninput="hideSetupBirthdateError()">
+                            class="w-full bg-transparent text-white px-4 py-4 text-[17px] text-center focus:outline-none block"
+                            oninput="Onboarding.hideBirthdateError()">
                     </div>
-                    <p id="setup-birthdate-error"
-                        class="hidden text-[#FF3B30] text-[13px] font-medium pl-1 mt-1 mb-1 text-center"
+                    <p id="onboarding-birthdate-error" class="hidden text-[#FF3B30] text-[13px] font-medium pl-1 mt-1 mb-1 text-center"
                         style="opacity:0;transform:translateY(-4px)"></p>
-
-                    <button id="setup-username-btn" onclick="triggerHapticFeedback(); saveSetupUsername()"
-                        class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-2xl active:scale-95 transition-transform mt-2">
-                        Continue
+                </div>
+                <div class="onboarding-step-actions">
+                    <button onclick="triggerHapticFeedback(); Onboarding.submitBirthdate()"
+                        class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-2xl active:scale-95 transition-transform"
+                        data-i18n="onboarding.next">
+                        Next
                     </button>
-                    <div id="setup-username-error" class="hidden overflow-hidden" style="max-height:0;opacity:0">
-                        <div
-                            class="flex items-center gap-3 px-4 py-3 bg-[#FF3B30]/10 border border-[#FF3B30]/25 rounded-[14px] mt-3">
-                            <svg class="w-[18px] h-[18px] text-[#FF3B30] flex-shrink-0" fill="currentColor"
-                                viewBox="0 0 20 20">
+                    <button id="onboarding-birthdate-back-btn" onclick="triggerHapticFeedback(); Onboarding.goToRegister('back')"
+                        class="w-full text-white/50 hover:text-white text-sm py-3 transition-colors outline-none mt-1"
+                        data-i18n="onboarding.back">
+                        Back
+                    </button>
+                </div>
+            </div>
+
+            <!-- ─── ONBOARDING: SETUP STEPS (Pouch-Tracking + Erscheinungsbild / Anzeigename) ─── -->
+            <div id="onboarding-setup-view" class="hidden onboarding-step-view px-8 pb-8">
+                <div class="onboarding-step-body">
+                    <div id="onboarding-setup-content"></div>
+                    <div id="onboarding-setup-error" class="hidden overflow-hidden" style="max-height:0;opacity:0">
+                        <div class="flex items-center gap-3 px-4 py-3 bg-[#FF3B30]/10 border border-[#FF3B30]/25 rounded-[14px] mt-3">
+                            <svg class="w-[18px] h-[18px] text-[#FF3B30] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd"
                                     d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
                                     clip-rule="evenodd" />
                             </svg>
-                            <span id="setup-username-error-msg"
-                                class="text-[#FF3B30] text-[14px] font-medium leading-snug flex-1 text-left"></span>
+                            <span id="onboarding-setup-error-msg" class="text-[#FF3B30] text-[14px] font-medium leading-snug flex-1 text-left"></span>
                         </div>
                     </div>
                 </div>
+                <div class="onboarding-step-actions">
+                    <button id="onboarding-setup-next-btn" onclick="triggerHapticFeedback(); Onboarding.nextSetupStep()"
+                        class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-2xl active:scale-95 transition-transform"
+                        data-i18n="onboarding.next">
+                        Next
+                    </button>
+                    <button id="onboarding-setup-back-btn" onclick="triggerHapticFeedback(); Onboarding.prevSetupStep()"
+                        class="w-full text-white/50 hover:text-white text-sm py-3 transition-colors outline-none mt-1"
+                        data-i18n="onboarding.back">
+                        Back
+                    </button>
+                </div>
             </div>
 
-        </div>
-        </div>
-
-        <!-- ═══════════════════════════════════════════════════ -->
-        <!-- EMAIL VERIFICATION SCREEN (after sign-up)         -->
-        <!-- ═══════════════════════════════════════════════════ -->
-        <div id="email-check-screen" class="hidden absolute inset-0 flex items-center justify-center p-6">
-            <div class="w-full max-w-sm bg-[#1C1C1E] rounded-[32px] shadow-2xl border border-white/10 overflow-hidden">
-                <!-- Logo -->
-                <div class="pt-10 pb-4 px-8 text-center">
-                    <div class="inline-flex items-baseline gap-[2px]">
-                        <span
-                            style="font-family: 'Inter', sans-serif; font-weight: 800; font-size: 40px; letter-spacing: -1.5px; color: var(--app-fg); line-height: 1;">SNUSDEX®</span>
-                    </div>
-                </div>
-
-                <!-- Envelope icon -->
-                <div class="flex justify-center py-6">
-                    <div
-                        class="w-20 h-20 rounded-full bg-white/8 border border-white/10 flex items-center justify-center">
-                        <svg class="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                            stroke-width="1.5">
+            <!-- ─── ONBOARDING: EMAIL CHECK (post sign-up) — plain in-flow view, same wave background as the rest of the flow ─── -->
+            <div id="onboarding-emailcheck-view" class="hidden onboarding-step-view px-8 pb-8">
+                <div class="onboarding-step-body items-center text-center">
+                    <div class="w-20 h-20 rounded-full bg-white/8 border border-white/10 flex items-center justify-center mb-6">
+                        <svg class="w-9 h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                             <path stroke-linecap="round" stroke-linejoin="round"
                                 d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
                         </svg>
                     </div>
-                </div>
-
-                <div class="px-8 pb-8">
-                    <h2 class="text-[22px] font-bold text-white text-center mb-2 tracking-tight"
-                        data-i18n="auth.checkEmail">Check your email</h2>
-                    <p class="text-white/50 text-[14px] text-center leading-relaxed mb-6">
-                        <span id="auth-email-sent-desc" data-i18n="auth.emailSent">We sent a verification link
-                            to:</span>
+                    <h2 class="text-[22px] font-bold text-white mb-2 tracking-tight" data-i18n="auth.checkEmail">Check your email</h2>
+                    <p class="text-white/50 text-[14px] leading-relaxed mb-2 px-2">
+                        <span id="auth-email-sent-desc" data-i18n="auth.emailSent">We sent a verification link to:</span>
                         <span id="email-check-address" class="text-white font-semibold"></span>.
-                        Open the email and tap the link to activate your account.
                     </p>
-
-                    <!-- Open Mail app -->
+                    <p class="text-white/30 text-[12px] leading-relaxed" data-i18n="auth.noEmailReceived">
+                        Didn't receive an email? Check your spam folder or try again.
+                    </p>
+                </div>
+                <div class="onboarding-step-actions">
                     <a href="message://" id="open-mail-btn"
                         class="w-full flex items-center justify-center gap-2 bg-white text-black font-semibold text-[17px] py-4 rounded-2xl active:scale-95 transition-transform mb-3">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1702,19 +1790,15 @@
                         </svg>
                         <span data-i18n="auth.openMailApp">Open Mail App</span>
                     </a>
-
-                    <!-- Go to sign in (pre-filled) -->
                     <button onclick="triggerHapticFeedback(); goToSignInFromEmailCheck()"
-                        class="w-full flex items-center justify-center border border-white/15 text-white font-semibold text-[15px] py-3.5 rounded-2xl active:scale-95 transition-transform hover:bg-white/5">
-                        <span data-i18n="auth.goToSignIn">Go to Sign In</span>
+                        class="w-full text-white/50 hover:text-white text-sm py-3 transition-colors outline-none"
+                        data-i18n="auth.goToSignIn">
+                        Go to Sign In
                     </button>
-
-                    <p class="text-white/30 text-[12px] text-center mt-5 leading-relaxed"
-                        data-i18n="auth.noEmailReceived">
-                        Didn't receive an email? Check your spam folder or try again.
-                    </p>
                 </div>
             </div>
+
+        </div>
         </div>
 
     </div>
@@ -4362,6 +4446,7 @@
     <script src="js/native-bridge.js?v=1"></script>
     <script src="js/config.js?v=185"></script>
     <script src="js/auth.js?v=181"></script>
+    <script src="js/onboarding.js?v=1"></script>
     <script src="js/navigation.js?v=183"></script>
     <script src="js/dex.js?v=181"></script>
     <script src="js/rating.js?v=186"></script>
