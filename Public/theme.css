@@ -297,13 +297,14 @@ html.light #score.engraved-text    { color: rgba(255,255,255,0.95); }
 html.light #score.engraved-text span { color: rgba(255,255,255,0.60); }
 
 /* Splash + auth overlay backgrounds use inline style="background:#000".
-   The inline style would normally win — but we override via a more-specific
-   data attribute that theme.js sets at boot. */
-html.light #splash-screen[data-theme-aware="1"]  { background: #ffffff !important; }
+   The inline style would normally win — !important beats it directly, so
+   this applies as soon as `html.light` is set (synchronously, before body
+   paints) instead of waiting on theme.js to run. */
+html.light #splash-screen  { background: #ffffff !important; }
 html.light #splash-video                         { filter: invert(1); }
-html.light #auth-overlay[data-theme-aware="1"]   { background: var(--app-bg) !important; }
-html.light #preview-card-wrapper[data-theme-aware="1"],
-html.light #preview-card-wrapper[data-pinned="1"][data-theme-aware="1"] { background: var(--app-bg) !important; }
+html.light #auth-overlay   { background: var(--app-bg) !important; }
+html.light #preview-card-wrapper,
+html.light #preview-card-wrapper[data-pinned="1"] { background: var(--app-bg) !important; }
 
 /* Heatmap-hole pulse keeps its dark aesthetic — readable on light too */
 html.light .heatmap-hole       { background-color: var(--surface-3); }

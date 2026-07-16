@@ -15,6 +15,12 @@
         return window.__SDX_NATIVE__ === true;
     }
 
+    function syncNativeTheme(pref) {
+        try {
+            window.webkit.messageHandlers.themeSync.postMessage({ preference: pref });
+        } catch (_) {}
+    }
+
     function systemPrefersLight() {
         if (isNative()) return window.__SDX_SYSTEM_THEME__ === 'light';
         return typeof window.matchMedia === 'function'
@@ -32,13 +38,6 @@
 
         root.classList.toggle('light', resolved === 'light');
         root.classList.toggle('dark',  resolved === 'dark');
-
-        ['splash-screen', 'auth-overlay', 'preview-card-wrapper'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el && !el.hasAttribute('data-theme-aware')) {
-                el.setAttribute('data-theme-aware', '1');
-            }
-        });
 
         let meta = document.querySelector('meta[name="theme-color"]');
         if (!meta) {
@@ -66,6 +65,7 @@
     function setTheme(pref) {
         if (!VALID.includes(pref)) pref = 'system';
         try { localStorage.setItem(STORAGE_KEY, pref); } catch (_) {}
+        syncNativeTheme(pref);
         const resolved = resolve(pref);
         apply(resolved);
         document.dispatchEvent(new CustomEvent('themechange', {
@@ -98,6 +98,7 @@
     }
 
     apply(resolve(getStored()));
+    syncNativeTheme(getStored());
 
     window.SnusTheme = { setTheme, getTheme, getResolvedTheme, updateThemeBadge };
 
