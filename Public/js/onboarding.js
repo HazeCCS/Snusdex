@@ -422,7 +422,10 @@ async function _completeOnboarding() {
             const { error } = await supabaseClient.auth.signUp({
                 email: _onbState.email,
                 password: _onbState.password,
-                options: { data: { username: _onbState.username, birthdate: _onbState.birthdate } }
+                options: {
+                    data: { username: _onbState.username, birthdate: _onbState.birthdate },
+                    emailRedirectTo: 'https://snusdex.com/authentication'
+                }
             });
             if (error) throw error;
         }
