@@ -888,8 +888,8 @@ function renderActiveCansUI() {
                          onmouseleave="stopAddPouch()">
 
                         <svg class="absolute inset-0 w-full h-full transform -rotate-90 pointer-events-none" viewBox="0 0 48 48">
-                            <circle cx="24" cy="24" r="22" stroke="rgba(255,255,255,0.1)" stroke-width="4" fill="none" />
-                            <circle id="progress-${logId}" cx="24" cy="24" r="22" stroke="white" stroke-width="4" fill="none"
+                            <circle class="hold-progress-track" cx="24" cy="24" r="22" stroke="rgba(255,255,255,0.1)" stroke-width="4" fill="none" />
+                            <circle id="progress-${logId}" class="hold-progress-fill" cx="24" cy="24" r="22" stroke="white" stroke-width="4" fill="none"
                                     stroke-dasharray="138.2" stroke-dashoffset="138.2" style="transition: none;" />
                         </svg>
 
@@ -924,10 +924,10 @@ function renderActiveCansUI() {
 
                         <svg class="absolute inset-0 w-full h-full pointer-events-none"
                              viewBox="0 0 76 41">
-                            <path d="M38,1.25 H55.5 A19.25,19.25 0 1,1 55.5,39.75 H20.5 A19.25,19.25 0 1,1 20.5,1.25 H38 Z"
+                            <path class="empty-progress-track" d="M38,1.25 H55.5 A19.25,19.25 0 1,1 55.5,39.75 H20.5 A19.25,19.25 0 1,1 20.5,1.25 H38 Z"
                                 stroke="rgba(255,255,255,0.15)" stroke-width="2.5" fill="none"
                                 stroke-linecap="butt" />
-                            <path id="empty-progress-${can.id}"
+                            <path id="empty-progress-${can.id}" class="empty-progress-fill"
                                 d="M38,1.25 H55.5 A19.25,19.25 0 1,1 55.5,39.75 H20.5 A19.25,19.25 0 1,1 20.5,1.25 H38 Z"
                                 stroke="white" stroke-width="2.5" fill="none"
                                 stroke-linecap="butt"

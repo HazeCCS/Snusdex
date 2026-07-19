@@ -309,6 +309,13 @@ html.light #preview-card-wrapper[data-pinned="1"] { background: var(--app-bg) !i
 /* Heatmap-hole pulse keeps its dark aesthetic — readable on light too */
 html.light .heatmap-hole       { background-color: var(--surface-3); }
 
+/* Active-can "press and hold" progress rings — hardcoded white stroke on the
+   dark card is invisible once html.light flips the card to a white surface. */
+html.light .hold-progress-track,
+html.light .empty-progress-track { stroke: rgba(0, 0, 0, 0.1) !important; }
+html.light .hold-progress-fill,
+html.light .empty-progress-fill  { stroke: var(--app-fg) !important; }
+
 /* sk shimmer skeleton — match surface palette in light mode */
 html.light .sk {
     background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
