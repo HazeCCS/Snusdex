@@ -395,23 +395,18 @@ function showMouTrackRecommendationInModal(position) {
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 18 9 12l6-6" />
                 </svg>
             </button>
-            <button type="button" onclick="closeMouTrackPlacementModal()" class="w-10 h-10 rounded-full bg-white/10 border border-white/5 flex items-center justify-center text-[#8E8E93] active:scale-90 transition-all duration-200" aria-label="${t('mouTrack.done')}">
-                <svg class="w-[18px] h-[18px] text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-            </button>
+            <div class="h-10 rounded-full bg-white/10 border border-white/5 flex items-center" style="padding: 0 14px;">
+                <p class="text-[#8E8E93] text-[11px] font-medium whitespace-nowrap">${t('mouTrack.recommendationSubtitle')}</p>
+            </div>
         </div>
         <div class="flex-1 flex flex-col items-center justify-center text-center" style="padding-bottom: 22px;">
-            <div class="rounded-full bg-white text-black flex items-center justify-center" style="width: 104px; height: 104px; box-shadow: 0 16px 48px rgba(255,255,255,0.13); margin-bottom: 22px;">
+            <h2 class="text-[30px] font-bold tracking-tight text-white leading-tight" style="margin-bottom: 16px;">${t('mouTrack.recommendationTitle')}</h2>
+            <div class="rounded-full bg-white text-black flex items-center justify-center" style="width: 104px; height: 104px; margin-bottom: 16px;">
                 <svg class="transition-transform" style="width: 58px; height: 58px; transform: rotate(${MOUTRACK_ARROW_ROTATIONS[position]}deg)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
                 </svg>
             </div>
-            <span class="text-[13px] font-semibold text-[#8E8E93] tracking-wider block" style="margin-bottom: 4px;">${t('mouTrack.recommendationTitle')}</span>
-            <h2 class="text-[26px] font-bold tracking-tight text-white leading-tight" style="margin-bottom: 8px;">${getMouTrackPositionLabel(position)}</h2>
-            <div class="bg-white/5 border border-white/5 rounded-[14px]" style="padding: 12px 14px; max-width: 292px;">
-                <p class="text-[#D1D1D6] text-[14px] leading-relaxed">${t('mouTrack.recommendationSubtitle')}</p>
-            </div>
+            <span class="text-[22px] font-semibold text-white tracking-tight block">${getMouTrackPositionLabel(position)}</span>
         </div>
         <button type="button" onclick="closeMouTrackPlacementModal()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] shadow-[0_4px_14px_rgba(255,255,255,0.1)] flex justify-center items-center active:scale-95 transition-transform">${t('mouTrack.done')}</button>
     `;
