@@ -23,6 +23,7 @@ let mouTrackSyncQueue = Promise.resolve();
 let mouTrackSheetStartY = 0;
 let mouTrackSheetCurrentY = 0;
 let isMouTrackSheetDragging = false;
+let mouTrackPendingPouchSave = null;
 
 function isValidMouTrackPosition(position) {
     return MOUTRACK_POSITIONS.includes(position);
@@ -300,6 +301,16 @@ function closeMouTrackPlacementModal(isDragging = false) {
     const overlay = document.getElementById('moutrack-placement-modal');
     if (!overlay) return;
 
+    if (mouTrackPendingPouchSave) {
+        const card = document.getElementById('moutrack-modal-card');
+        if (isDragging && card) {
+            card.style.transition = 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)';
+            card.style.transform = 'translateY(0)';
+        }
+        showMouTrackDiscardConfirm();
+        return;
+    }
+
     const backdrop = document.getElementById('moutrack-modal-backdrop');
     const card = document.getElementById('moutrack-modal-card');
     if (card) {
@@ -321,6 +332,64 @@ function closeMouTrackPlacementModal(isDragging = false) {
     }, 400);
     mouTrackPlacementSnapshot = null;
     mouTrackPendingPlacementPosition = null;
+}
+
+function commitMouTrackPendingPouch() {
+    if (!mouTrackPendingPouchSave) return;
+    const { logId, maxPouches, newCount } = mouTrackPendingPouchSave;
+    mouTrackPendingPouchSave = null;
+    executeAddPouch(logId, maxPouches, newCount);
+}
+
+function discardMouTrackPendingPouch() {
+    mouTrackPendingPouchSave = null;
+}
+
+function completeMouTrackPlacement() {
+    commitMouTrackPendingPouch();
+    closeMouTrackPlacementModal();
+}
+
+function showMouTrackDiscardConfirm() {
+    let overlay = document.getElementById('moutrack-discard-confirm');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'moutrack-discard-confirm';
+        overlay.className = 'fixed inset-0 z-[1100] hidden items-center justify-center px-6';
+        document.body.appendChild(overlay);
+    }
+
+    overlay.innerHTML = `
+        <div class="absolute inset-0 bg-black/60" onclick="cancelMouTrackDiscard()"></div>
+        <div class="relative w-full max-w-[320px] rounded-[20px] bg-[#1C1C1E] border border-white/5 p-5 text-center">
+            <h2 class="text-white text-[17px] font-semibold leading-tight" style="margin-bottom: 8px;">${t('mouTrack.discardTitle')}</h2>
+            <p class="text-[#8E8E93] text-[13px] leading-relaxed" style="margin-bottom: 18px;">${t('mouTrack.discardMessage')}</p>
+            <div class="flex flex-col" style="gap: 8px;">
+                <button type="button" onclick="cancelMouTrackDiscard()" class="w-full bg-white text-black font-semibold text-[15px] py-3 rounded-[12px] active:scale-95 transition-transform">${t('mouTrack.discardCancel')}</button>
+                <button type="button" onclick="confirmMouTrackDiscard()" class="w-full bg-white/10 border border-white/5 text-[#FF453A] font-semibold text-[15px] py-3 rounded-[12px] active:scale-95 transition-transform">${t('mouTrack.discardConfirm')}</button>
+            </div>
+        </div>
+    `;
+
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+}
+
+function hideMouTrackDiscardConfirm() {
+    const overlay = document.getElementById('moutrack-discard-confirm');
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+    overlay.classList.remove('flex');
+}
+
+function cancelMouTrackDiscard() {
+    hideMouTrackDiscardConfirm();
+}
+
+function confirmMouTrackDiscard() {
+    hideMouTrackDiscardConfirm();
+    discardMouTrackPendingPouch();
+    closeMouTrackPlacementModal();
 }
 
 function setupMouTrackSheetSwipe() {
@@ -408,7 +477,7 @@ function showMouTrackRecommendationInModal(position) {
             </div>
             <span class="text-[22px] font-semibold text-white tracking-tight block">${getMouTrackPositionLabel(position)}</span>
         </div>
-        <button type="button" onclick="closeMouTrackPlacementModal()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] shadow-[0_4px_14px_rgba(255,255,255,0.1)] flex justify-center items-center active:scale-95 transition-transform">${t('mouTrack.done')}</button>
+        <button type="button" onclick="completeMouTrackPlacement()" class="w-full bg-white text-black font-semibold text-[17px] py-4 rounded-[14px] shadow-[0_4px_14px_rgba(255,255,255,0.1)] flex justify-center items-center active:scale-95 transition-transform">${t('mouTrack.done')}</button>
     `;
 
     requestAnimationFrame(() => {
@@ -1036,8 +1105,13 @@ function startAddPouch(logId, maxPouches, currentPouches) {
         } else {
             addPouchTimer = null;
             if (typeof triggerHapticFeedback === 'function') triggerHapticFeedback('success');
-            openMouTrackPlacementModal();
-            executeAddPouch(logId, maxPouches, currentPouches + 1);
+            const isIndividualTracking = (localStorage.getItem('snusTrackingMode') || 'full') === 'individual';
+            if (isIndividualTracking) {
+                mouTrackPendingPouchSave = { logId, maxPouches, newCount: currentPouches + 1 };
+                openMouTrackPlacementModal();
+            } else {
+                executeAddPouch(logId, maxPouches, currentPouches + 1);
+            }
         }
     }
     addPouchTimer = requestAnimationFrame(animatePouch);

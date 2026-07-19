@@ -123,6 +123,10 @@
   "mouTrack.recommendationSubtitle": "Gesynchroniseerd met je MouTrack-overzicht.",
   "mouTrack.back": "Terug",
   "mouTrack.done": "Klaar",
+  "mouTrack.discardTitle": "Pouch niet opgeslagen",
+  "mouTrack.discardMessage": "Als je nu sluit, wordt deze pouch niet geteld.",
+  "mouTrack.discardCancel": "Terug naar MouTrack",
+  "mouTrack.discardConfirm": "Toch sluiten",
 
   "activeCan.noActive": "Geen actieve blikken.",
   "activeCan.openNext": "Volgende openen",
