@@ -163,6 +163,15 @@ body {
     transition: background-color 0.25s ease, color 0.25s ease;
 }
 
+/* The viewport itself must stay white in light mode. WebKit reveals both the
+   root and body backgrounds while rubber-band scrolling, so styling only the
+   app's content surface still leaves dark strips above and below the Dex. */
+html.light,
+html.light body {
+    background-color: #FFFFFF;
+    color-scheme: light;
+}
+
 /* Auth overlay & splash use bg-black inline — gets caught by .bg-black below */
 
 /* ============================================================================
@@ -364,6 +373,90 @@ html.light input[type="range"].accent-white { accent-color: var(--app-fg); }
 /* Arbitrary `text-[XX]` size classes don't carry color — they're safe.
    Arbitrary `bg-white/[0.01]` and `bg-white/[0.X]` literal opacities */
 html.light .bg-white\/\[0\.01\] { background-color: rgba(var(--rgb-fg), 0.03) !important; }
+
+
+/* ============================================================================
+   MODAL SHEETS — LIGHT MODE
+   The modal artwork is defined in the inline stylesheet after theme.css. These
+   deliberately more-specific rules keep the light sheet continuous instead of
+   leaving a dark drag-handle strip. The product decoration keeps its animated,
+   rarity-coloured cubes while using a brighter halo and a soft edge on white.
+   ============================================================================ */
+html.light #snus-modal-card.modal-cubes-sheet,
+html.light #all-scans-card.modal-cubes-sheet,
+html.light #scan-modal-card.modal-cubes-sheet,
+html.light #scan-help-card.modal-cubes-sheet {
+    background: #FFFFFF !important;
+}
+
+html.light .modal-cubes-sheet #snus-modal-drag-handle,
+html.light .modal-cubes-sheet #all-scans-drag-handle,
+html.light .modal-cubes-sheet #scan-help-handle {
+    background: rgba(255, 255, 255, 0.94) !important;
+    border-bottom: 1px solid rgba(60, 60, 67, 0.08);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+html.light .modal-cubes-sheet #snus-modal-drag-handle > div:first-child,
+html.light .modal-cubes-sheet #all-scans-drag-handle > div:first-child,
+html.light .modal-cubes-sheet #scan-help-handle > div:first-child,
+html.light #scan-modal-card > .w-10.h-1\.5.rounded-full {
+    background-color: #C7C7CC !important;
+}
+
+html.light #snus-modal-card #modal-close-btn.bg-white\/10,
+html.light #snus-modal-card #modal-favorite-btn.bg-white\/10 {
+    background-color: rgba(255, 255, 255, 0.94) !important;
+    border-color: rgba(60, 60, 67, 0.18) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+html.light .dose-collector-cubes-layer {
+    opacity: 1;
+    background:
+        radial-gradient(circle at 50% 46%,
+            rgba(var(--modal-cube-rgb, 142, 142, 147), 0.14) 0%,
+            rgba(var(--modal-cube-rgb, 142, 142, 147), 0.07) 43%,
+            rgba(var(--modal-cube-rgb, 142, 142, 147), 0.02) 64%,
+            transparent 78%);
+    -webkit-mask-image: radial-gradient(circle, #000 0%, #000 56%, rgba(0, 0, 0, 0.72) 70%, transparent 88%);
+    mask-image: radial-gradient(circle, #000 0%, #000 56%, rgba(0, 0, 0, 0.72) 70%, transparent 88%);
+}
+
+html.light .dose-collector-cubes-container .metal-card-canvas {
+    opacity: 0.52;
+    filter: saturate(0.92) contrast(0.92);
+    mix-blend-mode: multiply;
+}
+
+html.light .dose-collector-cubes-layer::after {
+    background: radial-gradient(circle,
+        rgba(255, 255, 255, 0.02) 0%,
+        rgba(255, 255, 255, 0.04) 52%,
+        rgba(255, 255, 255, 0.64) 74%,
+        #FFFFFF 91%);
+}
+
+html.light .modal-cubes-sheet .modal-cubes-layer {
+    opacity: 0.34;
+}
+
+html.light .modal-cubes-sheet .modal-cubes-layer::before {
+    background: none;
+    mix-blend-mode: normal;
+}
+
+html.light .modal-cubes-sheet .modal-cubes-layer::after {
+    background: radial-gradient(ellipse at center,
+        rgba(255, 255, 255, 0.96) 0%,
+        rgba(255, 255, 255, 0.82) 52%,
+        rgba(255, 255, 255, 0.58) 100%);
+}
+
+html.light .modal-cubes-sheet .modal-cubes-container .metal-card-canvas {
+    opacity: 0.18;
+}
 
 
 /* ============================================================================
@@ -607,5 +700,3 @@ html.light .cp-review-text {
     max-height: 0px;
     opacity: 0;
 }
-
-

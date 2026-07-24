@@ -889,16 +889,32 @@ function applyCardAppearance(container, appearance) {
 function initModalCubes(containerId, options = {}) {
     const initOne = (container) => {
         if (!container || typeof applyCardAppearance !== 'function') return;
+        const colorHex = options.colorHex || '#8E8E93';
+        const lightMode = document.documentElement.classList.contains('light');
+        const layer = container.closest('.dose-collector-cubes-layer, .modal-cubes-layer');
+        const hex = (colorHex.match(/#([0-9a-fA-F]{6})/) || [])[1];
+
+        if (layer) {
+            layer.dataset.themeVariant = lightMode ? 'light' : 'dark';
+            layer.style.setProperty('--modal-cube-color', colorHex);
+            if (hex) {
+                const r = parseInt(hex.slice(0, 2), 16);
+                const g = parseInt(hex.slice(2, 4), 16);
+                const b = parseInt(hex.slice(4, 6), 16);
+                layer.style.setProperty('--modal-cube-rgb', `${r}, ${g}, ${b}`);
+            }
+        }
+
         applyCardAppearance(container, {
-            colorHex: options.colorHex || '#8E8E93',
+            colorHex,
             anim: 'gol',
             pattern: 'cubes',
-            intensity: '0.65',
+            intensity: lightMode ? '0.88' : '0.65',
             saturation: '1',
             cubeCellSize: 11,
             cubeGap: 3,
             cubeMargin: 8,
-            cubeBaseOpacity: 0,
+            cubeBaseOpacity: lightMode ? 0.025 : 0,
             transparentBackground: true
         });
     };
