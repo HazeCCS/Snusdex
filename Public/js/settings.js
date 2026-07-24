@@ -467,10 +467,43 @@ function _ghRelTime(isoStr) {
     return d > 0 ? `${d}d ago` : h > 0 ? `${h}h ago` : m > 0 ? `${m}m ago` : 'just now';
 }
 
+const LEGAL_DOC_FILES = {
+    'Datenschutzerklärung': 'legal/Snusdex_Datenschutzerklaerung_DE.md',
+    'Nutzungsbedingungen': 'legal/Snusdex_AGB_Nutzungsbedingungen_DE.md',
+    'Impressum': 'legal/Snusdex_Impressum_DE.md',
+    'Cookie-Hinweis': 'legal/Snusdex_Cookie_Tracking_Hinweis_DE.md',
+};
+
+function _ghMarkdownTables(text) {
+    const lines = text.split('\n');
+    const isRow = (l) => /^\s*\|.*\|\s*$/.test(l);
+    const isSep = (l) => isRow(l) && /^[\s|:-]+$/.test(l) && l.includes('-');
+    const parseRow = (l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    const out = [];
+    let i = 0;
+    while (i < lines.length) {
+        if (isRow(lines[i]) && i + 1 < lines.length && isSep(lines[i + 1])) {
+            const header = parseRow(lines[i]);
+            let j = i + 2;
+            const rows = [];
+            while (j < lines.length && isRow(lines[j])) { rows.push(parseRow(lines[j])); j++; }
+            const th = header.map(c => `<th style="text-align:left;padding:8px 10px;color:var(--app-fg);font-weight:700;border-bottom:1px solid var(--fg-a10);white-space:nowrap">${c}</th>`).join('');
+            const tb = rows.map(r => '<tr>' + r.map(c => `<td style="padding:8px 10px;color:var(--muted-fg);border-bottom:1px solid var(--fg-a08);vertical-align:top">${c}</td>`).join('') + '</tr>').join('');
+            out.push(`<div style="overflow-x:auto;margin:10px 0;border:1px solid var(--fg-a10);border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="background:var(--surface-1)">${th}</tr></thead><tbody>${tb}</tbody></table></div>`);
+            i = j;
+        } else {
+            out.push(lines[i]);
+            i++;
+        }
+    }
+    return out.join('\n');
+}
+
 function _ghMarkdown(md) {
     let h = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     h = h.replace(/```[\w]*\n([\s\S]*?)```/g, (_,c) =>
         `<pre style="background:var(--surface-1);border:1px solid var(--fg-a10);border-radius:12px;padding:12px;overflow-x:auto;font-family:Menlo,monospace;font-size:12px;color:var(--fg-a90);margin:8px 0;white-space:pre-wrap">${c.trim()}</pre>`);
+    h = _ghMarkdownTables(h);
     h = h.replace(/^### (.+)$/gm, '<h3 style="color:var(--app-fg);font-size:15px;font-weight:700;margin:14px 0 4px">$1</h3>');
     h = h.replace(/^## (.+)$/gm,  '<h2 style="color:var(--app-fg);font-size:18px;font-weight:700;margin:18px 0 6px">$1</h2>');
     h = h.replace(/^# (.+)$/gm,   '<h1 style="color:var(--app-fg);font-size:21px;font-weight:800;margin:0 0 8px">$1</h1>');
@@ -513,6 +546,8 @@ function openSettingsSubpage(type, _pushHistory) {
         'Delete Account': 'settings.deleteAccount',
         'Creator Code': 'Creator Code',
         'README': 'README', 'Architecture Map': 'Architecture Map',
+        'Datenschutzerklärung': 'settings.privacyPolicy', 'Nutzungsbedingungen': 'settings.terms',
+        'Impressum': 'settings.imprint', 'Cookie-Hinweis': 'settings.cookieNotice',
     };
     titleObj.innerText = t(_subpageTitleMap[type] || type);
     window._currentSubpageType = type;
@@ -1243,6 +1278,37 @@ function openSettingsSubpage(type, _pushHistory) {
                 });
             }
         }, 100);
+
+    } else if (LEGAL_DOC_FILES[type]) {
+        const _spinnerSvg = `<svg class="animate-spin w-4 h-4 text-[#8E8E93]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
+        html = `
+            <div id="legal-doc-container" class="flex items-center justify-center py-8 gap-2">
+                ${_spinnerSvg}<span class="text-[#8E8E93] text-[14px]">${t('legal.loading')}</span>
+            </div>
+        `;
+        setTimeout(async () => {
+            const el = document.getElementById('legal-doc-container');
+            if (!el) return;
+            try {
+                const res = await fetch(LEGAL_DOC_FILES[type]);
+                if (!res.ok) throw new Error('not found');
+                const md = await res.text();
+                el.className = 'pb-8';
+                el.style.wordBreak = 'break-word';
+                el.style.opacity = '0';
+                const currentLang = localStorage.getItem('appLang') || 'en';
+                const notice = currentLang !== 'de'
+                    ? `<div style="display:flex;gap:8px;align-items:flex-start;background:var(--surface-1);border:1px solid var(--fg-a10);border-radius:12px;padding:10px 12px;margin-bottom:14px"><svg style="width:16px;height:16px;flex-shrink:0;margin-top:1px;color:var(--fg-a70)" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span style="color:var(--fg-a70);font-size:13px;line-height:1.4">${t('legal.germanOnlyNotice')}</span></div>`
+                    : '';
+                el.innerHTML = notice + _ghMarkdown(md);
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    el.style.transition = 'opacity 0.55s ease';
+                    el.style.opacity = '1';
+                }));
+            } catch (e) {
+                el.innerHTML = `<div class="flex items-center gap-2 px-1 py-4"><svg class="w-4 h-4 text-[#FFD60A] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg><span class="text-[#8E8E93] text-[14px]">${t('legal.loadError')}</span></div>`;
+            }
+        }, 0);
 
     } else if (type === 'README') {
         const _spinnerSvg = `<svg class="animate-spin w-4 h-4 text-[#8E8E93]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
