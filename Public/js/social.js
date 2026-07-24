@@ -127,12 +127,12 @@ function renderCreatorsPickCard(pick, index = 0) {
         : 'N/A';
 
     const avatarStyle = pick.creator_avatar_url
-        ? `background-image:url('${pick.creator_avatar_url}');background-size:cover;background-position:center;`
+        ? `background-image:url('${escapeHTML(pick.creator_avatar_url)}');background-size:cover;background-position:center;`
         : `background: linear-gradient(135deg, #2C2C2E, #3A3A3C);`;
 
     const avatarContent = pick.creator_avatar_url
         ? ''
-        : `<span class="text-[12px] font-bold text-white/85">${(pick.creator_name || '?').charAt(0).toUpperCase()}</span>`;
+        : `<span class="text-[12px] font-bold text-white/85">${escapeHTML((pick.creator_name || '?').charAt(0).toUpperCase())}</span>`;
 
     const creatorName = pick.creator_name || 'Creator';
     const handleText = pick.creator_handle
@@ -159,12 +159,12 @@ function renderCreatorsPickCard(pick, index = 0) {
                             ${avatarContent}
                         </div>
                         <div class="flex flex-col min-w-0">
-                            <span class="text-[14px] font-semibold text-white leading-tight truncate">${creatorName}</span>
-                            ${handleText ? `<span class="text-[11px] text-[#8E8E93] font-medium leading-none mt-0.5 truncate">${handleText}</span>` : ''}
+                            <span class="text-[14px] font-semibold text-white leading-tight truncate">${escapeHTML(creatorName)}</span>
+                            ${handleText ? `<span class="text-[11px] text-[#8E8E93] font-medium leading-none mt-0.5 truncate">${escapeHTML(handleText)}</span>` : ''}
                         </div>
                     </div>
                     ${pick.custom_headline ? `
-                        <h4 class="text-white text-[16px] font-bold tracking-tight leading-snug max-w-[50%] truncate text-right">&ldquo;${pick.custom_headline}&rdquo;</h4>
+                        <h4 class="text-white text-[16px] font-bold tracking-tight leading-snug max-w-[50%] truncate text-right">&ldquo;${escapeHTML(pick.custom_headline)}&rdquo;</h4>
                     ` : ''}
                 </div>
 
@@ -201,7 +201,7 @@ function renderCreatorsPickCard(pick, index = 0) {
                     <!-- Review text -->
                     ${pick.review_text ? `
                     <div class="pt-3 border-t border-white/5">
-                        <p class="text-[12px] text-[#8E8E93] italic leading-relaxed">&ldquo;${pick.review_text}&rdquo;</p>
+                        <p class="text-[12px] text-[#8E8E93] italic leading-relaxed">&ldquo;${escapeHTML(pick.review_text)}&rdquo;</p>
                     </div>
                     ` : ''}
                 </div>
@@ -1295,9 +1295,9 @@ async function searchUsersConnections() {
             return `
                 <div class="flex items-center justify-between py-2.5">
                     <div class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" onclick="triggerHapticFeedback(); openFriendProfile('${profile.id}')">
-                        <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0">
+                        <img src="${escapeHTML(avatar)}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0">
                         <div class="min-w-0 flex-1">
-                            <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                            <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${escapeHTML(profile.username || 'Unknown')}</h4>
                             <p class="text-[13px] text-[#8E8E93] truncate">${t('profile.level')} ${level} • ${cans} ${t('profile.cans')}</p>
                         </div>
                     </div>
@@ -1492,9 +1492,9 @@ async function loadConnectionsData() {
                 return `
                     <div class="request-item-row flex items-center justify-between py-2.5">
                         <div class="flex items-center gap-3 min-w-0 flex-1">
-                            <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff'">
+                            <img src="${escapeHTML(avatar)}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff'">
                             <div class="min-w-0 flex-1">
-                                <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                                <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${escapeHTML(profile.username || 'Unknown')}</h4>
                                 <p class="text-[13px] text-[#8E8E93] truncate">${t('connections.wantsToFollow')}</p>
                             </div>
                         </div>
@@ -1578,9 +1578,9 @@ function renderConnectionItem(profile, followStatus, profileId) {
     return `
         <div class="flex items-center justify-between py-2.5">
             <div class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" onclick="triggerHapticFeedback(); openFriendProfile('${profileId}')">
-                <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff'">
+                <img src="${escapeHTML(avatar)}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff'">
                 <div class="min-w-0 flex-1">
-                    <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                    <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${escapeHTML(profile.username || 'Unknown')}</h4>
                     <p class="text-[13px] text-[#8E8E93] truncate">${t('profile.level')} ${level} • ${cans} ${t('profile.cans')}</p>
                 </div>
             </div>
@@ -1983,7 +1983,7 @@ async function openFriendProfile(friendId) {
         const cardScoreEl = document.getElementById('friend-card-score');
 
         if (cardLvlEl) cardLvlEl.innerText = weBlockedThem ? 'LVL --' : `LVL ${lvlVal}`;
-        if (cardUserEl) cardUserEl.innerHTML = `COLLECTOR, <span class="text-white font-semibold">${profile.username || 'Unknown'}</span>`;
+        if (cardUserEl) cardUserEl.innerHTML = `COLLECTOR, <span class="text-white font-semibold">${escapeHTML(profile.username || 'Unknown')}</span>`;
         if (cardScoreEl) cardScoreEl.innerHTML = weBlockedThem ? `- <span class="font-medium text-[20px] text-white/50">XP</span>` : `${xpVal} <span class="font-medium text-[20px] text-white/50">XP</span>`;
 
         const cardContainer = document.getElementById('friend-metal-card-container');
@@ -2333,9 +2333,9 @@ async function loadBlockedUsers() {
             return `
                 <div class="flex items-center justify-between py-2.5 border-b border-white/5">
                     <div class="flex items-center gap-3 min-w-0 flex-1">
-                        <img src="${avatar}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff'">
+                        <img src="${escapeHTML(avatar)}" class="w-12 h-12 rounded-full object-cover bg-[#2C2C2E] flex-shrink-0" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(profile.username || 'U')}&background=1C1C1E&color=fff'">
                         <div class="min-w-0 flex-1">
-                            <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${profile.username || 'Unknown'}</h4>
+                            <h4 class="text-white text-[15px] font-semibold tracking-tight truncate">${escapeHTML(profile.username || 'Unknown')}</h4>
                         </div>
                     </div>
                     <button onclick="triggerHapticFeedback(); quickUnblockUser('${profile.id}')"

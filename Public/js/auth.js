@@ -14,7 +14,7 @@ function updateGreeting() {
     else if (hour >= 18 && hour < 22) message = t('greeting.evening');
     else message = t('greeting.night');
 
-    greetingElement.innerHTML = `${message}, <span style="color:rgba(255,255,255,0.95);font-weight:600;">${displayIdent}</span>`;
+    greetingElement.innerHTML = `${message}, <span style="color:rgba(255,255,255,0.95);font-weight:600;">${escapeHTML(displayIdent)}</span>`;
 }
 
 async function signInWithGoogle() {

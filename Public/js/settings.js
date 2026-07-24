@@ -578,7 +578,7 @@ function openSettingsSubpage(type, _pushHistory) {
                     </div>
                     <input type="text" id="edit-username" value=""
                         class="w-full bg-black border border-white/10 text-white rounded-[14px] px-4 py-3.5 text-[17px] focus:border-white outline-none transition-all placeholder:text-[#8E8E93]/60"
-                        placeholder="${cachedUsername || t('editProfile.username')}"
+                        placeholder="${escapeHTML(cachedUsername || t('editProfile.username'))}"
                         oninput="this.value=this.value.replace(/[^a-zA-Z0-9_]/g,'')">
                     <p id="edit-username-error" class="hidden text-[#FF3B30] text-[13px] mt-2"></p>
                     <p class="text-[11px] text-[#8E8E93] mt-2">${t('editProfile.changesPerMonth')}</p>
