@@ -1,0 +1,12 @@
+node_modules
+node_modules.nosync
+.next
+.next.nosync
+out
+out.nosync
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+.env*
+!.env.example
+.claude/
