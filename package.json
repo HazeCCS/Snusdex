@@ -4,7 +4,7 @@
   "private": true,
   "description": "Webseite der Snusdex App, snusdex.com",
   "engines": {
-    "node": ">=20"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "next dev",
