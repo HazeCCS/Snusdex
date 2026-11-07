@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-if (process.env.CI || process.env.NETLIFY || !root.includes("Mobile Documents")) {
+if (process.env.CI || process.env.VERCEL || !root.includes("Mobile Documents")) {
   process.exit(0);
 }
 
